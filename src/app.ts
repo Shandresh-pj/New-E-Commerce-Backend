@@ -24,7 +24,14 @@ const app = express();
 
 app.disable("x-powered-by");
 
-app.use(helmet());
+app.use(
+  helmet({
+    hsts: false,
+    contentSecurityPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
 app.use(compression());
 
@@ -80,7 +87,7 @@ app.use(timezoneMiddleware);
 app.use(
   "/uploads",
   express.static(
-    path.join(__dirname, "uploads")
+    path.join(process.cwd(), "uploads")
   )
 );
 
@@ -95,7 +102,7 @@ app.use((req, res, next) => {
   );
 
   next();
-});
+}); 
 
 /* ==========================================
    REQUEST LOGGER
