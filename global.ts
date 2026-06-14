@@ -9,6 +9,7 @@ import { OtpVerification } from "./src/entities/otp";
 import { Coupon, CouponProduct } from "./src/entities/coupons";
 import { Order, OrderItem } from "./src/entities/order";
 import { Product } from "./src/entities/products";
+import { UserAddress } from "./src/entities/userAddress";
 
 config({
   path: resolve(".env"),
@@ -102,7 +103,8 @@ let localConfig: DataSourceOptions = {
     CouponProduct,
     Order,
     OrderItem,
-    Product
+    Product,
+    UserAddress,
   ],
 
   namingStrategy:

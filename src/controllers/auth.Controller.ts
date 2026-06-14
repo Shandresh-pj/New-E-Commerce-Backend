@@ -209,7 +209,7 @@ public async login(
       success: true,
       message:
         "Login Successfully",
-      // token,
+      token,
       user: {
         id: user.id,
         name: user.name,
