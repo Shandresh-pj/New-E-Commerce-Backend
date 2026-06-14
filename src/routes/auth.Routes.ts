@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { authController } from "../controllers";
-// import { OtpController } from "../controllers";
 import { uploadImage } from "../utils/upload";
 
 const router = Router();
@@ -246,9 +245,5 @@ router.delete(
   "/profile/:id",
   authController.delete.bind(authController)
 );
-
-// ============================ OTP Verification ==========================
-
-
 
 export default router;

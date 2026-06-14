@@ -11,6 +11,7 @@ import { Order, OrderItem } from "./src/entities/order";
 import { Product } from "./src/entities/products";
 import { Payment } from "./src/entities/payment";
 import { LowStockAlert, StockLog } from "./src/entities/stock";
+import { UserAddress } from "./src/entities/userAddress";
 
 config({
   path: resolve(".env"),
@@ -109,6 +110,7 @@ let localConfig: DataSourceOptions = {
     StockLog,
     LowStockAlert,
     
+    UserAddress,
   ],
 
   namingStrategy:
