@@ -26,6 +26,9 @@ export class Order {
   @JoinColumn({ name: "user_id" })
   user!: Register;
 
+  @Column()
+  status!: string; // PENDING, CONFIRMED, FAILED
+
   // ================= MONEY FIELDS =================
   @Column("decimal", { precision: 10, scale: 2 })
   subtotal!: number;

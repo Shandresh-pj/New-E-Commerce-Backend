@@ -4,7 +4,9 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  ValidateNested
+  Min,
+  ValidateNested,
+  ArrayMinSize,
 } from "class-validator";
 
 import { Type } from "class-transformer";
@@ -35,9 +37,11 @@ export class OrderItemDto {
   product_id!: number;
 
   @IsNumber()
+  @Min(1, { message: "Price must be greater than 0" })
   price!: number;
 
   @IsNumber()
+  @Min(1, { message: "Quantity must be at least 1" })
   quantity!: number;
 }
 
@@ -49,6 +53,9 @@ export class PaymentDto {
   @IsEnum(PaymentMethod)
   method!: PaymentMethod;
 
+  @IsEnum(PaymentStatus)
+  status!: PaymentStatus;
+
   @IsOptional()
   @IsString()
   transaction_id?: string;
@@ -56,13 +63,10 @@ export class PaymentDto {
   @IsOptional()
   @IsString()
   gateway?: string;
-
-  @IsEnum(PaymentStatus)
-  status!: PaymentStatus;
 }
 
 /**
- * CREATE ORDER DTO
+ * CREATE ORDER DTO (IMPROVED)
  */
 export class CreateOrderDto {
 
@@ -70,6 +74,7 @@ export class CreateOrderDto {
   user_id!: number;
 
   @IsArray()
+  @ArrayMinSize(1, { message: "Cart cannot be empty" })
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
   items!: OrderItemDto[];

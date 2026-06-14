@@ -9,7 +9,8 @@ import {
   Post,
   Get,
   Middleware,
-  Swagger
+  Swagger,
+  Delete
 } from "../decorators";
 
 import validate from "../middleware/validate";
@@ -17,7 +18,7 @@ import validate from "../middleware/validate";
 import { UpdateStockDto } from "../dto/stock.dto";
 
 import { Product } from "../entities/products";
-import { StockLog } from "../entities/stock";
+import { LowStockAlert, StockLog } from "../entities/stock";
 
 import { dataSource } from "../server";
 import { CreatePaymentDto } from "../dto/payment.dto";
@@ -199,4 +200,55 @@ export class PaymentController {
       data
     });
   }
+
+
+
+}
+
+
+@Controller("/alerts")
+export class AlertController {
+
+  // ==========================================
+  // GET ALL LOW STOCK ALERTS
+  // ==========================================
+  @Get("/")
+  @Swagger(
+    "Get Low Stock Alerts",
+    "Fetch all low stock product alerts"
+  )
+  async getAlerts(
+    req: Request,
+    res: Response
+  ) {
+
+    const repo =
+      dataSource.getRepository(LowStockAlert);
+
+    const alerts =
+      await repo.find({
+        order: {
+          id: "DESC",
+        },
+      });
+
+    return res.json({
+      success: true,
+      data: alerts,
+    });
+  }
+
+
+  @Delete("/:id")
+async deleteAlert(req: Request, res: Response) {
+
+  const repo = dataSource.getRepository(LowStockAlert);
+
+  await repo.delete(req.params.id);
+
+  return res.json({
+    success: true,
+    message: "Alert deleted"
+  });
+}
 }

@@ -7,14 +7,17 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from "typeorm";
+
 import { OtpVerification } from "./otp";
 import { Order } from "./order";
+import { Product } from "./products";
+import { Coupon } from "./coupons";
 
 export enum UserType {
   SUPER_ADMIN = "Super_Admin",
   ADMIN = "Admin",
-  EMPLOYEES = "Employees",
-  CUSTOMERS = "Customers",
+  EMPLOYEES = "Employee",
+  CUSTOMERS = "Customer",
 }
 
 export enum StatusType {
@@ -31,14 +34,29 @@ export class Register extends BaseEntity {
   })
   id!: number;
 
-   @OneToMany(
+  @OneToMany(
     () => OtpVerification,
     otp => otp.registration
   )
   otpVerifications!: OtpVerification[];
 
-  @OneToMany(() => Order, order => order.user)
+  @OneToMany(
+    () => Order,
+    order => order.user
+  )
   orders!: Order[];
+
+  @OneToMany(
+    () => Product,
+    product => product.creator
+  )
+  products!: Product[];
+
+  @OneToMany(
+  () => Coupon,
+  coupon => coupon.creator
+)
+coupons!: Coupon[];
 
   @Column({
     name: "name",

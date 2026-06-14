@@ -50,6 +50,7 @@ export class ProductController {
         price,
         barcode,
         stock,
+        category,
         registration_id,
       } = req.body;
 
@@ -75,6 +76,7 @@ export class ProductController {
         price,
         stock,
         barcode,
+        category,
         registration_id,
         image,
         images,
@@ -152,7 +154,7 @@ async scan(req: Request, res: Response, next: NextFunction) {
     const repo = dataSource.getRepository(Product);
 
     const data = await repo.find({
-      relations: { creator: true },
+      relations: { couponProducts: true },
       order: { id: "DESC" },
     });
 
@@ -170,7 +172,7 @@ async scan(req: Request, res: Response, next: NextFunction) {
 
     const data = await repo.findOne({
       where: { id: Number(req.params.id) },
-      relations: { creator: true },
+      relations: { couponProducts: true },
     });
 
     return res.json({

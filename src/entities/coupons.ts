@@ -1,5 +1,6 @@
 import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { Register } from "./register";
+import { Product } from "./products";
 
 
 
@@ -18,33 +19,42 @@ export class Coupon {
   @Column("decimal")
   value!: number;
 
-  @Column({ default: true })
+  @Column({
+    default: true,
+  })
   is_active!: boolean;
 
-  // 👇 NEW RELATION TO USER
   @Column()
   created_by!: number;
 
   @Column({
-  nullable: true
-})
-buy_x!: number;
+    nullable: true,
+  })
+  buy_x!: number;
 
-@Column({
-  nullable: true
-})
-get_y!: number;
+  @Column({
+    nullable: true,
+  })
+  get_y!: number;
 
-  @ManyToOne(() => Register)
-  @JoinColumn({ name: "created_by" })
+  @ManyToOne(
+    () => Register,
+    register => register.coupons,
+    {
+      onDelete: "CASCADE",
+    }
+  )
+  @JoinColumn({
+    name: "created_by",
+  })
   creator!: Register;
-  
 
-  @OneToMany(() => CouponProduct, cp => cp.coupon)
+  @OneToMany(
+    () => CouponProduct,
+    cp => cp.coupon
+  )
   products!: CouponProduct[];
-  
 }
-
 
 @Entity("coupon_products_1")
 export class CouponProduct {
@@ -58,7 +68,27 @@ export class CouponProduct {
   @Column()
   product_id!: number;
 
-  @ManyToOne(() => Coupon, c => c.products, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "coupon_id" })
+  @ManyToOne(
+    () => Coupon,
+    coupon => coupon.products,
+    {
+      onDelete: "CASCADE",
+    }
+  )
+  @JoinColumn({
+    name: "coupon_id",
+  })
   coupon!: Coupon;
+
+  @ManyToOne(
+    () => Product,
+    product => product.couponProducts,
+    {
+      onDelete: "CASCADE",
+    }
+  )
+  @JoinColumn({
+    name: "product_id",
+  })
+  product!: Product;
 }

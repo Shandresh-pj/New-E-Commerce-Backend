@@ -3,6 +3,7 @@ import {
   IsOptional,
   IsNumber,
   IsNotEmpty,
+  Matches,
 } from "class-validator";
 
 export class CreateProductDto {
@@ -19,6 +20,7 @@ export class CreateProductDto {
 
    @IsOptional()
   @IsString()
+  @Matches(/^\d{8,14}$/)
   barcode?: string;   // ✅ barcode added
 
   @IsOptional()
@@ -31,6 +33,10 @@ export class CreateProductDto {
 
   @IsNumber()
   stock!: number;
+
+  @IsOptional()
+  @IsString()
+  category!:string;
 }
 
 

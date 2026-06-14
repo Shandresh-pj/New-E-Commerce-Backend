@@ -6,12 +6,11 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
-  ManyToMany,
-  JoinTable,
+  OneToMany,
 } from "typeorm";
 
 import { Register } from "./register";
-import { Coupon } from "./coupons";
+import { CouponProduct } from "./coupons";
 
 @Entity("products_table_1")
 export class Product {
@@ -22,39 +21,70 @@ export class Product {
   @Column()
   name!: string;
 
-  @Column({ type: "text", nullable: true })
+  @Column({
+    type: "text",
+    nullable: true,
+  })
   description!: string;
 
-  @Column("decimal")
+  @Column("decimal", {
+    precision: 10,
+    scale: 2,
+  })
   price!: number;
 
-  @Column({ nullable: true })
+  @Column({
+    nullable: true,
+  })
   barcode!: string;
 
-  @Column({ nullable: true })
+  @Column({
+    nullable: true,
+  })
   image!: string;
 
-  @Column({ type: "json", nullable: true })
+  @Column({
+    type: "json",
+    nullable: true,
+  })
   images!: string[];
 
-  @Column({ nullable: true })
+  @Column({
+    nullable: true,
+  })
   video!: string;
 
   @Column()
   registration_id!: number;
 
-  @Column({
-  type: "int",
-  default: 0,
-})
-stock!: number;
-
-  @ManyToOne(() => Register)
-  @JoinColumn({ name: "registration_id" })
+  @ManyToOne(
+    () => Register,
+    register => register.products,
+    {
+      onDelete: "CASCADE",
+    }
+  )
+  @JoinColumn({
+    name: "registration_id",
+  })
   creator!: Register;
 
-   @ManyToMany(() => Coupon, coupon => coupon.products)
-  coupons!: Coupon[];
+  @Column({
+    type: "int",
+    default: 0,
+  })
+  stock!: number;
+
+  @Column({
+    nullable: true,
+  })
+  category!: string;
+
+  @OneToMany(
+    () => CouponProduct,
+    cp => cp.product
+  )
+  couponProducts!: CouponProduct[];
 
   @CreateDateColumn()
   created_at!: Date;
@@ -62,30 +92,3 @@ stock!: number;
   @UpdateDateColumn()
   updated_at!: Date;
 }
-
-
-// @Entity("coupons")
-// export class Coupon {
-//   @PrimaryGeneratedColumn()
-//   id!: number;
-
-//   @Column()
-//   code!: string;
-
-//   @Column()
-//   type!: "percent" | "flat";
-
-//   @Column("decimal")
-//   value!: number;
-
-//   @Column({ default: true })
-//   is_active!: boolean;
-
-//   @ManyToMany(() => Product, product => product.coupons)
-//   @JoinTable({
-//     name: "coupon_products",
-//     joinColumn: { name: "coupon_id" },
-//     inverseJoinColumn: { name: "product_id" },
-//   })
-//   products!: Product[];
-// }

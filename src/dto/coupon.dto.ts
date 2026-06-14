@@ -12,9 +12,6 @@ export class CreateCouponDto {
   @IsNumber()
   value!: number;
 
-  @IsArray()
-  product_ids!: number[];
-
   @IsNumber()
   created_by!: number;
 
@@ -25,4 +22,8 @@ export class CreateCouponDto {
   @IsOptional()
   @IsNumber()
   get_y?: number;
+
+  @IsArray()
+  @IsNumber({}, { each: true })
+  product_ids!: number[];
 }
