@@ -222,9 +222,10 @@ async scan(req: Request, res: Response, next: NextFunction) {
     }
 
     if (files.files?.images) {
-      product.images = files.files.images.map(
+      const newImages = files.files.images.map(
         (f: any) => `/uploads/images/${f.filename}`
       );
+      product.images = [...(product.images || []), ...newImages];
     }
 
     await repo.save(product);

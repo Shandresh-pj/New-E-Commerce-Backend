@@ -81,12 +81,19 @@ app.use(timezoneMiddleware);
    STATIC FILES
 ========================================== */
 
-app.use(
-  "/uploads",
-  express.static(
-    path.join(process.cwd(), "uploads")
-  )
-);
+// Allow cross-origin access to all uploaded media (images, videos, etc.)
+const setCORP = (_req: any, res: any, next: any) => {
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  next();
+};
+
+// Serve organised subfolders (new uploads)
+app.use("/uploads", setCORP, express.static(path.join(process.cwd(), "uploads")));
+
+// Backwards-compat: old files saved flat in ./uploads/ are
+// reachable at /uploads/images/* and /uploads/videos/* too
+app.use("/uploads/images", setCORP, express.static(path.join(process.cwd(), "uploads")));
+app.use("/uploads/videos", setCORP, express.static(path.join(process.cwd(), "uploads")));
 
 /* ==========================================
    CACHE CONTROL

@@ -112,9 +112,8 @@ export class CategoryController {
             id: Number(req.params.id),
           },
           relations: {
-            parent :true,
-            children :true,
-            products :true,
+            parent: true,
+            children: true,
           },
         });
 

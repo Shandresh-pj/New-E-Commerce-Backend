@@ -22,6 +22,8 @@ import { LowStockAlert } from "./src/entities/lowstock";
 import { Salary } from "./src/entities/salary";
 import { CustomerLocation } from "./src/entities/customerLocation.dto";
 import { Category } from "./src/entities/category";
+import { ProductAttribute, ProductAttributeValue, ProductAttributeValueProduct } from "./src/entities/productAttribute";
+import { Status } from "./src/entities/status.entity";
 
 config({
   path: resolve(".env"),
@@ -131,7 +133,11 @@ DeliveryTracking,
     OrderTracking,CustomerLocation,
     UserAddress,
     Cart,
-    Category
+    Category,
+    ProductAttribute,
+    ProductAttributeValue,
+    ProductAttributeValueProduct,
+    Status
   ],
 
   namingStrategy:

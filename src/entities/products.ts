@@ -16,6 +16,7 @@ import { Order, OrderItem } from "./order";
 import { BranchStock } from "./branch_stock";
 import { LowStockAlert } from "./lowstock";
 import { Category } from "./category";
+import { ProductAttributeValueProduct } from "./productAttribute";
 
 @Entity("products_table_1")
 export class Product {
@@ -102,6 +103,12 @@ orderItems!: OrderItem[];
     cp => cp.product
   )
   couponProducts!: CouponProduct[];
+
+  @OneToMany(
+    () => ProductAttributeValueProduct,
+    link => link.Product
+  )
+  attributeValueLinks!: ProductAttributeValueProduct[];
 
   @CreateDateColumn()
   created_at!: Date;

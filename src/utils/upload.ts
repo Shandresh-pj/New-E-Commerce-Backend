@@ -144,7 +144,21 @@ export const createUploader = (
       file: Express.Multer.File,
       cb
     ) => {
-      cb(null, uploadPath);
+      let subFolder = "";
+      if (FILE_TYPES.IMAGES.includes(file.mimetype)) subFolder = "images";
+      else if (FILE_TYPES.VIDEOS.includes(file.mimetype)) subFolder = "videos";
+      else if (FILE_TYPES.AUDIOS.includes(file.mimetype)) subFolder = "audios";
+      else if (FILE_TYPES.DOCUMENTS.includes(file.mimetype)) subFolder = "documents";
+
+      const dest = subFolder
+        ? path.join(uploadPath, subFolder)
+        : uploadPath;
+
+      if (!fs.existsSync(dest)) {
+        fs.mkdirSync(dest, { recursive: true });
+      }
+
+      cb(null, dest);
     },
 
     filename: (

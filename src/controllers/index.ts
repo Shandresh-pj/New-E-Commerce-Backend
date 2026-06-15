@@ -10,6 +10,11 @@ import { OrderController } from "./order.Controller";
 import { OtpController } from "./otp.Controller";
 import { PayrollController } from "./payroll.controller";
 import { ProductController } from "./product.Controller";
+import {
+  ProductAttributeController,
+  ProductAttributeValueController,
+} from "./productAttribute.Controller";
+import { StatusController } from "./status.Controller";
 import { RoleAccessController } from "./role-access.controller";
 import { AlertController, PaymentController, StockController } from "./stock.Controller";
 import { DeliveryTrackingController } from "./tracking.Controller";
@@ -47,3 +52,9 @@ export const roleAccessController = new RoleAccessController();
 export const cartController = new CartController();
 
 export const categoryController = new CategoryController();
+
+export const productAttributeController = new ProductAttributeController();
+
+export const productAttributeValueController = new ProductAttributeValueController();
+
+export const statusController = new StatusController();
