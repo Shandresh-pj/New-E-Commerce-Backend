@@ -1,13 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { Global } from "../../global";
 
-const REDIS_EXPIRY: number =
+const DEFAULT_EXPIRY =
   Number(process.env.REDIS_EXPIRY) || 60;
-const REDIS_KEY_PREFIX: string =
-  process.env.REDIS_KEY_PREFIX || "";
+
+const KEY_PREFIX =
+  process.env.REDIS_KEY_PREFIX || "cache:";
 
 export const redisMiddleware = (
-  duration: number = REDIS_EXPIRY
+  duration: number = DEFAULT_EXPIRY
 ) => {
   return async (
     req: Request,
@@ -17,49 +18,65 @@ export const redisMiddleware = (
     try {
       const redis = Global.client;
 
-      if (!redis || !redis.isReady) {
-        next();
-        return;
+      // ===============================
+      // SKIP IF REDIS NOT READY
+      // ===============================
+      if (!redis || !redis.isOpen) {
+        return next();
       }
 
+      // ===============================
+      // ONLY CACHE GET REQUESTS
+      // ===============================
       if (req.method !== "GET") {
-        next();
-        return;
+        return next();
       }
 
-      const key = `${REDIS_KEY_PREFIX}${req.method}:${req.originalUrl}`;
+      const key = `${KEY_PREFIX}${req.originalUrl}`;
 
+      // ===============================
+      // CHECK CACHE
+      // ===============================
       const cached = await redis.get(key);
 
-      if (cached && duration > 0) {
+      if (cached) {
         const data = JSON.parse(cached);
 
-        data.cache = true;
+        res.setHeader("X-Cache", "HIT");
 
-        res.setHeader("X-Cache-Hit", "true");
-        res.status(200).json(data);
+        res.status(200).json({
+          ...data,
+          cache: true,
+        });
+
         return;
       }
 
+      // ===============================
+      // OVERRIDE RESPONSE
+      // ===============================
       const originalJson = res.json.bind(res);
 
-      res.json = ((body: any) => {
+      res.json = (body: any) => {
         (async () => {
           try {
             await redis.set(
               key,
               JSON.stringify(body),
-              { EX: duration }
+              {
+                EX: duration,
+              }
             );
           } catch (err) {
-            console.error(err);
+            console.error("Redis Cache Save Error:", err);
           }
         })();
 
         return originalJson(body);
-      }) as typeof res.json;
+      };
 
       next();
+
     } catch (err) {
       console.error("Redis Middleware Error:", err);
       next();

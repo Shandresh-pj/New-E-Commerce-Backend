@@ -22,6 +22,7 @@ import { LowStockAlert } from "./src/entities/lowstock";
 import { Salary } from "./src/entities/salary";
 import { CustomerLocation } from "./src/entities/customerLocation.dto";
 import { Category } from "./src/entities/category";
+import { PasswordReset } from "./src/entities/password-reset.entity";
 
 config({
   path: resolve(".env"),
@@ -131,7 +132,8 @@ DeliveryTracking,
     OrderTracking,CustomerLocation,
     UserAddress,
     Cart,
-    Category
+    Category,
+    PasswordReset
   ],
 
   namingStrategy:

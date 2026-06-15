@@ -1,26 +1,14 @@
 import { createClient, RedisClientType } from "redis";
 
-const client: RedisClientType<any, any> = createClient({
-  url: process.env.REDIS_URL,
+const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+
+export const redisClient: RedisClientType = createClient({
+  url: redisUrl,
+
+  socket: {
+    reconnectStrategy: (retries) => {
+      // exponential backoff (max 2 sec)
+      return Math.min(retries * 50, 2000);
+    },
+  },
 });
-
-client.on("connect", () => {
-  console.log("✅ Redis Connected");
-});
-
-client.on("error", (err: any) => {
-  console.log("❌ Redis Error", err);
-});
-
-(async () => {
-  try {
-    await client.connect();
-  } catch (err) {
-    console.error("Failed to connect to Redis:", err);
-  }
-})();
-
-export default client;
-
-// Keep CommonJS compatibility
-module.exports = client;

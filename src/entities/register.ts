@@ -12,6 +12,7 @@ import { OtpVerification } from "./otp";
 import { Order } from "./order";
 import { Cart, Product } from "./products";
 import { Coupon } from "./coupons";
+import { PasswordReset } from "./password-reset.entity";
 
 export enum UserType {
   SUPER_ADMIN = "Super_Admin",
@@ -36,6 +37,11 @@ export class Register extends BaseEntity {
   })
   id!: number;
 
+  @OneToMany(
+  () => PasswordReset,
+  (reset) => reset.user
+)
+passwordResets!: PasswordReset[];
   @OneToMany(
     () => OtpVerification,
     otp => otp.registration

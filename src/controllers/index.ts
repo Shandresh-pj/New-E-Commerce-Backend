@@ -8,6 +8,7 @@ import { EmployeeController } from "./employee.controller";
 import { LeaveController } from "./leave.controller";
 import { OrderController } from "./order.Controller";
 import { OtpController } from "./otp.Controller";
+import { PasswordController } from "./password.controller";
 import { PayrollController } from "./payroll.controller";
 import { ProductController } from "./product.Controller";
 import { RoleAccessController } from "./role-access.controller";
@@ -47,3 +48,5 @@ export const roleAccessController = new RoleAccessController();
 export const cartController = new CartController();
 
 export const categoryController = new CategoryController();
+
+export const passwordController = new PasswordController();
