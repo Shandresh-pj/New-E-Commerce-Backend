@@ -8,6 +8,7 @@ import { EmployeeController } from "./employee.controller";
 import { LeaveController } from "./leave.controller";
 import { OrderController } from "./order.Controller";
 import { OtpController } from "./otp.Controller";
+import { PasswordController } from "./password.controller";
 import { PayrollController } from "./payroll.controller";
 import { ProductController } from "./product.Controller";
 import {
@@ -58,3 +59,4 @@ export const productAttributeController = new ProductAttributeController();
 export const productAttributeValueController = new ProductAttributeValueController();
 
 export const statusController = new StatusController();
+export const passwordController = new PasswordController();

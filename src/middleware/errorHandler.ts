@@ -14,12 +14,29 @@ const errorHandler = (
   next: NextFunction
 ): void => {
 
-  console.error("ERROR =>", error);
+  const isProd = process.env.NODE_ENV === "production";
 
-  let statusCode = error.status || 500;
-  let message = error.message || "Internal Server Error";
+  console.error("❌ ERROR:", {
+    name: error.name,
+    message: error.message,
+    path: req.originalUrl,
+    method: req.method,
+  });
 
-  // JWT Errors
+  let statusCode = 500;
+  let message = "Internal Server Error";
+
+  /* =========================
+     BASE ERROR
+  ========================= */
+  if (error.status) {
+    statusCode = error.status;
+    message = error.message;
+  }
+
+  /* =========================
+     JWT ERRORS
+  ========================= */
   if (error.name === "JsonWebTokenError") {
     statusCode = 401;
     message = "Invalid Token";
@@ -30,53 +47,68 @@ const errorHandler = (
     message = "Token Expired";
   }
 
-  // Validation Error (Joi)
+  /* =========================
+     VALIDATION ERROR
+  ========================= */
   if (error.name === "ValidationError") {
     statusCode = 400;
     message = error.message;
   }
 
-  // MySQL Duplicate Entry
+  /* =========================
+     MYSQL ERRORS
+  ========================= */
   if (error.code === "ER_DUP_ENTRY") {
     statusCode = 409;
-    message = "Record already exists";
+    message = "Duplicate record found";
   }
 
-  // MySQL Foreign Key Error
   if (
     error.code === "ER_NO_REFERENCED_ROW_2" ||
     error.code === "ER_ROW_IS_REFERENCED_2"
   ) {
     statusCode = 400;
-    message = "Related record not found";
+    message = "Foreign key constraint failed";
   }
 
-  // TypeORM Entity Not Found
+  /* =========================
+     TYPEORM ERRORS
+  ========================= */
   if (error.name === "EntityNotFoundError") {
     statusCode = 404;
     message = "Record not found";
   }
 
-  // Database Error
+  /* =========================
+     DATABASE ERROR
+  ========================= */
   if (error.sqlMessage) {
     statusCode = 500;
-    message =
-      process.env.NODE_ENV === "production"
-        ? "Database Error"
-        : error.sqlMessage;
+    message = isProd
+      ? "Database Error"
+      : error.sqlMessage;
   }
 
+  /* =========================
+     FINAL RESPONSE FORMAT
+  ========================= */
   const response: any = {
     success: false,
     statusCode,
     message,
     timestamp: new Date().toISOString(),
+    path: req.originalUrl,
+    method: req.method,
   };
 
-  if (process.env.NODE_ENV !== "production") {
+  /* =========================
+     DEV ONLY DEBUG INFO
+  ========================= */
+  if (!isProd) {
     response.error = {
       name: error.name,
       stack: error.stack,
+      code: error.code || null,
       details: error.details || null,
     };
   }

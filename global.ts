@@ -24,6 +24,7 @@ import { CustomerLocation } from "./src/entities/customerLocation.dto";
 import { Category } from "./src/entities/category";
 import { ProductAttribute, ProductAttributeValue, ProductAttributeValueProduct } from "./src/entities/productAttribute";
 import { Status } from "./src/entities/status.entity";
+import { PasswordReset } from "./src/entities/password-reset.entity";
 
 config({
   path: resolve(".env"),
@@ -138,6 +139,7 @@ DeliveryTracking,
     ProductAttributeValue,
     ProductAttributeValueProduct,
     Status
+    PasswordReset
   ],
 
   namingStrategy:
