@@ -15,17 +15,6 @@ import { OtpVerification } from "../entities/otp";
 import sendEmailOtp from "../utils/sendEmailOtp";
 import sendSmsOtp from "../utils/sendSmsOtp";
 
-// import { validate } from "../middleware/validate";
-// import { SendOtpDto } from "../dto/send-otp.dto";
-// import { VerifyOtpDto } from "../dto/verify-otp.dto";
-
-// import { dataSource } from "../config/database";
-// import { OtpVerification } from "../entities/otp.entity";
-// import { Register } from "../entities/register.entity";
-
-// import sendEmailOtp from "../utils/sendEmailOtp";
-// import sendSmsOtp from "../utils/sendSmsOtp";
-
 @Controller("/otp")
 export class OtpController {
 

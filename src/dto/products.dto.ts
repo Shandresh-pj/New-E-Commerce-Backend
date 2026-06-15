@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsNotEmpty,
   Matches,
+  Min,
 } from "class-validator";
 
 export class CreateProductDto {
@@ -44,4 +45,14 @@ export class ScanProductDto {
   @IsNotEmpty()
   @IsString()
   code!: string; // barcode or QR value
+}
+
+export class AddToCartDto {
+
+  @IsNumber()
+  product_id!: number;
+
+  @IsNumber()
+  @Min(1)
+  quantity!: number;
 }

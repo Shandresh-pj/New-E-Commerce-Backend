@@ -154,7 +154,7 @@ async scan(req: Request, res: Response, next: NextFunction) {
     const repo = dataSource.getRepository(Product);
 
     const data = await repo.find({
-      relations: { couponProducts: true },
+      relations: { couponProducts: true, creator: true, },
       order: { id: "DESC" },
     });
 
@@ -172,7 +172,7 @@ async scan(req: Request, res: Response, next: NextFunction) {
 
     const data = await repo.findOne({
       where: { id: Number(req.params.id) },
-      relations: { couponProducts: true },
+      relations: { couponProducts: true, creator: true, },
     });
 
     return res.json({

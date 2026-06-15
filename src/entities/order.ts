@@ -26,6 +26,13 @@ export class Order {
   @JoinColumn({ name: "user_id" })
   user!: Register;
 
+@ManyToOne(() => Order, order => order.product_id)
+@JoinColumn({ name: "product_id" })
+order!: Order;
+
+@Column()
+product_id!: number;
+
   @Column()
   status!: string; // PENDING, CONFIRMED, FAILED
 
@@ -70,6 +77,19 @@ payment_gateway!: string;
 
   @OneToMany(() => OrderItem, item => item.order)
   items!: OrderItem[];
+
+  @Column({ nullable: true, unique: true })
+invoice_no!: string;
+
+  @Column()
+registration_id!: number;
+
+ @Column()
+company_id!: number;
+
+
+@Column({ nullable: true })
+qr_code!: string;
 }
 
 
@@ -97,4 +117,46 @@ export class OrderItem {
 
   @Column()
   quantity!: number;
+}
+
+@Entity("order_tracking")
+export class OrderTracking {
+
+  @PrimaryGeneratedColumn()
+  id!: number;
+
+  @Column()
+  order_id!: number;
+
+  @Column()
+  customer_id!: number;
+
+  @Column()
+  delivery_boy_id!: number;
+
+  @Column()
+  company_id!: number;
+
+  @Column()
+  branch_id!: number;
+
+  @Column()
+  pickup_address!: string;
+
+  @Column()
+  delivery_address!: string;
+
+  @Column({
+    nullable: true,
+  })
+  estimated_arrival!: string;
+
+  @Column({
+    default: "ASSIGNED",
+  })
+  status!: string;
+  // ASSIGNED
+  // PICKED_UP
+  // ON_THE_WAY
+  // DELIVERED
 }

@@ -7,36 +7,26 @@ const router = Router();
  * @swagger
  * /stock/update:
  *   post:
- *     summary: Update product stock (ADD / REMOVE)
+ *     summary: Update Product Stock
  *     tags: [Stock]
+ *     description: Add or Remove stock from product inventory
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - product_id
- *               - quantity
- *               - action
  *             properties:
  *               product_id:
- *                 type: number
- *                 example: 1
+ *                 type: integer
  *               quantity:
- *                 type: number
- *                 example: 5
+ *                 type: integer
  *               action:
  *                 type: string
- *                 enum: [ADD, REMOVE]
  *                 example: ADD
  *     responses:
  *       200:
  *         description: Stock updated successfully
- *       400:
- *         description: Insufficient stock
- *       404:
- *         description: Product not found
  */
 router.post(
   "/stock/update",
@@ -57,5 +47,6 @@ router.get(
   "/stock/logs",
   stockController.logs.bind(stockController)
 );
+
 
 export default router;

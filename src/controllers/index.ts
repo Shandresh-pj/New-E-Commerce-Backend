@@ -1,9 +1,18 @@
+import { AttendanceController } from "./attendance.controller";
 import { AuthController } from "./auth.Controller";
+import { BranchStockController } from "./BranchStock.Controller";
+import { CartController } from "./cart.Controller";
+import { CategoryController } from "./category.Controller";
 import { CouponController } from "./coupons.Controller";
+import { EmployeeController } from "./employee.controller";
+import { LeaveController } from "./leave.controller";
 import { OrderController } from "./order.Controller";
 import { OtpController } from "./otp.Controller";
+import { PayrollController } from "./payroll.controller";
 import { ProductController } from "./product.Controller";
+import { RoleAccessController } from "./role-access.controller";
 import { AlertController, PaymentController, StockController } from "./stock.Controller";
+import { DeliveryTrackingController } from "./tracking.Controller";
 
 export const authController = new AuthController();
 
@@ -20,3 +29,21 @@ export const stockController = new StockController();
 export const alertController = new AlertController();
 
 export const paymentController = new PaymentController();
+
+export const employeeController = new EmployeeController();
+
+export const leaveController = new LeaveController();
+
+export const payrollController = new PayrollController();
+
+export const attendanceController = new AttendanceController();
+
+export const branchStockController = new BranchStockController();
+
+export const deliveryTrackingController = new DeliveryTrackingController();
+
+export const roleAccessController = new RoleAccessController();
+
+export const cartController = new CartController();
+
+export const categoryController = new CategoryController();

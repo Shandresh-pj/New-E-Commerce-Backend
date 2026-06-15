@@ -10,14 +10,16 @@ import {
 
 import { OtpVerification } from "./otp";
 import { Order } from "./order";
-import { Product } from "./products";
+import { Cart, Product } from "./products";
 import { Coupon } from "./coupons";
 
 export enum UserType {
   SUPER_ADMIN = "Super_Admin",
   ADMIN = "Admin",
-  EMPLOYEES = "Employee",
-  CUSTOMERS = "Customer",
+  BRANCH_MANAGER = "Branch_Manager",
+  SHOP_KEEPER = "Shop_Keeper",
+  DELIVERY_BOY = "Delivery_Boy",
+  CUSTOMER = "Customer",
 }
 
 export enum StatusType {
@@ -57,6 +59,12 @@ export class Register extends BaseEntity {
   coupon => coupon.creator
 )
 coupons!: Coupon[];
+
+@OneToMany(
+  () => Cart,
+  (cart) => cart.user
+)
+carts!: Cart[];
 
   @Column({
     name: "name",
@@ -110,7 +118,7 @@ coupons!: Coupon[];
     name: "usertype",
     type: "enum",
     enum: UserType,
-    default: UserType.CUSTOMERS,
+    default: UserType.CUSTOMER,
   })
   usertype!: UserType;
 

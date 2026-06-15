@@ -7,7 +7,7 @@ const router = Router();
  * @swagger
  * /payments/create:
  *   post:
- *     summary: Create payment (cash / online)
+ *     summary: Create Payment
  *     tags: [Payments]
  *     requestBody:
  *       required: true
@@ -15,20 +15,17 @@ const router = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - order_id
- *               - amount
- *               - method
  *             properties:
  *               order_id:
- *                 type: number
- *                 example: 1
+ *                 type: integer
  *               amount:
  *                 type: number
- *                 example: 1000
  *               method:
  *                 type: string
  *                 example: CASH
+ *               status:
+ *                 type: string
+ *                 example: SUCCESS
  *     responses:
  *       200:
  *         description: Payment created successfully
@@ -42,11 +39,11 @@ router.post(
  * @swagger
  * /payments:
  *   get:
- *     summary: Get all payments
+ *     summary: Get All Payments
  *     tags: [Payments]
  *     responses:
  *       200:
- *         description: Payments fetched successfully
+ *         description: Payment list fetched successfully
  */
 router.get(
   "/payments",

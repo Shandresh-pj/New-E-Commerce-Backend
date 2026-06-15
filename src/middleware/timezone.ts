@@ -1,6 +1,12 @@
-import { Request, Response, NextFunction } from "express";
+import {
+  Request,
+  Response,
+  NextFunction
+} from "express";
 
-export interface TimezoneRequest extends Request {
+export interface TimezoneRequest
+  extends Request {
+
   clientTimezone?: string;
 }
 
@@ -9,11 +15,10 @@ export const timezoneMiddleware = (
   res: Response,
   next: NextFunction
 ): void => {
-  const timezone =
+
+  req.clientTimezone =
     (req.headers["client-timezone"] as string) ||
     "Asia/Kolkata";
-
-  req.clientTimezone = timezone;
 
   next();
 };

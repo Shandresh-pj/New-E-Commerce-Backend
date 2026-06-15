@@ -71,4 +71,56 @@ router.get(
   alertController.getAlerts.bind(alertController)
 );
 
+/**
+ * @swagger
+ * /alerts/{id}:
+ *   delete:
+ *     summary: Delete Low Stock Alert
+ *     tags: [Alerts]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Alert deleted successfully
+ */
+router.delete(
+  "/alerts/:id",
+  alertController.deleteAlert.bind(alertController)
+);
+
+
+ /**
+  * @swagger
+  * /orders/invoice/{id}:
+  *   get:
+  *     summary: Download Invoice PDF
+  *     tags: [Orders]
+  *     description: Generates and downloads invoice PDF for the selected order
+  *     parameters:
+  *       - in: path
+  *         name: id
+  *         required: true
+  *         schema:
+  *           type: integer
+  *         description: Order ID
+  *     responses:
+  *       200:
+  *         description: Invoice PDF downloaded successfully
+  *         content:
+  *           application/pdf:
+  *             schema:
+  *               type: string
+  *               format: binary
+  *       404:
+  *         description: Order not found
+  */
+router.get(
+  "/orders/invoice/:id",
+  orderController.download.bind(orderController)
+);
+
 export default router;

@@ -7,11 +7,21 @@ import { PascalCaseNamingStrategy } from "./src/utils/pascalCase";
 import { Register } from "./src/entities/register";
 import { OtpVerification } from "./src/entities/otp";
 import { Coupon, CouponProduct } from "./src/entities/coupons";
-import { Order, OrderItem } from "./src/entities/order";
-import { Product } from "./src/entities/products";
+import { Order, OrderItem, OrderTracking } from "./src/entities/order";
+import { Cart, Product } from "./src/entities/products";
 import { Payment } from "./src/entities/payment";
-import { LowStockAlert, StockLog } from "./src/entities/stock";
+import { StockLog } from "./src/entities/stock";
 import { UserAddress } from "./src/entities/userAddress";
+import { BranchStock } from "./src/entities/branch_stock";
+import { Attendance, AttendanceBreakLog } from "./src/entities/attendance.entity";
+import { BreakSetting } from "./src/entities/break-setting.entity";
+import { DeliveryAssignment, DeliveryTracking } from "./src/entities/delivery.entity";
+import { Employee } from "./src/entities/employee.entity";
+import { LeaveRequest } from "./src/entities/leave.entity";
+import { LowStockAlert } from "./src/entities/lowstock";
+import { Salary } from "./src/entities/salary";
+import { CustomerLocation } from "./src/entities/customerLocation.dto";
+import { Category } from "./src/entities/category";
 
 config({
   path: resolve(".env"),
@@ -109,8 +119,19 @@ let localConfig: DataSourceOptions = {
     Payment,
     StockLog,
     LowStockAlert,
-    
+    BranchStock, // 🔥 MUST ADD THIS
+    Employee,
+Attendance,
+LeaveRequest,
+Salary,
+BreakSetting,
+DeliveryAssignment,
+AttendanceBreakLog,
+DeliveryTracking,
+    OrderTracking,CustomerLocation,
     UserAddress,
+    Cart,
+    Category
   ],
 
   namingStrategy:

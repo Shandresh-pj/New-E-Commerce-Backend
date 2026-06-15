@@ -91,7 +91,7 @@ export class AuthController {
           mobilenumber,
           address,
           status: StatusType.ACTIVE,
-          usertype: UserType.CUSTOMERS,
+          usertype: UserType.CUSTOMER,
           logintype: "Normal",
         });
 

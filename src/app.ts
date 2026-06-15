@@ -15,6 +15,7 @@ import { timezoneMiddleware } from "./middleware/timezone";
 import { preventDuplicateCalls } from "./middleware/preventDuplicatecalls";
 import errorHandler from "./middleware/errorHandler";
 import logger from "./utils/logger";
+import { responseFormatter } from "./middleware/responseFormatter";
 
 const app = express();
 
@@ -24,9 +25,12 @@ const app = express();
 
 app.disable("x-powered-by");
 
-app.use(helmet());
+// app.use(helmet());
 
 app.use(compression());
+
+app.use(timezoneMiddleware);
+app.use(responseFormatter);
 
 app.use(
   cors({

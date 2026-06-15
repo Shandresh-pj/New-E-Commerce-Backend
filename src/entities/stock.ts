@@ -15,14 +15,14 @@ export class StockLog {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column()
-  product_id!: number; // keep for speed/filtering (optional but useful)
+ @ManyToOne(() => Product, product => product.stockLogs, {
+  onDelete: "CASCADE",
+})
+@JoinColumn({ name: "product_id" })
+product!: Product;
 
-  @ManyToOne(() => Product, {
-    onDelete: "CASCADE",
-  })
-  @JoinColumn({ name: "product_id" })
-  product!: Product;
+@Column()
+product_id!: number;
 
   @Column()
   old_stock!: number;
@@ -43,24 +43,3 @@ export class StockLog {
   created_at!: Date;
 }
 
-@Entity("low_stock_alerts")
-export class LowStockAlert {
-
-  @PrimaryGeneratedColumn()
-  id!: number;
-
-  @Column()
-  product_id!: number;
-
-  @Column()
-  product_name!: string;
-
-  @Column()
-  current_stock!: number;
-
-  @Column()
-  threshold!: number;
-
-  @CreateDateColumn()
-  created_at!: Date;
-}
