@@ -3,12 +3,18 @@ import { JwtPayload } from "jsonwebtoken";
 import authenticateMiddleware from "../middleware/authenticate";
 import { dataSource } from "../server";
 import { UserAddress } from "../entities/userAddress";
+import { Register } from "../entities/register";
 
 interface AuthRequest extends Request {
   user?: string | JwtPayload;
 }
 
 const router = Router();
+
+function getUserId(req: AuthRequest): number | null {
+  const id = (req.user as JwtPayload)?.id;
+  return id != null ? Number(id) : null;
+}
 
 /**
  * @swagger
@@ -44,7 +50,27 @@ const router = Router();
  *       401:
  *         description: Unauthorized
  */
+router.get(
+  "/address",
+  authenticateMiddleware,
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: "Invalid token: user ID missing" });
+      }
 
+      const addresses = await dataSource.getRepository(UserAddress).find({
+        where: { userId },
+        order: { isDefault: "DESC", created_at: "DESC" },
+      }); 
+
+      return res.json({ success: true, message: "Addresses fetched successfully", data: addresses });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /**
  * @swagger
@@ -75,11 +101,20 @@ router.post(
   authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const userId = (req.user as JwtPayload).id;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: "Invalid token: user ID missing" });
+      }
+
       const { label, name, phone, line1, line2, city, state, pincode, isDefault } = req.body;
 
       if (!name || !phone || !line1 || !city || !state || !pincode) {
         return res.status(400).json({ success: false, message: "Missing required fields" });
+      }
+
+      const userExists = await dataSource.getRepository(Register).findOne({ where: { id: userId } });
+      if (!userExists) {
+        return res.status(404).json({ success: false, message: "User not found" });
       }
 
       const repository = dataSource.getRepository(UserAddress);
@@ -149,7 +184,11 @@ router.put(
   authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const userId = (req.user as JwtPayload).id;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: "Invalid token: user ID missing" });
+      }
+
       const { label, name, phone, line1, line2, city, state, pincode, isDefault } = req.body;
       const repository = dataSource.getRepository(UserAddress);
 
@@ -213,7 +252,11 @@ router.delete(
   authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const userId = (req.user as JwtPayload).id;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: "Invalid token: user ID missing" });
+      }
+
       const repository = dataSource.getRepository(UserAddress);
 
       const result = await repository.delete({
@@ -261,7 +304,11 @@ router.patch(
   authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const userId = (req.user as JwtPayload).id;
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: "Invalid token: user ID missing" });
+      }
+
       const repository = dataSource.getRepository(UserAddress);
 
       const address = await repository.findOne({

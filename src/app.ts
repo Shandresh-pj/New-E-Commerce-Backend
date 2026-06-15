@@ -25,7 +25,18 @@ const app = express();
 
 app.disable("x-powered-by");
 
+<<<<<<< HEAD
 // app.use(helmet());
+=======
+app.use(
+  helmet({
+    hsts: false,
+    contentSecurityPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
+>>>>>>> c9de75034e8231d0a07326c395490045e45388e8
 
 app.use(compression());
 
@@ -84,7 +95,7 @@ app.use(timezoneMiddleware);
 app.use(
   "/uploads",
   express.static(
-    path.join(__dirname, "uploads")
+    path.join(process.cwd(), "uploads")
   )
 );
 
@@ -99,7 +110,7 @@ app.use((req, res, next) => {
   );
 
   next();
-});
+}); 
 
 /* ==========================================
    REQUEST LOGGER

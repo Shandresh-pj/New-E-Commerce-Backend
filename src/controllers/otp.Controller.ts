@@ -244,13 +244,23 @@ export class OtpController {
         otpRecord
       );
 
+      const registerRepository =
+        dataSource.getRepository(Register);
+
+      const user = await registerRepository.findOne({
+        where: otpRecord.email
+          ? { email: otpRecord.email }
+          : { mobilenumber: otpRecord.mobile },
+      });
+
       const token =
         jwt.sign(
           {
-            email:
-              otpRecord.email,
-            mobile:
-              otpRecord.mobile,
+            id: user?.id,
+            email: otpRecord.email, 
+            mobile: otpRecord.mobile,
+            mobilenumber: user?.mobilenumber,
+            usertype: user?.usertype,
           },
           process.env
             .JWT_SECRET as string,
@@ -261,9 +271,18 @@ export class OtpController {
 
       return response.status(200).json({
         success: true,
-        message:
-          "OTP verified successfully",
+        message: "OTP verified successfully",
         token,
+        user: user
+          ? {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              mobilenumber: user.mobilenumber,
+              image: user.image,
+              usertype: user.usertype,
+            }
+          : null,
       });
 
     } catch (error) {
