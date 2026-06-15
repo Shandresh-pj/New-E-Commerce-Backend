@@ -138,7 +138,7 @@ DeliveryTracking,
     ProductAttribute,
     ProductAttributeValue,
     ProductAttributeValueProduct,
-    Status
+    Status,
     PasswordReset
   ],
 
