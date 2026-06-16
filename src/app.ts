@@ -14,8 +14,20 @@ import { swaggerSpec, swaggerUi } from "./config/swagger";
 import { timezoneMiddleware } from "./middleware/timezone";
 import { preventDuplicateCalls } from "./middleware/preventDuplicatecalls";
 import errorHandler from "./middleware/errorHandler";
+import authenticateMiddleware from "./middleware/authenticate";
 import logger from "./utils/logger";
 import { responseFormatter } from "./middleware/responseFormatter";
+
+// Routes that must remain reachable without a bearer token
+const PUBLIC_API_ROUTES = [
+  "/auth/register",
+  "/auth/login",
+  "/auth/send-otp",
+  "/auth/verify-otp",
+  "/password/send-otp",
+  "/password/verify-otp",
+  "/password/reset",
+];
 
 const app = express();
 
@@ -129,6 +141,20 @@ app.use(
   swaggerUi.serve,
   swaggerUi.setup(swaggerSpec)
 );
+
+/* ==========================================
+   AUTHENTICATION GATE
+   Every /api route requires a valid, non-expired
+   bearer token except the public auth routes above.
+========================================== */
+
+app.use("/api", (req, res, next) => {
+  if (PUBLIC_API_ROUTES.includes(req.path)) {
+    return next();
+  }
+
+  return authenticateMiddleware(req, res, next);
+});
 
 /* ==========================================
    DYNAMIC ROUTE LOADER

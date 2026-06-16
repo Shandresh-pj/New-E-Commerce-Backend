@@ -23,8 +23,10 @@ import { Salary } from "./src/entities/salary";
 import { CustomerLocation } from "./src/entities/customerLocation.dto";
 import { Category } from "./src/entities/category";
 import { ProductAttribute, ProductAttributeValue, ProductAttributeValueProduct } from "./src/entities/productAttribute";
+import { ProductVariant } from "./src/entities/productVariant";
 import { Status } from "./src/entities/status.entity";
 import { PasswordReset } from "./src/entities/password-reset.entity";
+import { Wishlist } from "./src/entities/wishlist";
 
 config({
   path: resolve(".env"),
@@ -138,8 +140,10 @@ DeliveryTracking,
     ProductAttribute,
     ProductAttributeValue,
     ProductAttributeValueProduct,
+    ProductVariant,
     Status,
-    PasswordReset
+    PasswordReset,
+    Wishlist
   ],
 
   namingStrategy:
