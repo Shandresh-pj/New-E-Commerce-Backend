@@ -9,10 +9,10 @@ import {
 } from "../decorators";
 import validate from "../middleware/validate";
 import { dataSource } from "../server";
-import { Register, StatusType } from "../entities/register";
+import { Register } from "../entities/register";
 import { SendOtpDto, VerifyOtpDto } from "../dto/otp.dto";
 import { OtpVerification } from "../entities/otp";
-import sendEmailOtp from "../utils/sendEmailOtp";
+import { StatusType } from "../utils/Role-Access";
 import sendSmsOtp from "../utils/sendSmsOtp";
 
 @Controller("/otp")
@@ -131,7 +131,7 @@ export class OtpController {
       );
 
       if (email) {
-        await sendEmailOtp(
+        await sendSmsOtp(
           email,
           otp
         );
@@ -260,7 +260,7 @@ export class OtpController {
             email: otpRecord.email, 
             mobile: otpRecord.mobile,
             mobilenumber: user?.mobilenumber,
-            usertype: user?.usertype,
+            // usertype: user?.usertype,
           },
           process.env
             .JWT_SECRET as string,
@@ -280,7 +280,7 @@ export class OtpController {
               email: user.email,
               mobilenumber: user.mobilenumber,
               image: user.image,
-              usertype: user.usertype,
+              // usertype: user.usertype,
             }
           : null,
       });

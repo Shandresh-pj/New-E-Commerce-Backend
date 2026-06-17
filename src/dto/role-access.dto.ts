@@ -1,10 +1,4 @@
-import {
-  IsNotEmpty,
-  IsString,
-  IsBoolean,
-  IsOptional,
-  IsNumber,
-} from "class-validator";
+import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 
 export class CreateRoleAccessDto {
 
@@ -13,15 +7,15 @@ export class CreateRoleAccessDto {
 
   @IsOptional()
   @IsNumber()
-  branch_id?: number;
+  branch_id!: number;
 
   @IsString()
-  @IsNotEmpty()
-  role_name!: string;
+  role!: string;
+  @IsNumber()
+  user_id!: number;
 
   @IsString()
-  @IsNotEmpty()
-  module_name!: string;
+  module!: string;
 
   @IsBoolean()
   can_view!: boolean;

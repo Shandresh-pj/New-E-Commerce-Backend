@@ -81,13 +81,13 @@ orderItems!: OrderItem[];
   @Column()
   registration_id!: number;
 
-  @ManyToOne(
-    () => Register,
-    register => register.products,
-    {
-      onDelete: "CASCADE",
-    }
-  )
+  // @ManyToOne(
+  //   () => Register,
+  //   register => register.products,
+  //   {
+  //     onDelete: "CASCADE",
+  //   }
+  // )
   @JoinColumn({
     name: "registration_id",
   })

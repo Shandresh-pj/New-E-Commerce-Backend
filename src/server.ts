@@ -42,7 +42,6 @@ async function initDatabase(retries = 3) {
 async function startServer() {
   try {
     await initDatabase();
-
     const port = Number(process.env.PORT || 3000);
     const host = process.env.HOST || "0.0.0.0";
     const appUrl = process.env.APP_URL || `http://localhost:${port}`;
@@ -57,7 +56,7 @@ async function startServer() {
     );
 
     /* ================= SOCKET ================= */
-    initializeSocket(server, async () => null);
+    initializeSocket(server);
 
     /* ================= LISTEN ================= */
     server.listen(port, host, () => {

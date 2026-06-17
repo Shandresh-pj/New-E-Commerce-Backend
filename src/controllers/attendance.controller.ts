@@ -157,31 +157,34 @@ export class AttendanceController {
   // ==========================================
   // GET ATTENDANCE
   // ==========================================
+@Get("/")
+@Swagger("Attendance List", "Get all attendance")
+async getAll(req: Request, res: Response) {
 
-  @Get("/")
-  @Swagger(
-    "Attendance List",
-    "Get all attendance"
-  )
-  async getAll(
-    req: Request,
-    res: Response
-  ) {
+  const repo = dataSource.getRepository(Attendance);
 
-    const data =
-      await dataSource
-        .getRepository(
-          Attendance
-        )
-        .find({
-          order: {
-            id: "DESC",
-          },
-        });
+  const pagination = (req as any).pagination || {
+    page: 1,
+    limit: 10,
+    skip: 0,
+  };
 
-    return res.json({
-      success: true,
-      data,
-    });
-  }
+const { page, limit, skip } = pagination;
+  const [data, total] = await repo.findAndCount({
+    order: {
+      id: "DESC",
+    },
+    skip,
+    take: limit,
+  });
+
+  return res.json({
+    success: true,
+    data,
+    total,
+    page,
+    limit,
+    lastPage: Math.ceil(total / limit),
+  });
+}
 }

@@ -1,6 +1,7 @@
 import {
   IsEmail,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   MinLength,
@@ -11,6 +12,15 @@ export class RegisterDto {
   @IsNotEmpty()
   name: string;
 
+    @IsOptional()
+  @IsNumber()
+  company_id?: number;
+
+  // 🏬 MULTI BRANCH
+  @IsOptional()
+  @IsNumber()
+  branch_id?: number;
+  
   @IsEmail()
   email: string;
 

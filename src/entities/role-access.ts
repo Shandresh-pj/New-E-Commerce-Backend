@@ -1,55 +1,25 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-} from "typeorm";
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
-@Entity("role_access")
-export class RoleAccess {
-
+@Entity("role_permissions")
+export class RolePermission {
   @PrimaryGeneratedColumn()
-  id!: number;
+  id: number;
 
   @Column()
-  company_id!: number;
-
-  @Column({
-    nullable: true,
-  })
-  branch_id!: number;
+  role_id: number;
 
   @Column()
-  role_name!: string;
+  menu: string;
 
-  @Column()
-  module_name!: string;
+  @Column({ default: false })
+  can_view: boolean;
 
-  @Column({
-    default: false,
-  })
-  can_view!: boolean;
+  @Column({ default: false })
+  can_add: boolean;
 
-  @Column({
-    default: false,
-  })
-  can_add!: boolean;
+  @Column({ default: false })
+  can_edit: boolean;
 
-  @Column({
-    default: false,
-  })
-  can_edit!: boolean;
-
-  @Column({
-    default: false,
-  })
-  can_delete!: boolean;
-
-  @Column({
-    default: false,
-  })
-  can_approve!: boolean;
-
-  @CreateDateColumn()
-  created_at!: Date;
+  @Column({ default: false })
+  can_delete: boolean;
 }

@@ -17,6 +17,7 @@ import errorHandler from "./middleware/errorHandler";
 import authenticateMiddleware from "./middleware/authenticate";
 import logger from "./utils/logger";
 import { responseFormatter } from "./middleware/responseFormatter";
+import { autoPagination } from "./middleware/autoPagination";
 
 // Routes that must remain reachable without a bearer token
 const PUBLIC_API_ROUTES = [
@@ -304,6 +305,11 @@ app.use((req, res) => {
 
 });
 
+/* ==========================================
+   auto Pagination
+========================================== */
+
+// app.use(autoPagination);
 /* ==========================================
    GLOBAL ERROR HANDLER
 ========================================== */

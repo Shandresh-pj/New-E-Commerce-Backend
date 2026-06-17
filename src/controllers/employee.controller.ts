@@ -1,154 +1,151 @@
-import {
-  Request,
-  Response,
-  NextFunction
-} from "express";
-
-import {
-  Controller,
-  Get,
-  Post,
-  Delete,
-  Swagger,
-  Middleware
-} from "../decorators";
-
-import validate from "../middleware/validate";
-
-
-import { Employee } from "../entities/employee.entity";
-
+import { Request, Response } from "express";
 import { dataSource } from "../server";
-import { Put } from "../decorators/put";
-import { CreateEmployeeDto } from "../dto";
+import { Register } from "../entities/register";
 
-@Controller("/employees")
 export class EmployeeController {
 
-  // ==========================================
+  // ======================================
   // CREATE EMPLOYEE
-  // ==========================================
-  @Post("/create")
-  @Middleware([
-    validate(CreateEmployeeDto)
-  ])
-  @Swagger(
-    "Create Employee",
-    "Create new employee"
-  )
-  async create(
-    req: Request,
-    res: Response
-  ) {
+  // ======================================
+  async create(req: any, res: Response) {
 
-    const repo =
-      dataSource.getRepository(Employee);
+    const repo = dataSource.getRepository(Register);
 
-    const employee =
-      repo.create(req.body);
+    const employee = repo.create({
+      name: req.body.name,
+      email: req.body.email,
+      mobilenumber: req.body.mobilenumber,
+      password: req.body.password,
+      // usertype: req.body.usertype || "Customer",
+      // company_id: req.body.company_id
+    });
 
     await repo.save(employee);
 
     return res.json({
       success: true,
-      data: employee,
+      message: "Employee created",
+      data: employee
     });
   }
 
-  // ==========================================
-  // GET ALL EMPLOYEES
-  // ==========================================
-  @Get("/")
-  @Swagger(
-    "Get Employees",
-    "Get all employees"
-  )
-  async getAll(
-    req: Request,
-    res: Response
-  ) {
+  // ======================================
+  // GET ALL EMPLOYEES (COMPANY WISE)
+  // ======================================
+  async getAll(req: any, res: Response) {
 
-    const data =
-      await dataSource
-        .getRepository(Employee)
-        .find({
-          order: {
-            id: "DESC",
-          },
-        });
+    const company_id = Number(req.query.company_id);
+
+    const repo = dataSource.getRepository(Register);
+
+    const data = await repo.find({
+      // where: { company_id },
+      order: { id: "DESC" }
+    });
 
     return res.json({
       success: true,
-      data,
+      data
     });
   }
 
-  // ==========================================
-  // GET EMPLOYEE
-  // ==========================================
-  @Get("/:id")
-  async getOne(
-    req: Request,
-    res: Response
-  ) {
+  // ======================================
+  // GET SINGLE EMPLOYEE
+  // ======================================
+  async getOne(req: any, res: Response) {
 
-    const employee =
-      await dataSource
-        .getRepository(Employee)
-        .findOne({
-          where: {
-            id: Number(req.params.id),
-          },
-        });
+    const repo = dataSource.getRepository(Register);
+
+    const data = await repo.findOne({
+      where: { id: Number(req.params.id) }
+    });
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found"
+      });
+    }
 
     return res.json({
       success: true,
-      data: employee,
+      data
     });
   }
 
-  // ==========================================
+  // ======================================
   // UPDATE EMPLOYEE
-  // ==========================================
-  @Put("/:id")
-  @Middleware([
-    validate(CreateEmployeeDto)
-  ])
-  async update(
-    req: Request,
-    res: Response
-  ) {
+  // ======================================
+  async update(req: any, res: Response) {
 
-    const repo =
-      dataSource.getRepository(Employee);
+    const repo = dataSource.getRepository(Register);
 
-    await repo.update(
-      req.params.id,
-      req.body
-    );
+    const employee = await repo.findOne({
+      where: { id: Number(req.params.id) }
+    });
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: "Employee not found"
+      });
+    }
+
+    repo.merge(employee, req.body);
+
+    await repo.save(employee);
 
     return res.json({
       success: true,
       message: "Employee updated",
+      data: employee
     });
   }
 
-  // ==========================================
+  // ======================================
   // DELETE EMPLOYEE
-  // ==========================================
-  @Delete("/:id")
-  async delete(
-    req: Request,
-    res: Response
-  ) {
+  // ======================================
+  async delete(req: any, res: Response) {
 
-    await dataSource
-      .getRepository(Employee)
-      .delete(req.params.id);
+    const repo = dataSource.getRepository(Register);
+
+    await repo.delete(req.params.id);
 
     return res.json({
       success: true,
-      message: "Employee deleted",
+      message: "Employee deleted"
+    });
+  }
+
+  // ======================================
+  // ASSIGN BRANCH + ROLE
+  // ======================================
+  async assign(req: any, res: Response) {
+
+    const { user_id, branch_id, role } = req.body;
+
+    const repo = dataSource.getRepository(Register);
+
+    const user = await repo.findOne({
+      where: { id: user_id }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // user.branch = branch_id;
+    // user.usertype = role;
+
+    await repo.save(user);
+
+    return res.json({
+      success: true,
+      message: "Employee assigned to branch",
+      data: user
     });
   }
 }

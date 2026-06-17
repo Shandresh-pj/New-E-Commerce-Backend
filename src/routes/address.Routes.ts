@@ -3,7 +3,7 @@ import { JwtPayload } from "jsonwebtoken";
 import { dataSource } from "../server";
 import { UserAddress } from "../entities/userAddress";
 import { Register } from "../entities/register";
-
+import authenticateMiddleware from "../middleware/authenticate";
 interface AuthRequest extends Request {
   user?: string | JwtPayload;
 }

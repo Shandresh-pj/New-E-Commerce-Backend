@@ -1,5 +1,4 @@
 import bcrypt from "bcrypt";
-import crypto from "crypto";
 import { Request, Response } from "express";
 
 import {
@@ -12,14 +11,13 @@ import {
 import validate from "../middleware/validate";
 import { dataSource } from "../server";
 
-import { Register } from "../entities/register";
 import { PasswordReset } from "../entities/password-reset.entity";
-import sendEmailOtp from "../utils/sendEmailOtp";
+import { User } from "../entities/user";
+import { OtpService } from "../services/otp.service";
+import { EmailService } from "../utils/sendEmailOtp";
 
 import {
   SendPasswordOtpDto,
-  VerifyPasswordOtpDto,
-  ResetPasswordDto,
   ChangeMyPasswordDto
 } from "../dto";
 
@@ -27,35 +25,19 @@ import {
 export class PasswordController {
 
   // ==========================================
-  // OTP GENERATOR
-  // ==========================================
-  private generateOtp(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }
-
-  // ==========================================
   // SEND OTP
   // ==========================================
-  @Post("/send-otp")
+  @Post("/forgot-password")
   @Middleware([validate(SendPasswordOtpDto)])
-  @Swagger("Send OTP", "Send OTP for password reset")
-  async sendOtp(req: Request, res: Response) {
+  @Swagger("Forgot Password", "Send OTP")
+  public async forgotPassword(req: Request, res: Response) {
 
-    const { email } = req.body || {};
+    const { email } = req.body;
 
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is required"
-      });
-    }
-
-    const userRepo = dataSource.getRepository(Register);
+    const userRepo = dataSource.getRepository(User);
     const otpRepo = dataSource.getRepository(PasswordReset);
 
-    const user = await userRepo.findOne({
-      where: { email }
-    });
+    const user = await userRepo.findOne({ where: { email } });
 
     if (!user) {
       return res.status(404).json({
@@ -64,26 +46,18 @@ export class PasswordController {
       });
     }
 
-    const otp = this.generateOtp();
-    const resetToken = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    const otp = OtpService.generate();
+    const hashedOtp = await bcrypt.hash(otp, 10);
 
-    // remove old OTPs
-    await otpRepo.delete({
-      user: { id: user.id }
+    await otpRepo.delete({ user_id: user.id });
+
+    await otpRepo.save({
+      user_id: user.id,
+      otp: hashedOtp,
+      expires_at: new Date(Date.now() + 5 * 60 * 1000)
     });
 
-    const record = otpRepo.create({
-      user: user, // 🔥 RELATION MAPPING
-      otp,
-      reset_token: resetToken,
-      expires_at: expiresAt,
-      verified: false
-    });
-
-    await otpRepo.save(record);
-
-    await sendEmailOtp(email, otp);
+    await EmailService.sendOtp(user.email, otp);
 
     return res.json({
       success: true,
@@ -95,83 +69,59 @@ export class PasswordController {
   // VERIFY OTP
   // ==========================================
   @Post("/verify-otp")
-  @Middleware([validate(VerifyPasswordOtpDto)])
-  @Swagger("Verify OTP", "Verify password reset OTP")
-  async verifyOtp(req: Request, res: Response) {
+  public async verifyOtp(req: Request, res: Response) {
 
-    const { email, otp } = req.body || {};
+    const { email, otp } = req.body;
 
+    const userRepo = dataSource.getRepository(User);
     const otpRepo = dataSource.getRepository(PasswordReset);
 
+    const user = await userRepo.findOne({ where: { email } });
+
+    if (!user) {
+      return res.status(404).json({ success: false });
+    }
+
     const record = await otpRepo.findOne({
-      where: {
-        otp,
-        user: { email },
-        verified: false
-      },
-      relations: {user : true}
+      where: { user_id: user.id }
     });
 
     if (!record) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid OTP"
-      });
+      return res.status(400).json({ message: "OTP not found" });
     }
 
-    if (new Date(record.expires_at!) < new Date()) {
-      return res.status(400).json({
-        success: false,
-        message: "OTP expired"
-      });
+    if (new Date() > record.expires_at) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    const valid = await bcrypt.compare(otp, record.otp);
+
+    if (!valid) {
+      return res.status(400).json({ message: "Invalid OTP" });
     }
 
     record.verified = true;
+
     await otpRepo.save(record);
 
     return res.json({
       success: true,
-      message: "OTP verified successfully",
-      reset_token: record.reset_token
+      message: "OTP verified"
     });
   }
 
   // ==========================================
   // RESET PASSWORD
   // ==========================================
-  @Post("/reset")
-  @Middleware([validate(ResetPasswordDto)])
-  @Swagger("Reset Password", "Reset password using OTP flow")
-  async resetPassword(req: Request, res: Response) {
+  @Post("/reset-password")
+  public async resetPassword(req: Request, res: Response) {
 
-    const { reset_token, newPassword } = req.body || {};
+    const { email, newPassword } = req.body;
 
-    const userRepo = dataSource.getRepository(Register);
+    const userRepo = dataSource.getRepository(User);
     const otpRepo = dataSource.getRepository(PasswordReset);
 
-    const record = await otpRepo.findOne({
-      where: {
-        reset_token,
-        verified: true
-      },
-      relations: {user : true}
-    });
-
-    if (!record) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid reset token"
-      });
-    }
-
-    if (new Date(record.expires_at!) < new Date()) {
-      return res.status(400).json({
-        success: false,
-        message: "OTP expired"
-      });
-    }
-
-    const user = record.user;
+    const user = await userRepo.findOne({ where: { email } });
 
     if (!user) {
       return res.status(404).json({
@@ -180,18 +130,28 @@ export class PasswordController {
       });
     }
 
-    // update password
+    const record = await otpRepo.findOne({
+      where: {
+        user_id: user.id,
+        verified: true
+      }
+    });
+
+    if (!record) {
+      return res.status(400).json({
+        message: "OTP verification required"
+      });
+    }
+
     user.password = await bcrypt.hash(newPassword, 10);
+
     await userRepo.save(user);
 
-    // cleanup OTP record
-    await otpRepo.delete({
-      reset_token
-    });
+    await otpRepo.delete({ id: record.id });
 
     return res.json({
       success: true,
-      message: "Password reset successful"
+      message: "Password updated"
     });
   }
 
@@ -201,27 +161,19 @@ export class PasswordController {
   @Post("/change")
   @Middleware([validate(ChangeMyPasswordDto)])
   @Swagger("Change Password", "Change password for the logged-in user")
-  async changePassword(req: any, res: Response) {
+  public async changePassword(req: any, res: Response) {
 
     const { currentPassword, newPassword } = req.body || {};
 
-    const userRepo = dataSource.getRepository(Register);
+    const userRepo = dataSource.getRepository(User);
+    const userId = req.user?.id ?? req.user?.user_id;
 
-    const user = await userRepo.findOne({
-      where: { id: req.user.id }
-    });
+    const user = await userRepo.findOne({ where: { id: userId } });
 
     if (!user) {
       return res.status(404).json({
         success: false,
         message: "User not found"
-      });
-    }
-
-    if (!user.password) {
-      return res.status(400).json({
-        success: false,
-        message: "Password login is not available for this account"
       });
     }
 

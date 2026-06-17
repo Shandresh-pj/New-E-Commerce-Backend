@@ -37,13 +37,13 @@ export class Coupon {
   })
   get_y!: number;
 
-  @ManyToOne(
-    () => Register,
-    register => register.coupons,
-    {
-      onDelete: "CASCADE",
-    }
-  )
+  // @ManyToOne(
+  //   () => Register,
+  //   register => register.coupons,
+  //   {
+  //     onDelete: "CASCADE",
+  //   }
+  // )
   @JoinColumn({
     name: "created_by",
   })

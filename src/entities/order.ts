@@ -20,9 +20,9 @@ export class Order {
   @Column()
   user_id!: number;
 
-  @ManyToOne(() => Register, user => user.orders, {
-    onDelete: "CASCADE"
-  })
+  // @ManyToOne(() => Register, user => user.orders, {
+  //   onDelete: "CASCADE"
+  // })
   @JoinColumn({ name: "user_id" })
   user!: Register;
 

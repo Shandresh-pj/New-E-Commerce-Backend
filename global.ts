@@ -26,6 +26,11 @@ import { ProductAttribute, ProductAttributeValue, ProductAttributeValueProduct }
 import { ProductVariant } from "./src/entities/productVariant";
 import { Status } from "./src/entities/status.entity";
 import { PasswordReset } from "./src/entities/password-reset.entity";
+import { Branch } from "./src/entities/branch";
+import { Company } from "./src/entities/company";
+import { Menu, Permission } from "./src/entities/menu";
+import { User } from "./src/entities/user";
+import { Role } from "./src/entities/roles";
 import { Wishlist } from "./src/entities/wishlist";
 
 config({
@@ -137,6 +142,9 @@ DeliveryTracking,
     UserAddress,
     Cart,
     Category,
+    PasswordReset,
+    Branch,Company,User,Menu,Permission,
+    Role,
     ProductAttribute,
     ProductAttributeValue,
     ProductAttributeValueProduct,
