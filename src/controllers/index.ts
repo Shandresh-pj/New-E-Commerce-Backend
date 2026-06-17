@@ -1,8 +1,11 @@
+import { AdminController } from "./admin.Controller";
 import { AttendanceController } from "./attendance.controller";
 import { AuthController } from "./auth.Controller";
+import { BranchController } from "./branch.Controller";
 import { BranchStockController } from "./BranchStock.Controller";
 import { CartController } from "./cart.Controller";
 import { CategoryController } from "./category.Controller";
+import { CompanyController } from "./company.Controller";
 import { CouponController } from "./coupons.Controller";
 import { EmployeeController } from "./employee.controller";
 import { LeaveController } from "./leave.controller";
@@ -12,6 +15,7 @@ import { PasswordController } from "./password.controller";
 import { PayrollController } from "./payroll.controller";
 import { ProductController } from "./product.Controller";
 import { RoleAccessController } from "./role-access.controller";
+import { RoleController } from "./role.Controller";
 import { AlertController, PaymentController, StockController } from "./stock.Controller";
 import { DeliveryTrackingController } from "./tracking.Controller";
 
@@ -50,3 +54,11 @@ export const cartController = new CartController();
 export const categoryController = new CategoryController();
 
 export const passwordController = new PasswordController();
+ 
+export const companyController = new CompanyController();
+
+export const branchController = new BranchController();
+
+export const adminController = new AdminController();
+
+export const rolesController = new RoleController();

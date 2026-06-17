@@ -16,6 +16,7 @@ import { preventDuplicateCalls } from "./middleware/preventDuplicatecalls";
 import errorHandler from "./middleware/errorHandler";
 import logger from "./utils/logger";
 import { responseFormatter } from "./middleware/responseFormatter";
+import { autoPagination } from "./middleware/autoPagination";
 
 const app = express();
 
@@ -271,6 +272,11 @@ app.use((req, res) => {
 
 });
 
+/* ==========================================
+   auto Pagination
+========================================== */
+
+// app.use(autoPagination);
 /* ==========================================
    GLOBAL ERROR HANDLER
 ========================================== */

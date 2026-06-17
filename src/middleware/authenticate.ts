@@ -1,53 +1,41 @@
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 
-interface AuthRequest extends Request {
-  user?: string | JwtPayload;
-}
-
-const authenticateMiddleware = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const authenticateMiddleware = (req: any, res: any, next: any) => {
   try {
+    console.log("AUTH HEADER:", req.headers.authorization);
+
     const authHeader = req.headers.authorization;
 
     if (!authHeader) {
-      res.status(401).json({
+      return res.status(401).json({
         success: false,
-        message: "Authentication token missing",
+        message: "Token missing"
       });
-      return;
     }
 
-    const token = authHeader.startsWith("Bearer ")
-      ? authHeader.split(" ")[1]
-      : authHeader;
+    const token = authHeader.split(" ")[1];
 
-    const secret = process.env.JWT_SECRET;
+    console.log("TOKEN:", token);
 
-    if (!secret) {
-      throw new Error("JWT_SECRET is not defined");
-    }
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET!
+    );
 
-    let decoded: string | JwtPayload;
-
-    try {
-      decoded = jwt.verify(token, secret);
-    } catch (err) {
-      res.status(401).json({
-        success: false,
-        message: "Invalid or expired token",
-      });
-      return;
-    }
+    console.log("DECODED:", decoded);
 
     req.user = decoded;
 
     next();
+
   } catch (err) {
-    next(err);
+    console.log(err);
+
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized"
+    });
   }
 };
 

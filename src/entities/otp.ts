@@ -15,13 +15,13 @@ export class OtpVerification {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @ManyToOne(
-    () => Register,
-    register => register.otpVerifications,
-    {
-      onDelete: "CASCADE",
-    }
-  )
+  // @ManyToOne(
+  //   () => Register,
+  //   register => register.otpVerifications,
+  //   {
+  //     onDelete: "CASCADE",
+  //   }
+  // )
   @JoinColumn({
     name: "registration_id",
   })

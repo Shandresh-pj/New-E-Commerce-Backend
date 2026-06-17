@@ -5,13 +5,16 @@ export const permissionGuard = (menu: string, action: string) => {
 
     const permissions = req.user.permissions || [];
 
-    const allowed = permissions.some((p: any) =>
-      p.menu === menu &&
-      p[`can_${action}`]
+    const allowed = permissions.some(
+      (p: any) =>
+        p.menu === menu &&
+        p.permission === action
     );
 
     if (!allowed) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({
+        message: "Access denied",
+      });
     }
 
     next();

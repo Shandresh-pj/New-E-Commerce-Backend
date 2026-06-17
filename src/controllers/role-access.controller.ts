@@ -1,164 +1,80 @@
 import {
-  Request,
-  Response,
-} from "express";
-
-import {
   Controller,
   Post,
   Get,
   Delete,
   Middleware,
-  Swagger,
+  Swagger
 } from "../decorators";
 
-import { Put } from "../decorators/put";
-
-import validate from "../middleware/validate";
-
-
-import {
-  dataSource,
-} from "../server";
-import { CreateRoleAccessDto } from "../dto/role-access.dto";
-import { RoleAccess } from "../entities/role-access";
+import { Request, Response } from "express";
+import { dataSource } from "../server";
+import authenticateMiddleware from "../middleware/authenticate";
+import { RolePermission } from "../entities/role-access";
+// import { RolePermission } from "../entities/role-permission";
 
 @Controller("/role-access")
 export class RoleAccessController {
 
-  // ==========================================
-  // CREATE
-  // ==========================================
-
+  // =====================================================
+  // CREATE ROLE ACCESS
+  // =====================================================
   @Post("/create")
-  @Middleware([
-    validate(CreateRoleAccessDto)
-  ])
-  @Swagger(
-    "Create Role Access",
-    "Create module permission"
-  )
-  async create(
-    req: Request,
-    res: Response
-  ) {
+  @Middleware([authenticateMiddleware])
+  @Swagger("Create Role Access", "Assign permissions")
+  public async create(req: any, res: any) {
 
-    const repo =
-      dataSource.getRepository(
-        RoleAccess
-      );
+    if (!["Super_Admin", "Admin"].includes(req.user.usertype)) {
+      return res.status(403).json({
+        message: "Access denied"
+      });
+    }
 
-    const role =
-      repo.create(req.body);
+    const repo = dataSource.getRepository(RolePermission);
 
-    await repo.save(role);
+    const data = repo.create(req.body);
+
+    await repo.save(data);
 
     return res.json({
       success: true,
-      data: role,
+      data
     });
   }
 
-  // ==========================================
-  // GET ALL
-  // ==========================================
-
+  // =====================================================
+  // GET ROLE ACCESS
+  // =====================================================
   @Get("/")
-  @Swagger(
-    "Role Access List",
-    "Get all permissions"
-  )
-  async getAll(
-    req: Request,
-    res: Response
-  ) {
+  @Middleware([authenticateMiddleware])
+  @Swagger("Get Role Access", "List permissions")
+  public async getAll(req: any, res: any) {
 
-    const data =
-      await dataSource
-        .getRepository(RoleAccess)
-        .find({
-          order: {
-            id: "DESC",
-          },
-        });
+    const repo = dataSource.getRepository(RolePermission);
+
+    const data = await repo.find();
 
     return res.json({
       success: true,
-      data,
+      data
     });
   }
 
-  // ==========================================
-  // GET ONE
-  // ==========================================
-
-  @Get("/:id")
-  async getOne(
-    req: Request,
-    res: Response
-  ) {
-
-    const role =
-      await dataSource
-        .getRepository(RoleAccess)
-        .findOne({
-          where: {
-            id: Number(
-              req.params.id
-            ),
-          },
-        });
-
-    return res.json({
-      success: true,
-      data: role,
-    });
-  }
-
-  // ==========================================
-  // UPDATE
-  // ==========================================
-
-  @Put("/:id")
-  async update(
-    req: Request,
-    res: Response
-  ) {
-
-    await dataSource
-      .getRepository(RoleAccess)
-      .update(
-        req.params.id,
-        req.body
-      );
-
-    return res.json({
-      success: true,
-      message:
-        "Role access updated",
-    });
-  }
-
-  // ==========================================
-  // DELETE
-  // ==========================================
-
+  // =====================================================
+  // DELETE ROLE ACCESS
+  // =====================================================
   @Delete("/:id")
-  async delete(
-    req: Request,
-    res: Response
-  ) {
+  @Middleware([authenticateMiddleware])
+  @Swagger("Delete Role Access", "Remove permission")
+  public async delete(req: any, res: any) {
 
-    await dataSource
-      .getRepository(RoleAccess)
-      .delete(
-        req.params.id
-      );
+    const repo = dataSource.getRepository(RolePermission);
+
+    await repo.delete(req.params.id);
 
     return res.json({
       success: true,
-      message:
-        "Role access deleted",
+      message: "Deleted"
     });
   }
 }

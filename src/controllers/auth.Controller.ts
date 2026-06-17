@@ -20,210 +20,199 @@ import validate from "../middleware/validate";
 import { dataSource } from "../server";
 import jwt from "jsonwebtoken";
 
-import { Register, StatusType, UserType } from "../entities/register";
+import { Register } from "../entities/register";
 import { CreateProfileDto, LoginDto, RegisterDto, UpdateProfileDto } from "../dto/register.dto";
 import { Put } from "../decorators/put";
+import authenticateMiddleware from "../middleware/authenticate";
+import { generateToken } from "../utils/jwt";
+import { permissionGuard } from "../middleware/permissionGuard.middleware";
+import { User, UserRole } from "../entities/user";
+import { RolePermission } from "../entities/role-access";
 
 @Controller("/auth")
 export class AuthController {
-
+  /**
+   * REGISTER USER
+   */
   @Post("/register")
-  @Middleware([
-    validate(RegisterDto)
-  ])
-  @Swagger("Register User", "Create New User")
-  public async register(
-    request: Request,
-    response: Response,
-    next: NextFunction
-  ) {
-    const queryRunner =
-      dataSource.createQueryRunner();
-
+  @Middleware([validate(RegisterDto)])
+  @Swagger("Register User", "Create normal user with default role")
+  public async register(req: any, res: any, next: NextFunction) {
+    const queryRunner = dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
 
-      const {
-         name,
-          email,
-          password,
-          mobilenumber,
-          address,
-      } = request.body;
+      const { name, email, password, mobilenumber } = req.body;
 
-      const image =
-        request?.file?.filename ?? '';
+      const userRepo = queryRunner.manager.getRepository(User);
+      const roleRepo = queryRunner.manager.getRepository(UserRole);
 
-      const userRepository =
-        queryRunner.manager.getRepository(Register);
+      const exists = await userRepo.findOne({ where: { email } });
 
-      const existingUser =
-        await userRepository.findOne({
-          where: {
-            email,
-          },
-        });
-
-      if (existingUser) {
+      if (exists) {
         await queryRunner.rollbackTransaction();
-
-        return response.status(400).json({
-          success: false,
-          message:
-            "Email already exists",
+        return res.status(400).json({
+          message: "Email already exists"
         });
       }
 
-      const hashedPassword =
-        await bcrypt.hash(
-          password,
-          10
-        );
+      const hashed = await bcrypt.hash(password, 10);
 
-      const user =
-        userRepository.create({
-          name,
-          email,
-          password: hashedPassword,
-          image,
-          mobilenumber,
-          address,
-          status: StatusType.ACTIVE,
-          usertype: UserType.CUSTOMER,
-          logintype: "Normal",
-        });
+      const user = userRepo.create({
+        name,
+        email,
+        password: hashed,
+        mobilenumber,
+        isSuperAdmin: false
+      });
 
-      await userRepository.save(user);
+      await userRepo.save(user);
+
+      await roleRepo.save({
+        user_id: user.id,
+        role_id: 7, // CUSTOMER
+        company_id: 1
+      });
 
       await queryRunner.commitTransaction();
 
-      return response.status(201).json({
+      return res.json({
         success: true,
-        message:
-          "User registered successfully",
-        data: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          created_at: user.created_at,
-          updated_at: user.updated_at
-        },
+        message: "User registered successfully",
+        data: user
       });
 
-    } catch (error) {
-
+    } catch (err) {
       await queryRunner.rollbackTransaction();
-
-      next(error);
-
+      next(err);
     } finally {
-
       await queryRunner.release();
-
     }
   }
 
+  /**
+   * LOGIN USER
+   */
+  @Post("/login")
+  @Middleware([validate(LoginDto)])
+  @Swagger("Login User", "Login with email/mobile and password")
+  public async login(req: any, res: any) {
 
-@Post("/login")
-@Middleware([validate(LoginDto)])
-@Swagger("User Login", "Login with Email/Mobile and Password")
-public async login(
-  request: Request,
-  response: Response,
-  next: NextFunction
-) {
-  try {
-    const {
-      email,
-      mobilenumber,
-      password,
-    } = request.body;
+    const { email, password } = req.body;
 
-    if (
-      (!email && !mobilenumber) ||
-      !password
-    ) {
-      return response.status(400).json({
-        success: false,
-        message:
-          "Email or Mobile Number and Password are required",
-      });
-    }
+    const userRepo = dataSource.getRepository(User);
+    const roleRepo = dataSource.getRepository(UserRole);
 
-    const userRepository =
-      dataSource.getRepository(Register);
-
-    const user =
-      await userRepository
-        .createQueryBuilder("user")
-        .where("user.email = :email", {
-          email,
-        })
-        .orWhere(
-          "user.mobilenumber = :mobilenumber",
-          {
-            mobilenumber,
-          }
-        )
-        .getOne();
+    const user = await userRepo.findOne({ where: { email } });
 
     if (!user) {
-      return response.status(401).json({
-        success: false,
-        message:
-          "Invalid Email/Mobile Number",
-      });
+      return res.status(401).json({ message: "User not found" });
     }
 
-    const isPasswordValid =
-      await bcrypt.compare(
-        password,
-        user.password
+    const valid = await bcrypt.compare(password, user.password);
+
+    if (!valid) {
+      return res.status(401).json({ message: "Invalid password" });
+    }
+
+    // SUPER ADMIN
+    if (user.isSuperAdmin) {
+      const token = jwt.sign(
+        { user_id: user.id, isSuperAdmin: true },
+        process.env.JWT_SECRET!,
+        { expiresIn: "1d" }
       );
 
-    if (!isPasswordValid) {
-      return response.status(401).json({
-        success: false,
-        message: "Invalid Password",
+      return res.json({
+        token,
+        role: "SUPERADMIN"
       });
     }
+
+    const roles = await roleRepo.find({
+      where: { user_id: user.id }
+    });
+
+    return res.json({
+      message: "Select context",
+      user,
+      roles
+    });
+  }
+
+  /**
+   * BOOTSTRAP SUPERADMIN
+   */
+  @Post("/create-superadmin")
+  @Swagger("Create SuperAdmin", "One-time system bootstrap")
+  public async createSuperAdmin(req: any, res: any) {
+
+    const repo = dataSource.getRepository(User);
+
+    const exists = await repo.findOne({
+      where: { isSuperAdmin: true }
+    });
+
+    if (exists) {
+      return res.status(400).json({
+        message: "SuperAdmin already exists"
+      });
+    }
+
+    const hashed = await bcrypt.hash(req.body.password, 10);
+
+    const user = repo.create({
+      name: req.body.name,
+      email: req.body.email,
+      password: hashed,
+      mobilenumber: req.body.mobilenumber,
+      isSuperAdmin: true
+    });
+
+    await repo.save(user);
+
+    return res.json({
+      success: true,
+      message: "SuperAdmin created",
+      data: user
+    });
+  }
+
+  /**
+   * SELECT CONTEXT
+   */
+  @Post("/select-context")
+  @Middleware([authenticateMiddleware])
+  @Swagger("Select Context", "Company + Branch + Role selection")
+  public async selectContext(req: any, res: any) {
+
+    const { user_id, company_id, branch_id, role_id } = req.body;
+
+    const roleRepo = dataSource.getRepository(RolePermission);
+
+    const permissions = await roleRepo.find({
+      where: { role_id }
+    });
 
     const token = jwt.sign(
       {
-        id: user.id,
-        email: user.email,
-        mobilenumber:
-          user.mobilenumber,
-        usertype: user.usertype,
+        user_id,
+        company_id,
+        branch_id,
+        role_id,
+        permissions
       },
-      process.env.JWT_SECRET as string,
-      {
-        expiresIn: "7d",
-      }
+      process.env.JWT_SECRET!,
+      { expiresIn: "7d" }
     );
 
-    return response.status(200).json({
-      success: true,
-      message:
-        "Login Successfully",
+    return res.json({
       token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        mobilenumber: user.mobilenumber,
-        image: user.image,
-        usertype: user.usertype,
-      },
+      message: "Context selected"
     });
-  } catch (error) {
-    next(error);
   }
-}
-
 
 // ======================= Profile =======================
 
@@ -276,11 +265,8 @@ public async login(
           req.body.mobilenumber,
         address:
           req.body.address,
-        usertype:
-          req.body.usertype,
         status:
-          req.body.status,
-        image
+          req.body.status
       });
 
     await repository.save(user);
@@ -401,12 +387,12 @@ public async login(
       });
     }
 
-    let image = user.image;
+    // let image = user.image;
 
-    if (req.file) {
-      image =
-        `/uploads/${req.file.filename}`;
-    }
+    // if (req.file) {
+    //   image =
+    //     `/uploads/${req.file.filename}`;
+    // }
 
     await repository.update(
       Number(req.params.id),
@@ -417,11 +403,11 @@ public async login(
           req.body.mobilenumber,
         address:
           req.body.address,
-        usertype:
-          req.body.usertype,
+        // usertype:
+        //   req.body.usertype,
         status:
           req.body.status,
-        image
+        // image
       }
     );
 

@@ -23,6 +23,11 @@ import { Salary } from "./src/entities/salary";
 import { CustomerLocation } from "./src/entities/customerLocation.dto";
 import { Category } from "./src/entities/category";
 import { PasswordReset } from "./src/entities/password-reset.entity";
+import { Branch } from "./src/entities/branch";
+import { Company } from "./src/entities/company";
+import { Menu, Permission } from "./src/entities/menu";
+import { User } from "./src/entities/user";
+import { Role } from "./src/entities/roles";
 
 config({
   path: resolve(".env"),
@@ -133,7 +138,9 @@ DeliveryTracking,
     UserAddress,
     Cart,
     Category,
-    PasswordReset
+    PasswordReset,
+    Branch,Company,User,Menu,Permission,
+    Role,
   ],
 
   namingStrategy:

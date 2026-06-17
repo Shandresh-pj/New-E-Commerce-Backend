@@ -6,153 +6,57 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
+import { StatusType, UserType } from "../utils/Role-Access";
 
-import { OtpVerification } from "./otp";
-import { Order } from "./order";
-import { Cart, Product } from "./products";
-import { Coupon } from "./coupons";
-import { PasswordReset } from "./password-reset.entity";
 
-export enum UserType {
-  SUPER_ADMIN = "Super_Admin",
-  ADMIN = "Admin",
-  BRANCH_MANAGER = "Branch_Manager",
-  SHOP_KEEPER = "Shop_Keeper",
-  DELIVERY_BOY = "Delivery_Boy",
-  CUSTOMER = "Customer",
-}
 
-export enum StatusType {
-  ACTIVE = "Active",
-  INACTIVE = "Inactive",
-  SUSPENDED = "Suspended",
-  PENDING = "Pending",
-}
+
 
 @Entity("registration_1")
 export class Register extends BaseEntity {
-  @PrimaryGeneratedColumn({
-    name: "id",
-  })
+  @PrimaryGeneratedColumn()
   id!: number;
+  @Column()
+company_id: number;
 
-  @OneToMany(
-  () => PasswordReset,
-  (reset) => reset.user
-)
-passwordResets!: PasswordReset[];
-  @OneToMany(
-    () => OtpVerification,
-    otp => otp.registration
-  )
-  otpVerifications!: OtpVerification[];
-
-  @OneToMany(
-    () => Order,
-    order => order.user
-  )
-  orders!: Order[];
-
-  @OneToMany(
-    () => Product,
-    product => product.creator
-  )
-  products!: Product[];
-
-  @OneToMany(
-  () => Coupon,
-  coupon => coupon.creator
-)
-coupons!: Coupon[];
-
-@OneToMany(
-  () => Cart,
-  (cart) => cart.user
-)
-carts!: Cart[];
-
-  @Column({
-    name: "name",
-    type: "varchar",
-    length: 100,
-    nullable: true,
-  })
-  name!: string;
-
-  @Column({
-    name: "email",
-    type: "varchar",
-    length: 100,
-    unique: true,
-    nullable: true,
-  })
+  @Column({ unique: true, nullable: true })
   email!: string;
 
-  @Column({
-    name: "password",
-    type: "varchar",
-    length: 255,
-    nullable: true,
-  })
+  @Column({ nullable: true })
+  mobilenumber!: string;
+
+  @Column({ nullable: true })
   password!: string;
 
-  @Column({
-    name: "image",
-    type: "varchar",
-    length: 255,
-    nullable: true,
-  })
-  image?: string;
+  @Column({ nullable: true })
+  name!: string;
 
-  @Column({
-    name: "mobilenumber",
-    type: "varchar",
-    length: 20,
-    nullable: true,
-  })
-  mobilenumber?: string;
+  @Column({ nullable: true })
+  image!: string;
 
-  @Column({
-    name: "address",
-    type: "text",
-    nullable: true,
-  })
-  address?: string;
+  @Column({ nullable: true })
+  address!: string;
 
-  @Column({
-    name: "usertype",
-    type: "enum",
-    enum: UserType,
-    default: UserType.CUSTOMER,
-  })
-  usertype!: UserType;
+  @Column({ nullable: true })
+  roleId!: number;
 
-  @Column({
-    name: "logintype",
-    type: "varchar",
-    length: 50,
-    default: "Normal",
-  })
-  logintype!: string;
-
-  @Column({
-    name: "status",
-    type: "enum",
-    enum: StatusType,
-    default: StatusType.ACTIVE,
-  })
+  @Column({ default: "ACTIVE" })
   status!: StatusType;
 
-  @CreateDateColumn({
-    name: "created_at",
-    type: "timestamp",
-  })
+  @Column({ default: false })
+  isSuperAdmin!: boolean;
+
+  @CreateDateColumn()
   created_at!: Date;
 
-  @UpdateDateColumn({
-    name: "updated_at",
-    type: "timestamp",
-  })
+  @UpdateDateColumn()
   updated_at!: Date;
+
+  // @OneToMany(() => UserAccess, (ua) => ua.user)
+  // access!: UserAccess[];
 }
+
+

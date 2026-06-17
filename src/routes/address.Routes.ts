@@ -1,10 +1,9 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { JwtPayload } from "jsonwebtoken";
-import authenticateMiddleware from "../middleware/authenticate";
 import { dataSource } from "../server";
 import { UserAddress } from "../entities/userAddress";
 import { Register } from "../entities/register";
-
+import authenticateMiddleware from "../middleware/authenticate";
 interface AuthRequest extends Request {
   user?: string | JwtPayload;
 }

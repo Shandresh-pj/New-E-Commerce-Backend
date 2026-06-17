@@ -107,52 +107,23 @@ export const formatFileSize = (bytes = 0): string => {
    PAGINATION HELPER
 ========================================== */
 
-export const getPagination = (
-  page = 1,
-  limit = 10
-): { page: number; limit: number; offset: number } => {
-  page = Number(page);
-  limit = Number(limit);
-
-  const offset = (page - 1) * limit;
-
-  return {
-    page,
-    limit,
-    offset,
-  };
-};
-
-export interface PaginationResponse<T = any> {
-  data: T;
-  pagination: {
-    totalRecords: number;
-    totalPages: number;
-    currentPage: number;
-    limit: number;
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-  };
+export interface PaginationParams {
+  page: number;
+  limit: number;
+  offset: number;
 }
 
-export const paginationResponse = <T = any>(
-  data: T,
-  total: number,
-  page: number,
-  limit: number
-): PaginationResponse<T> => {
-  const totalPages = Math.ceil(total / limit);
+export const getPagination = (
+  page: any = 1,
+  limit: any = 10
+): PaginationParams => {
+  const _page = Math.max(Number(page) || 1, 1);
+  const _limit = Math.min(Number(limit) || 100, 100);
 
   return {
-    data,
-    pagination: {
-      totalRecords: total,
-      totalPages,
-      currentPage: Number(page),
-      limit: Number(limit),
-      hasNextPage: page < totalPages,
-      hasPreviousPage: page > 1,
-    },
+    page: _page,
+    limit: _limit,
+    offset: (_page - 1) * _limit,
   };
 };
 

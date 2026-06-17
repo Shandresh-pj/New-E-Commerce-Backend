@@ -20,7 +20,7 @@ export * from "./register.dto";
 export * from "./role-access.dto";
 export * from "./salary.dto";
 export * from "./stock.dto";
-
+export * from "./company.dto";
 
 
 
