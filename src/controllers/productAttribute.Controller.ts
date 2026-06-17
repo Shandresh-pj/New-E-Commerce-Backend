@@ -34,12 +34,25 @@ const withAttributeTranslations = (attribute: ProductAttribute) => ({
   ],
 });
 
-const withValueTranslations = (value: ProductAttributeValue) => ({
-  ...value,
-  ProductAttributeValueTranslations: [
-    { LanguagesId: null, Name: value?.Name ?? "" },
-  ],
-});
+/**
+ * Surfaces the ProductAttributeValueProduct junction rows (when loaded via
+ * the `ProductLinks` relation) as a plain `product_ids` array, so a client
+ * that wants to add this product to the existing set can fetch the
+ * current links first and merge instead of blindly overwriting them via
+ * Update's `product_ids` field.
+ */
+const withValueTranslations = (value: ProductAttributeValue) => {
+  const { ProductLinks, ...rest } = value as any;
+  return {
+    ...rest,
+    ProductAttributeValueTranslations: [
+      { LanguagesId: null, Name: value?.Name ?? "" },
+    ],
+    product_ids: Array.isArray(ProductLinks)
+      ? ProductLinks.map((link: any) => link.ProductId)
+      : [],
+  };
+};
 
 const getPaging = (req: Request) => {
   const currentPage = Number(req.query.page) || 1;
@@ -237,6 +250,7 @@ export class ProductAttributeValueController {
 
       const [rows, totalItems] = await repo.findAndCount({
         where,
+        relations: { ProductLinks: true },
         order: { Id: "DESC" },
         skip,
         take: pageSize,
@@ -269,7 +283,7 @@ export class ProductAttributeValueController {
 
       const value = await dataSource
         .getRepository(ProductAttributeValue)
-        .findOne({ where: { Id } });
+        .findOne({ where: { Id }, relations: { ProductLinks: true } });
 
       if (!value) {
         return response.status(404).json({

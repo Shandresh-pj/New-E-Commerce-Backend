@@ -14,11 +14,13 @@ import { dataSource } from "../server";
 
 import { Register } from "../entities/register";
 import { PasswordReset } from "../entities/password-reset.entity";
+import sendEmailOtp from "../utils/sendEmailOtp";
 
 import {
   SendPasswordOtpDto,
   VerifyPasswordOtpDto,
-  ResetPasswordDto
+  ResetPasswordDto,
+  ChangeMyPasswordDto
 } from "../dto";
 
 @Controller("/password")
@@ -81,8 +83,7 @@ export class PasswordController {
 
     await otpRepo.save(record);
 
-    // 👉 send email (replace with real service)
-    console.log(`OTP sent to ${email}:`, otp);
+    await sendEmailOtp(email, otp);
 
     return res.json({
       success: true,
@@ -191,6 +192,64 @@ export class PasswordController {
     return res.json({
       success: true,
       message: "Password reset successful"
+    });
+  }
+
+  // ==========================================
+  // CHANGE PASSWORD (authenticated user)
+  // ==========================================
+  @Post("/change")
+  @Middleware([validate(ChangeMyPasswordDto)])
+  @Swagger("Change Password", "Change password for the logged-in user")
+  async changePassword(req: any, res: Response) {
+
+    const { currentPassword, newPassword } = req.body || {};
+
+    const userRepo = dataSource.getRepository(Register);
+
+    const user = await userRepo.findOne({
+      where: { id: req.user.id }
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    if (!user.password) {
+      return res.status(400).json({
+        success: false,
+        message: "Password login is not available for this account"
+      });
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect"
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be different from current password"
+      });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await userRepo.save(user);
+
+    return res.json({
+      success: true,
+      message: "Password changed successfully"
     });
   }
 }

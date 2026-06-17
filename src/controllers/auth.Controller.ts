@@ -5,6 +5,7 @@ import {
 } from "express";
 
 import bcrypt from "bcrypt";
+import path from "path";
 
 import {
   Controller,
@@ -23,6 +24,17 @@ import jwt from "jsonwebtoken";
 import { Register, StatusType, UserType } from "../entities/register";
 import { CreateProfileDto, LoginDto, RegisterDto, UpdateProfileDto } from "../dto/register.dto";
 import { Put } from "../decorators/put";
+
+const buildUploadedFileUrl = (
+  file?: Express.Multer.File
+): string | undefined => {
+  if (!file) return undefined;
+  const relativePath = path
+    .relative(process.cwd(), file.path)
+    .split(path.sep)
+    .join("/");
+  return `/${relativePath}`;
+};
 
 @Controller("/auth")
 export class AuthController {
@@ -178,6 +190,14 @@ public async login(
       });
     }
 
+    if (!user.password) {
+      return response.status(401).json({
+        success: false,
+        message:
+          "Password login is not available for this account",
+      });
+    }
+
     const isPasswordValid =
       await bcrypt.compare(
         password,
@@ -264,8 +284,7 @@ public async login(
         10
       );
 
-    const image =
-      req.file ? `/uploads/${req.file.filename}`: undefined;
+    const image = buildUploadedFileUrl(req.file);
 
     const user =
       repository.create({
@@ -401,12 +420,7 @@ public async login(
       });
     }
 
-    let image = user.image;
-
-    if (req.file) {
-      image =
-        `/uploads/${req.file.filename}`;
-    }
+    const image = buildUploadedFileUrl(req.file) ?? user.image;
 
     await repository.update(
       Number(req.params.id),
