@@ -10,8 +10,35 @@ const router = express.Router();
  * @swagger
  * /products:
  *   get:
- *     summary: Get all products
+ *     summary: Get all products (paginated)
  *     tags: [Products]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive]
+ *       - in: query
+ *         name: product_type
+ *         schema:
+ *           type: string
+ *           enum: [simple, variant]
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: List of products
@@ -54,7 +81,7 @@ router.get(
  * @swagger
  * /products/add:
  *   post:
- *     summary: Create a new product
+ *     summary: Create a new product (with optional variants)
  *     tags: [Products]
  *     requestBody:
  *       required: true
@@ -69,6 +96,24 @@ router.get(
  *                 type: string
  *               price:
  *                 type: number
+ *               stock:
+ *                 type: number
+ *               category:
+ *                 type: string
+ *               barcode:
+ *                 type: string
+ *               product_type:
+ *                 type: string
+ *                 enum: [simple, variant]
+ *               stock_in_hand:
+ *                 type: number
+ *               status:
+ *                 type: string
+ *                 enum: [active, inactive]
+ *               variants:
+ *                 type: string
+ *                 description: JSON string of ProductVariant[] when sent as multipart/form-data
+ *                 example: '[{"CompanyId":0,"Barcode":"","Price":0,"Stock":0,"ProductAttributeId":0,"ProductAttributeValueId":0}]'
  *               image:
  *                 type: string
  *                 format: binary
@@ -77,9 +122,46 @@ router.get(
  *                 items:
  *                   type: string
  *                   format: binary
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               price:
+ *                 type: number
+ *               stock:
+ *                 type: number
+ *               product_type:
+ *                 type: string
+ *                 enum: [simple, variant]
+ *               stock_in_hand:
+ *                 type: number
+ *               status:
+ *                 type: string
+ *                 enum: [active, inactive]
+ *               variants:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     CompanyId:
+ *                       type: number
+ *                     Barcode:
+ *                       type: string
+ *                     Price:
+ *                       type: number
+ *                     Stock:
+ *                       type: number
+ *                     ProductAttributeId:
+ *                       type: number
+ *                     ProductAttributeValueId:
+ *                       type: number
  *     responses:
  *       201:
  *         description: Product created successfully
+ *       422:
+ *         description: Validation failed
  */
 router.post(
   "/products/add",
@@ -99,7 +181,7 @@ router.post(
  * @swagger
  * /products/{id}:
  *   put:
- *     summary: Update product by ID
+ *     summary: Update product by ID (replaces variants when `variants` is provided)
  *     tags: [Products]
  *     parameters:
  *       - in: path
@@ -120,6 +202,22 @@ router.post(
  *                 type: string
  *               price:
  *                 type: number
+ *               stock:
+ *                 type: number
+ *               product_type:
+ *                 type: string
+ *                 enum: [simple, variant]
+ *               stock_in_hand:
+ *                 type: number
+ *               status:
+ *                 type: string
+ *                 enum: [active, inactive]
+ *               variants:
+ *                 type: string
+ *                 description: JSON string of ProductVariant[]. Existing variants not included (by Id) are deleted; entries without Id are created.
+ *               existing_images:
+ *                 type: string
+ *                 description: JSON string array of gallery image paths to keep. Omit to keep old append-only behavior; send (even as "[]") to replace the gallery with exactly this set plus any newly uploaded images.
  *               image:
  *                 type: string
  *                 format: binary
@@ -131,6 +229,10 @@ router.post(
  *     responses:
  *       200:
  *         description: Product updated successfully
+ *       404:
+ *         description: Product not found
+ *       422:
+ *         description: Validation failed
  */
 router.put(
   "/products/:id",

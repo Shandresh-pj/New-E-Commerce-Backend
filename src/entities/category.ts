@@ -68,6 +68,10 @@ export class Category {
   })
   status!: boolean;
 
+  // Status master reference (dropdown), see /Status/All
+  @Column({ type: "int", nullable: true })
+  StatusId!: number | null;
+
   @CreateDateColumn()
   created_at!: Date;
 

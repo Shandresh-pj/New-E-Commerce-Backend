@@ -22,12 +22,16 @@ import { LowStockAlert } from "./src/entities/lowstock";
 import { Salary } from "./src/entities/salary";
 import { CustomerLocation } from "./src/entities/customerLocation.dto";
 import { Category } from "./src/entities/category";
+import { ProductAttribute, ProductAttributeValue, ProductAttributeValueProduct } from "./src/entities/productAttribute";
+import { ProductVariant } from "./src/entities/productVariant";
+import { Status } from "./src/entities/status.entity";
 import { PasswordReset } from "./src/entities/password-reset.entity";
 import { Branch } from "./src/entities/branch";
 import { Company } from "./src/entities/company";
 import { Menu, Permission } from "./src/entities/menu";
 import { User } from "./src/entities/user";
 import { Role } from "./src/entities/roles";
+import { Wishlist } from "./src/entities/wishlist";
 
 config({
   path: resolve(".env"),
@@ -141,6 +145,13 @@ DeliveryTracking,
     PasswordReset,
     Branch,Company,User,Menu,Permission,
     Role,
+    ProductAttribute,
+    ProductAttributeValue,
+    ProductAttributeValueProduct,
+    ProductVariant,
+    Status,
+    PasswordReset,
+    Wishlist
   ],
 
   namingStrategy:

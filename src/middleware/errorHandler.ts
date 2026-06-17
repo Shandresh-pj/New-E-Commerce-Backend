@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 
 interface CustomError extends Error {
   status?: number;
+  statusCode?: number;
+  errors?: any;
   code?: string;
   sqlMessage?: string;
   details?: any;
@@ -29,8 +31,8 @@ const errorHandler = (
   /* =========================
      BASE ERROR
   ========================= */
-  if (error.status) {
-    statusCode = error.status;
+  if (error.status || error.statusCode) {
+    statusCode = error.status || error.statusCode || statusCode;
     message = error.message;
   }
 
@@ -100,6 +102,10 @@ const errorHandler = (
     path: req.originalUrl,
     method: req.method,
   };
+
+  if (error.errors) {
+    response.errors = error.errors;
+  }
 
   /* =========================
      DEV ONLY DEBUG INFO

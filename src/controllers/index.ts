@@ -14,6 +14,11 @@ import { OtpController } from "./otp.Controller";
 import { PasswordController } from "./password.controller";
 import { PayrollController } from "./payroll.controller";
 import { ProductController } from "./product.Controller";
+import {
+  ProductAttributeController,
+  ProductAttributeValueController,
+} from "./productAttribute.Controller";
+import { StatusController } from "./status.Controller";
 import { RoleAccessController } from "./role-access.controller";
 import { RoleController } from "./role.Controller";
 import { AlertController, PaymentController, StockController } from "./stock.Controller";
@@ -53,6 +58,11 @@ export const cartController = new CartController();
 
 export const categoryController = new CategoryController();
 
+export const productAttributeController = new ProductAttributeController();
+
+export const productAttributeValueController = new ProductAttributeValueController();
+
+export const statusController = new StatusController();
 export const passwordController = new PasswordController();
  
 export const companyController = new CompanyController();

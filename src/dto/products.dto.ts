@@ -3,12 +3,55 @@ import {
   IsOptional,
   IsNumber,
   IsNotEmpty,
+  IsEnum,
+  IsArray,
+  ValidateNested,
   Matches,
   Min,
 } from "class-validator";
+import { Type } from "class-transformer";
+
+export enum ProductType {
+  SIMPLE = "simple",
+  VARIANT = "variant",
+}
+
+export enum ProductStatus {
+  ACTIVE = "active",
+  INACTIVE = "inactive",
+}
+
+export class ProductVariantDto {
+  @IsOptional()
+  @IsNumber()
+  Id?: number;
+
+  @IsOptional()
+  @IsNumber()
+  CompanyId?: number;
+
+  @IsOptional()
+  @IsString()
+  Barcode?: string;
+
+  @IsNumber()
+  @Min(0)
+  Price!: number;
+
+  @IsNumber()
+  @Min(0)
+  Stock!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  ProductAttributeId!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  ProductAttributeValueId!: number;
+}
 
 export class CreateProductDto {
-
   @IsString()
   name!: string;
 
@@ -25,10 +68,6 @@ export class CreateProductDto {
   barcode?: string;   // ✅ barcode added
 
   @IsOptional()
-  @IsString()
-  qr_code?: string;    // ✅ optional QR support
-
-  @IsOptional()
   @IsNumber()
   registration_id?: number;
 
@@ -38,8 +77,81 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   category!:string;
+
+  @IsOptional()
+  @IsEnum(ProductType)
+  product_type?: ProductType;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  stock_in_hand?: number;
+
+  @IsOptional()
+  @IsEnum(ProductStatus)
+  status?: ProductStatus;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductVariantDto)
+  variants?: ProductVariantDto[];
 }
 
+export class UpdateProductDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsNumber()
+  price?: number;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{8,14}$/)
+  barcode?: string;
+
+  @IsOptional()
+  @IsNumber()
+  registration_id?: number;
+
+  @IsOptional()
+  @IsNumber()
+  stock?: number;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsEnum(ProductType)
+  product_type?: ProductType;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  stock_in_hand?: number;
+
+  @IsOptional()
+  @IsEnum(ProductStatus)
+  status?: ProductStatus;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductVariantDto)
+  variants?: ProductVariantDto[];
+
+  // JSON string array of gallery image paths to keep on update; see
+  // product.Controller.ts's parseExistingImages.
+  @IsOptional()
+  existing_images?: string;
+}
 
 export class ScanProductDto {
   @IsNotEmpty()

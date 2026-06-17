@@ -15,6 +15,7 @@ export * from "./leave.dto";
 export * from "./order.dto";
 export * from "./otp.dto";
 export * from "./payment.dto";
+export * from "./productAttribute.dto";
 export * from "./products.dto";
 export * from "./register.dto";
 export * from "./role-access.dto";

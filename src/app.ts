@@ -14,9 +14,21 @@ import { swaggerSpec, swaggerUi } from "./config/swagger";
 import { timezoneMiddleware } from "./middleware/timezone";
 import { preventDuplicateCalls } from "./middleware/preventDuplicatecalls";
 import errorHandler from "./middleware/errorHandler";
+import authenticateMiddleware from "./middleware/authenticate";
 import logger from "./utils/logger";
 import { responseFormatter } from "./middleware/responseFormatter";
 import { autoPagination } from "./middleware/autoPagination";
+
+// Routes that must remain reachable without a bearer token
+const PUBLIC_API_ROUTES = [
+  "/auth/register",
+  "/auth/login",
+  "/auth/send-otp",
+  "/auth/verify-otp",
+  "/password/send-otp",
+  "/password/verify-otp",
+  "/password/reset",
+];
 
 const app = express();
 
@@ -82,12 +94,19 @@ app.use(timezoneMiddleware);
    STATIC FILES
 ========================================== */
 
-app.use(
-  "/uploads",
-  express.static(
-    path.join(process.cwd(), "uploads")
-  )
-);
+// Allow cross-origin access to all uploaded media (images, videos, etc.)
+const setCORP = (_req: any, res: any, next: any) => {
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  next();
+};
+
+// Serve organised subfolders (new uploads)
+app.use("/uploads", setCORP, express.static(path.join(process.cwd(), "uploads")));
+
+// Backwards-compat: old files saved flat in ./uploads/ are
+// reachable at /uploads/images/* and /uploads/videos/* too
+app.use("/uploads/images", setCORP, express.static(path.join(process.cwd(), "uploads")));
+app.use("/uploads/videos", setCORP, express.static(path.join(process.cwd(), "uploads")));
 
 /* ==========================================
    CACHE CONTROL
@@ -123,6 +142,20 @@ app.use(
   swaggerUi.serve,
   swaggerUi.setup(swaggerSpec)
 );
+
+/* ==========================================
+   AUTHENTICATION GATE
+   Every /api route requires a valid, non-expired
+   bearer token except the public auth routes above.
+========================================== */
+
+app.use("/api", (req, res, next) => {
+  if (PUBLIC_API_ROUTES.includes(req.path)) {
+    return next();
+  }
+
+  return authenticateMiddleware(req, res, next);
+});
 
 /* ==========================================
    DYNAMIC ROUTE LOADER

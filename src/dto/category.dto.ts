@@ -23,6 +23,10 @@ export class CreateCategoryDto {
   parent_id?: number;
 
   @IsOptional()
+  @IsNumber()
+  StatusId?: number;
+
+  @IsOptional()
   @IsBoolean()
   status?: boolean;
 }

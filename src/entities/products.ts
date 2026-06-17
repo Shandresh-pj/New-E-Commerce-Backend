@@ -16,6 +16,9 @@ import { Order, OrderItem } from "./order";
 import { BranchStock } from "./branch_stock";
 import { LowStockAlert } from "./lowstock";
 import { Category } from "./category";
+import { ProductAttributeValueProduct } from "./productAttribute";
+import { ProductVariant } from "./productVariant";
+import { ProductType, ProductStatus } from "../dto/products.dto";
 
 @Entity("products_table_1")
 export class Product {
@@ -60,8 +63,12 @@ orderItems!: OrderItem[];
   })
   image!: string;
 
+  // `simple-json` (stored as longtext) — using TypeORM's native "json" type
+  // here made the MySQL driver think the column type changed on every
+  // synchronize, dropping and recreating it (wiping all gallery images on
+  // every server restart with DB_SYNC=true).
   @Column({
-    type: "json",
+    type: "simple-json",
     nullable: true,
   })
   images!: string[];
@@ -97,11 +104,43 @@ orderItems!: OrderItem[];
   })
   category!: string;
 
+  @Column({
+    type: "enum",
+    enum: ProductType,
+    default: ProductType.SIMPLE,
+  })
+  product_type!: ProductType;
+
+  @Column({
+    type: "int",
+    default: 0,
+  })
+  stock_in_hand!: number;
+
+  @Column({
+    type: "enum",
+    enum: ProductStatus,
+    default: ProductStatus.ACTIVE,
+  })
+  status!: ProductStatus;
+
   @OneToMany(
     () => CouponProduct,
     cp => cp.product
   )
   couponProducts!: CouponProduct[];
+
+  @OneToMany(
+    () => ProductAttributeValueProduct,
+    link => link.Product
+  )
+  attributeValueLinks!: ProductAttributeValueProduct[];
+
+  @OneToMany(
+    () => ProductVariant,
+    variant => variant.Product
+  )
+  variants!: ProductVariant[];
 
   @CreateDateColumn()
   created_at!: Date;

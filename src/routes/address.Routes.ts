@@ -10,9 +10,10 @@ interface AuthRequest extends Request {
 
 const router = Router();
 
-function getUserId(req: AuthRequest): number | null {
-  const id = (req.user as JwtPayload)?.id;
-  return id != null ? Number(id) : null;
+// The global auth gate (app.ts) guarantees a valid token before this
+// router runs, so req.user.id is always present here.
+function getUserId(req: AuthRequest): number {
+  return Number((req.user as JwtPayload)?.id);
 }
 
 /**
@@ -51,13 +52,9 @@ function getUserId(req: AuthRequest): number | null {
  */
 router.get(
   "/address",
-  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);
-      if (!userId) {
-        return res.status(401).json({ success: false, message: "Invalid token: user ID missing" });
-      }
 
       const addresses = await dataSource.getRepository(UserAddress).find({
         where: { userId },
@@ -97,13 +94,9 @@ router.get(
  */
 router.post(
   "/address",
-  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);
-      if (!userId) {
-        return res.status(401).json({ success: false, message: "Invalid token: user ID missing" });
-      }
 
       const { label, name, phone, line1, line2, city, state, pincode, isDefault } = req.body;
 
@@ -180,13 +173,9 @@ router.post(
  */
 router.put(
   "/address/:id",
-  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);
-      if (!userId) {
-        return res.status(401).json({ success: false, message: "Invalid token: user ID missing" });
-      }
 
       const { label, name, phone, line1, line2, city, state, pincode, isDefault } = req.body;
       const repository = dataSource.getRepository(UserAddress);
@@ -248,13 +237,9 @@ router.put(
  */
 router.delete(
   "/address/:id",
-  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);
-      if (!userId) {
-        return res.status(401).json({ success: false, message: "Invalid token: user ID missing" });
-      }
 
       const repository = dataSource.getRepository(UserAddress);
 
@@ -300,13 +285,9 @@ router.delete(
  */
 router.patch(
   "/address/:id/default",
-  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);
-      if (!userId) {
-        return res.status(401).json({ success: false, message: "Invalid token: user ID missing" });
-      }
 
       const repository = dataSource.getRepository(UserAddress);
 
