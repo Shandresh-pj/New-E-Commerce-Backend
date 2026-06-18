@@ -25,19 +25,81 @@ import { CreateProfileDto, LoginDto, RegisterDto, UpdateProfileDto } from "../dt
 import { Put } from "../decorators/put";
 import authenticateMiddleware from "../middleware/authenticate";
 import { generateToken } from "../utils/jwt";
-import { permissionGuard } from "../middleware/permissionGuard.middleware";
+// import { permissionGuard } from "../middleware/permissionGuard.middleware";
 import { User, UserRole } from "../entities/user";
 import { RolePermission } from "../entities/role-access";
+import { EmailService, generateTempPassword } from "../utils/sendEmailOtp";
+import { UserType } from "../utils/Role-Access";
 
 @Controller("/auth")
 export class AuthController {
-  /**
-   * REGISTER USER
-   */
+
+  // @Post("/register")
+  // @Middleware([validate(RegisterDto)])
+  // @Swagger("Register User", "Create normal user with default role")
+  // public async register(req: any, res: any, next: NextFunction) {
+  //   const queryRunner = dataSource.createQueryRunner();
+  //   await queryRunner.connect();
+  //   await queryRunner.startTransaction();
+
+  //   try {
+
+  //     const { name, email, password, mobilenumber } = req.body;
+
+  //     const userRepo = queryRunner.manager.getRepository(User);
+  //     const roleRepo = queryRunner.manager.getRepository(UserRole);
+
+  //     const exists = await userRepo.findOne({ where: { email } });
+
+  //     if (exists) {
+  //       await queryRunner.rollbackTransaction();
+  //       return res.status(400).json({
+  //         message: "Email already exists"
+  //       });
+  //     }
+
+  //     const hashed = await bcrypt.hash(password, 10);
+
+  //     const user = userRepo.create({
+  //       name,
+  //       email,
+  //       password: hashed,
+  //       mobilenumber,
+  //       isSuperAdmin: false
+  //     });
+
+  //     await userRepo.save(user);
+
+  //     await roleRepo.save({
+  //       user_id: user.id,
+  //       role_id: 7, // CUSTOMER
+  //       company_id: 1
+  //     });
+
+  //     await queryRunner.commitTransaction();
+
+  //     return res.json({
+  //       success: true,
+  //       message: "User registered successfully",
+  //       data: user
+  //     });
+
+  //   } catch (err) {
+  //     await queryRunner.rollbackTransaction();
+  //     next(err);
+  //   } finally {
+  //     await queryRunner.release();
+  //   }
+  // }
+
+    // =====================================================
+  // REGISTER (PUBLIC - CUSTOMER ONLY)
+  // =====================================================
   @Post("/register")
-  @Middleware([validate(RegisterDto)])
-  @Swagger("Register User", "Create normal user with default role")
+  @Middleware([validate(RegisterDto)]) // ❌ NO AUTH MIDDLEWARE
+  @Swagger("Register User", "Customer registration")
   public async register(req: any, res: any, next: NextFunction) {
+
     const queryRunner = dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -54,6 +116,7 @@ export class AuthController {
       if (exists) {
         await queryRunner.rollbackTransaction();
         return res.status(400).json({
+          success: false,
           message: "Email already exists"
         });
       }
@@ -65,14 +128,17 @@ export class AuthController {
         email,
         password: hashed,
         mobilenumber,
-        isSuperAdmin: false
+        userType: UserType.CUSTOMER,
+        isSuperAdmin: false,
+        mustChangePassword: true,
+        isActive: true
       });
 
       await userRepo.save(user);
 
       await roleRepo.save({
         user_id: user.id,
-        role_id: 7, // CUSTOMER
+        role_id: 7,
         company_id: 1
       });
 
@@ -92,93 +158,212 @@ export class AuthController {
     }
   }
 
+
   /**
    * LOGIN USER
    */
-  @Post("/login")
-  @Middleware([validate(LoginDto)])
-  @Swagger("Login User", "Login with email/mobile and password")
-  public async login(req: any, res: any) {
+@Post("/login")
+@Middleware([validate(LoginDto)])
+public async login(
+  req: Request,
+  res: Response
+) {
+
+  try {
 
     const { email, password } = req.body;
 
-    const userRepo = dataSource.getRepository(User);
-    const roleRepo = dataSource.getRepository(UserRole);
+    const userRepo =
+      dataSource.getRepository(User);
 
-    const user = await userRepo.findOne({ where: { email } });
+    const userRoleRepo =
+      dataSource.getRepository(UserRole);
+
+    const rolePermissionRepo =
+      dataSource.getRepository(RolePermission);
+
+    const user =
+      await userRepo.findOne({
+        where: { email },
+        relations: {
+          userRoles: {
+            role: true,
+            company: true,
+            branch: true
+          }
+        }
+      });
 
     if (!user) {
-      return res.status(401).json({ message: "User not found" });
-    }
-
-    const valid = await bcrypt.compare(password, user.password);
-
-    if (!valid) {
-      return res.status(401).json({ message: "Invalid password" });
-    }
-
-    // SUPER ADMIN
-    if (user.isSuperAdmin) {
-      const token = jwt.sign(
-        { user_id: user.id, isSuperAdmin: true },
-        process.env.JWT_SECRET!,
-        { expiresIn: "1d" }
-      );
-
-      return res.json({
-        token,
-        role: "SUPERADMIN"
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password"
       });
     }
 
-    const roles = await roleRepo.find({
-      where: { user_id: user.id }
+    const passwordMatched =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
+
+    if (!passwordMatched) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid email or password"
+      });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account is inactive. Contact administrator."
+      });
+    }
+
+    if (user.mustChangePassword) {
+
+      return res.status(403).json({
+        success: false,
+        forcePasswordChange: true,
+        userId: user.id,
+        email: user.email,
+        message:
+          "Password change is required before accessing the application. Please update your password and try again."
+      });
+    }
+
+    const userRoles =
+      await userRoleRepo.find({
+        where: {
+          user_id: user.id
+        },
+        relations: 
+        {role : true,
+        company : true,
+        branch : true}
+        
+      });
+
+    const roleIds =
+      userRoles.map(
+        role => role.role_id
+      );
+
+    const permissions =
+      await rolePermissionRepo.find({
+        where: roleIds.map(
+          roleId => ({ role_id: roleId })
+        )
+      });
+
+    const token =
+      jwt.sign(
+        {
+          userId: user.id,
+          email: user.email,
+          userType: user.userType,
+          isSuperAdmin:
+            user.isSuperAdmin
+        },
+        process.env.JWT_SECRET!,
+        {
+          expiresIn: "1d"
+        }
+      );
+
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+      token,
+
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        userType: user.userType,
+        isSuperAdmin:
+          user.isSuperAdmin
+      },
+
+      roles: userRoles,
+
+      permissions
     });
 
-    return res.json({
-      message: "Select context",
-      user,
-      roles
+  } catch (error: any) {
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
+}
 
   /**
    * BOOTSTRAP SUPERADMIN
    */
-  @Post("/create-superadmin")
-  @Swagger("Create SuperAdmin", "One-time system bootstrap")
-  public async createSuperAdmin(req: any, res: any) {
+@Post("/create-superadmin")
+@Swagger(
+  "Create SuperAdmin",
+  "Create multiple Super Admins"
+)
+public async createSuperAdmin(
+  req: any,
+  res: any
+) {
 
-    const repo = dataSource.getRepository(User);
+  const {
+    name,
+    email,
+    password,
+    mobilenumber
+  } = req.body;
 
-    const exists = await repo.findOne({
-      where: { isSuperAdmin: true }
+  const repo =
+    dataSource.getRepository(User);
+
+  const existing =
+    await repo.findOne({
+      where: { email }
     });
 
-    if (exists) {
-      return res.status(400).json({
-        message: "SuperAdmin already exists"
-      });
-    }
+  if (existing) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "Email already exists"
+    });
+  }
 
-    const hashed = await bcrypt.hash(req.body.password, 10);
+  const hashed =
+    await bcrypt.hash(
+      password,
+      10
+    );
 
-    const user = repo.create({
-      name: req.body.name,
-      email: req.body.email,
+  const user =
+    repo.create({
+      name,
+      email,
       password: hashed,
-      mobilenumber: req.body.mobilenumber,
+      mobilenumber,
       isSuperAdmin: true
     });
 
-    await repo.save(user);
+  await repo.save(user);
 
-    return res.json({
-      success: true,
-      message: "SuperAdmin created",
-      data: user
-    });
-  }
+  return res.status(201).json({
+    success: true,
+    message:
+      "Super Admin created successfully",
+    data: {
+      id: user.id,
+      name: user.name,
+      email: user.email
+    }
+  });
+}
 
   /**
    * SELECT CONTEXT
@@ -213,6 +398,100 @@ export class AuthController {
       message: "Context selected"
     });
   }
+
+
+@Post("/create-user")
+@Middleware([authenticateMiddleware])
+public async createUser(
+  req: any,
+  res: any
+) {
+
+  try {
+
+    if (!req.user?.isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Only Super Admin can create users"
+      });
+    }
+
+    const {
+      name,
+      email,
+      mobilenumber,
+      userType,
+      role_id,
+      company_id,
+      branch_id
+    } = req.body;
+
+    const userRepo =
+      dataSource.getRepository(User);
+
+    const roleRepo =
+      dataSource.getRepository(UserRole);
+
+    const exists =
+      await userRepo.findOne({
+        where: { email }
+      });
+
+    if (exists) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already exists"
+      });
+    }
+
+    const tempPassword =
+      generateTempPassword();
+
+    const hashedPassword =
+      await bcrypt.hash(
+        tempPassword,
+        12
+      );
+
+    const user =
+      userRepo.create({
+        name,
+        email,
+        mobilenumber,
+        password: hashedPassword,
+        userType,
+        mustChangePassword: true,
+        isActive: true
+      });
+
+    await userRepo.save(user);
+
+    await roleRepo.save({
+      user_id: user.id,
+      role_id,
+      company_id,
+      branch_id
+    });
+
+    await EmailService.sendTemporaryPassword(
+      email,
+      tempPassword,
+      name
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: `${userType} created successfully`
+    });
+
+  } catch (error: any) {
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+}
 
 // ======================= Profile =======================
 

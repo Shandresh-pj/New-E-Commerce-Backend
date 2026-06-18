@@ -30,6 +30,12 @@ export class PasswordReset {
   @Column()
   expires_at!: Date;
 
+
+@Column({
+  default: 0
+})
+attempts: number;
+
   @Column({
     default: false
   })

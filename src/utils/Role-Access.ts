@@ -1,7 +1,8 @@
 export enum UserType {
   SUPER_ADMIN = "Super_Admin",
   ADMIN = "Admin",
-  BRANCHES = "Branches",
+  BRANCH_MANAGER = "Branch_Manager",
+  EMPLOYEE = "Employee",
   CUSTOMER = "Customer"
 }
 
@@ -11,3 +12,4 @@ export enum StatusType {
   SUSPENDED = "Suspended",
   PENDING = "Pending",
 }
+

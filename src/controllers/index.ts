@@ -23,6 +23,7 @@ import { RoleAccessController } from "./role-access.controller";
 import { RoleController } from "./role.Controller";
 import { AlertController, PaymentController, StockController } from "./stock.Controller";
 import { DeliveryTrackingController } from "./tracking.Controller";
+import { MenuController } from "./menu.Controller";
 
 export const authController = new AuthController();
 
@@ -72,3 +73,5 @@ export const branchController = new BranchController();
 export const adminController = new AdminController();
 
 export const rolesController = new RoleController();
+
+export const menuController = new MenuController();

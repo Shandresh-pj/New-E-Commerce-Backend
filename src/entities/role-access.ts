@@ -1,7 +1,20 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  Unique,
+  CreateDateColumn,
+} from "typeorm";
+
+import { Role } from "./roles";
+import { Permission } from "./menu";
 
 @Entity("role_permissions")
+@Unique(["role_id", "permission_id"])
 export class RolePermission {
+
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -9,17 +22,16 @@ export class RolePermission {
   role_id: number;
 
   @Column()
-  menu: string;
+  permission_id: number;
 
-  @Column({ default: false })
-  can_view: boolean;
+  @ManyToOne(() => Role, { eager: true })
+  @JoinColumn({ name: "role_id" })
+  role: Role;
 
-  @Column({ default: false })
-  can_add: boolean;
+  @ManyToOne(() => Permission, { eager: true })
+  @JoinColumn({ name: "permission_id" })
+  permission: Permission;
 
-  @Column({ default: false })
-  can_edit: boolean;
-
-  @Column({ default: false })
-  can_delete: boolean;
+  @CreateDateColumn()
+  createdAt: Date;
 }

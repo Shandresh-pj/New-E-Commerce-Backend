@@ -1,9 +1,7 @@
 import {
   Entity,
   PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
+  Column
 } from "typeorm";
 
 @Entity("roles")
@@ -12,12 +10,13 @@ export class Role {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({
+    unique: true
+  })
   name: string;
 
-  @CreateDateColumn()
-  created_at!: Date;
-
-  @UpdateDateColumn()
-  updated_at!: Date;
+  @Column({
+    default: true
+  })
+  isActive: boolean;
 }

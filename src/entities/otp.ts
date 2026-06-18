@@ -12,39 +12,42 @@ import { Register } from "./register";
 @Entity("otp_verifications_1")
 export class OtpVerification {
 
-  @PrimaryGeneratedColumn()
-  id!: number;
+   @PrimaryGeneratedColumn()
+  id: number;
 
-  // @ManyToOne(
-  //   () => Register,
-  //   register => register.otpVerifications,
-  //   {
-  //     onDelete: "CASCADE",
-  //   }
-  // )
-  @JoinColumn({
-    name: "registration_id",
+  @Column({
+    nullable: true
   })
-  registration!: Register;
+  email: string;
 
-  @Column({ nullable: true })
-  email!: string;
-
-  @Column({ nullable: true })
-  mobile!: string;
-
-  @Column()
-  otp!: number;
+  @Column({
+    nullable: true
+  })
+  mobile: string;
 
   @Column()
-  expires_at!: Date;
+  otp: string;
 
-  @Column({ default: 0 })
-  is_used!: number;
+  @Column()
+  expires_at: Date;
 
-  @CreateDateColumn()
-  created_at!: Date;
+  @Column({
+    default: false
+  })
+  verified: boolean;
 
-  @UpdateDateColumn()
-  updated_at!: Date;
+  @Column()
+  registration_id: number;
+
+  @ManyToOne(
+    () => Register
+  )
+  @JoinColumn({
+    name: "registration_id"
+  })
+  registration: Register;
+
+  @Column()
+is_used: number;
+
 }

@@ -1,27 +1,96 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
-@Entity("menus")
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  JoinColumn,
+  ManyToOne,
+  OneToMany
+} from "typeorm";
+import { Role } from "./roles";
+
+export enum MenuType {
+  DASHBOARD = "Dashboard",
+  USERS = "Users",
+  ORDERS = "Orders",
+  PRODUCTS = "Products",
+  BRANCHES = "Branches",
+  COMPANIES = "Companies",
+}
+
+export enum PermissionType {
+  READ = "READ",
+  WRITE = "WRITE",
+  UPDATE = "UPDATE",
+  DELETE = "DELETE",
+  APPROVE = "APPROVE",
+}
+
+@Entity("menu")
 export class Menu {
+
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  name: string; // Dashboard, Users, Orders
+  @Column({
+    unique: true
+  })
+  name: string;
 
-  @Column()
-  path: string; // /dashboard
+  @Column({
+    unique: true
+  })
+  path: string;
 
-  @Column({ nullable: true })
+  @Column({
+    nullable: true
+  })
   icon: string;
+
+  @Column({
+    default: true
+  })
+  isActive: boolean;
+
+    @OneToMany(
+    () => Permission,
+    permission => permission.menu
+  )
+  permissions: Permission[];
 }
 
 @Entity("permissions")
 export class Permission {
+
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  name: string; 
-  // READ, WRITE, DELETE
+  // @Column()
+  // menu: string;
+
+  @Column({
+    type: "enum",
+    enum: PermissionType
+  })
+  action: PermissionType;
+
+   @Column()
+  menu_id: number;
+
+  @ManyToOne(
+    () => Menu,
+    menu => menu.permissions,
+    {
+      onDelete: "CASCADE"
+    }
+  )
+  @JoinColumn({
+    name: "menu_id"
+  })
+  menu: Menu;
 }
+
+
 

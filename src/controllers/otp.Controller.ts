@@ -18,11 +18,11 @@ import sendSmsOtp from "../utils/sendSmsOtp";
 @Controller("/otp")
 export class OtpController {
 
-  private generateOTP(): number {
-    return Math.floor(
-      100000 + Math.random() * 900000
-    );
-  }
+ private generateOTP(): string {
+  return Math.floor(
+    100000 + Math.random() * 900000
+  ).toString();
+}
 
   @Post("/send")
   @Middleware([

@@ -29,9 +29,10 @@ import { PasswordReset } from "./src/entities/password-reset.entity";
 import { Branch } from "./src/entities/branch";
 import { Company } from "./src/entities/company";
 import { Menu, Permission } from "./src/entities/menu";
-import { User } from "./src/entities/user";
+import { User, UserRole } from "./src/entities/user";
 import { Role } from "./src/entities/roles";
 import { Wishlist } from "./src/entities/wishlist";
+import { RolePermission } from "./src/entities/role-access";
 
 config({
   path: resolve(".env"),
@@ -119,39 +120,45 @@ let localConfig: DataSourceOptions = {
   charset: "utf8mb4_unicode_ci",
 
   entities: [
-    Register,
-    OtpVerification,
-    Coupon,
+    AttendanceBreakLog,
+    Attendance,
+    Branch,
+    BranchStock,
+    BreakSetting,
+    Company,
+    CustomerLocation,
+    Coupon, 
     CouponProduct,
+    Cart, 
+    Category,
+    DeliveryTracking,
+    DeliveryAssignment,
+    Employee,
+    LowStockAlert,
+    LeaveRequest,
+    Menu,
     Order,
     OrderItem,
+    OtpVerification,
+    OrderTracking,
+    Register,
     Product,
     Payment,
-    StockLog,
-    LowStockAlert,
-    BranchStock, // 🔥 MUST ADD THIS
-    Employee,
-Attendance,
-LeaveRequest,
-Salary,
-BreakSetting,
-DeliveryAssignment,
-AttendanceBreakLog,
-DeliveryTracking,
-    OrderTracking,CustomerLocation,
-    UserAddress,
-    Cart,
-    Category,
+    Permission,
     PasswordReset,
-    Branch,Company,User,Menu,Permission,
-    Role,
     ProductAttribute,
     ProductAttributeValue,
     ProductAttributeValueProduct,
     ProductVariant,
+    RolePermission,
+    UserRole,
+    Salary,
+    StockLog,
     Status,
-    PasswordReset,
-    Wishlist
+    Role,
+    UserAddress,
+    User,
+    Wishlist,
   ],
 
   namingStrategy:

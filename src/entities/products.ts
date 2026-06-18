@@ -62,11 +62,7 @@ orderItems!: OrderItem[];
     nullable: true,
   })
   image!: string;
-
-  // `simple-json` (stored as longtext) — using TypeORM's native "json" type
-  // here made the MySQL driver think the column type changed on every
-  // synchronize, dropping and recreating it (wiping all gallery images on
-  // every server restart with DB_SYNC=true).
+  
   @Column({
     type: "simple-json",
     nullable: true,

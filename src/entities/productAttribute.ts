@@ -10,15 +10,6 @@ import {
 } from "typeorm";
 
 import { Product } from "./products";
-
-/**
- * Product Attribute (e.g. "Color", "Size")
- * Contract mirrors the reference backend so the Angular admin UI works unchanged:
- *   - PascalCase property names => PascalCase JSON keys (Id, AttributeNameCode, ...)
- *   - No translation tables: a single Name column is stored; the controller
- *     synthesizes the ProductAttributeTranslations array the UI expects.
- *   - CompanyId is optional (frontend does not send it) and defaults to 0.
- */
 @Entity("product_attributes_1")
 export class ProductAttribute {
 
