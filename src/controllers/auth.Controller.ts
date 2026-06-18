@@ -5,6 +5,7 @@ import {
 } from "express";
 
 import bcrypt from "bcrypt";
+import path from "path";
 
 import {
   Controller,
@@ -30,6 +31,17 @@ import { User, UserRole } from "../entities/user";
 import { RolePermission } from "../entities/role-access";
 import { EmailService, generateTempPassword } from "../utils/sendEmailOtp";
 import { UserType } from "../utils/Role-Access";
+
+const buildUploadedFileUrl = (
+  file?: Express.Multer.File
+): string | undefined => {
+  if (!file) return undefined;
+  const relativePath = path
+    .relative(process.cwd(), file.path)
+    .split(path.sep)
+    .join("/");
+  return `/${relativePath}`;
+};
 
 @Controller("/auth")
 export class AuthController {
@@ -532,8 +544,7 @@ public async createUser(
         10
       );
 
-    const image =
-      req.file ? `/uploads/${req.file.filename}`: undefined;
+    const image = buildUploadedFileUrl(req.file);
 
     const user =
       repository.create({

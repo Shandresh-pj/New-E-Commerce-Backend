@@ -16,7 +16,6 @@ import { User } from "../entities/user";
 import { PasswordReset } from "../entities/password-reset.entity";
 
 import {
-  SendPasswordOtpDto,
   VerifyPasswordOtpDto,
   ResetPasswordDto,
   ChangePasswordDto
@@ -24,6 +23,11 @@ import {
 
 import { OtpService } from "../services/otp.service";
 import { EmailService } from "../utils/sendEmailOtp";
+
+import {
+  SendPasswordOtpDto,
+  ChangeMyPasswordDto
+} from "../dto";
 
 @Controller("/password")
 export class PasswordController {

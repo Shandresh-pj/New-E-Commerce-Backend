@@ -37,6 +37,11 @@ const PRODUCT_RELATIONS = {
     ProductAttribute: true,
     ProductAttributeValue: true,
   },
+  attributeValueLinks: {
+    ProductAttributeValue: {
+      ProductAttribute: true,
+    },
+  },
 };
 
 /**
@@ -247,10 +252,85 @@ const extractUploadedFiles = (req: Request) => {
  */
 const HIDDEN_RESPONSE_FIELDS = ["stock", "qr_code"];
 
+const pushAttribute = (
+  attributesById: Map<number, any>,
+  attribute: any
+): void => {
+  if (!attribute || attributesById.has(attribute.Id)) return;
+  attributesById.set(attribute.Id, {
+    Id: attribute.Id,
+    CompanyId: attribute.CompanyId,
+    AttributeNameCode: attribute.AttributeNameCode,
+    Name: attribute.Name,
+    CreatedAt: attribute.CreatedAt,
+    UpdatedAt: attribute.UpdatedAt,
+  });
+};
+
+const pushValue = (
+  valuesById: Map<number, any>,
+  value: any
+): void => {
+  if (!value || valuesById.has(value.Id)) return;
+  valuesById.set(value.Id, {
+    Id: value.Id,
+    CompanyId: value.CompanyId,
+    ProductAttributeId: value.ProductAttributeId,
+    AttributeValueCode: value.AttributeValueCode,
+    Name: value.Name,
+    CreatedAt: value.CreatedAt,
+    UpdatedAt: value.UpdatedAt,
+  });
+};
+
+/**
+ * Builds the product-level `ProductAttributes` / `ProductAttributeValues`
+ * arrays the UI needs to render selectable options directly from a
+ * product. A product can be tied to an attribute/value pair through two
+ * independent paths — the ProductAttributeValueProduct junction rows
+ * (`attributeValueLinks`, used to tag a simple product without creating a
+ * variant) and the attribute/value each `variant` row already carries —
+ * so both are merged and deduped here. Shaped the same way as the
+ * ProductAttribute / ProductAttributeValue objects already nested under
+ * each variant, for a consistent contract.
+ */
+const extractProductAttributeData = (
+  links: any[] | undefined,
+  variants: any[] | undefined
+): { ProductAttributes: any[]; ProductAttributeValues: any[] } => {
+  const attributesById = new Map<number, any>();
+  const valuesById = new Map<number, any>();
+
+  (links || []).forEach((link) => {
+    const value = link?.ProductAttributeValue;
+    if (!value) return;
+    pushAttribute(attributesById, value.ProductAttribute);
+    pushValue(valuesById, value);
+  });
+
+  (variants || []).forEach((variant) => {
+    pushAttribute(attributesById, variant?.ProductAttribute);
+    pushValue(valuesById, variant?.ProductAttributeValue);
+  });
+
+  return {
+    ProductAttributes: Array.from(attributesById.values()),
+    ProductAttributeValues: Array.from(valuesById.values()),
+  };
+};
+
 const sanitizeProduct = (product: any): any => {
   if (!product) return product;
-  const { ...rest } = product;
+  const { attributeValueLinks, ...rest } = product;
   HIDDEN_RESPONSE_FIELDS.forEach((key) => delete rest[key]);
+
+  if (attributeValueLinks !== undefined) {
+    Object.assign(
+      rest,
+      extractProductAttributeData(attributeValueLinks, rest.variants)
+    );
+  }
+
   return rest;
 };
 
