@@ -259,4 +259,49 @@ public async getAllPermissions(
 
   }
 }
+
+@Get("/permissions/grouped")
+@Middleware([authenticateMiddleware])
+public async getGroupedPermissions(
+  req: any,
+  res: Response
+) {
+
+  try {
+
+    const menus =
+      await dataSource
+        .getRepository(Menu)
+        .find({
+          relations: {
+            permissions: true
+          }
+        });
+
+    return res.json({
+      success: true,
+      data: menus.map(menu => ({
+        id: menu.id,
+        name: menu.name,
+        path: menu.path,
+        icon: menu.icon,
+        permissions:
+          menu.permissions.map(
+            p => ({
+              id: p.id,
+              action: p.action
+            })
+          )
+      }))
+    });
+
+  } catch (error: any) {
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+
+  }
+}
 }

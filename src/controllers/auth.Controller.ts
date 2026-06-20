@@ -31,6 +31,8 @@ import { User, UserRole } from "../entities/user";
 import { RolePermission } from "../entities/role-access";
 import { EmailService, generateTempPassword } from "../utils/sendEmailOtp";
 import { UserType } from "../utils/Role-Access";
+import { Menu, Permission } from "../entities/menu";
+import { Role } from "../entities/roles";
 
 const buildUploadedFileUrl = (
   file?: Express.Multer.File
@@ -183,7 +185,10 @@ public async login(
 
   try {
 
-    const { email, password } = req.body;
+    const {
+      email,
+      password
+    } = req.body;
 
     const userRepo =
       dataSource.getRepository(User);
@@ -194,99 +199,554 @@ public async login(
     const rolePermissionRepo =
       dataSource.getRepository(RolePermission);
 
+    const permissionRepo =
+      dataSource.getRepository(Permission);
+
+    const menuRepo =
+      dataSource.getRepository(Menu);
+
+    const roleRepo =
+      dataSource.getRepository(Role);
+
     const user =
       await userRepo.findOne({
-        where: { email },
-        relations: {
-          userRoles: {
-            role: true,
-            company: true,
-            branch: true
-          }
+
+        where: {
+          email
         }
       });
 
     if (!user) {
+
       return res.status(401).json({
+
         success: false,
-        message: "Invalid email or password"
+        message:
+          "Invalid email or password"
       });
     }
 
-    const passwordMatched =
+    const matched =
       await bcrypt.compare(
         password,
         user.password
       );
 
-    if (!passwordMatched) {
+    if (!matched) {
+
       return res.status(401).json({
-        success: false,
-        message: "Invalid email or password"
-      });
-    }
 
-    if (!user.isActive) {
-      return res.status(403).json({
         success: false,
-        message: "Your account is inactive. Contact administrator."
-      });
-    }
-
-    if (user.mustChangePassword) {
-
-      return res.status(403).json({
-        success: false,
-        forcePasswordChange: true,
-        userId: user.id,
-        email: user.email,
         message:
-          "Password change is required before accessing the application. Please update your password and try again."
+          "Invalid email or password"
       });
     }
 
-    const userRoles =
-      await userRoleRepo.find({
-        where: {
-          user_id: user.id
-        },
-        relations: 
-        {role : true,
-        company : true,
-        branch : true}
-        
-      });
+    let roles: any[] = [];
+    let permissions: any[] = [];
+    let menus: any[] = [];
 
-    const roleIds =
-      userRoles.map(
-        role => role.role_id
-      );
+    // ==================================
+    // SUPER ADMIN
+    // ==================================
 
-    const permissions =
-      await rolePermissionRepo.find({
-        where: roleIds.map(
-          roleId => ({ role_id: roleId })
-        )
-      });
+    if (
+
+      user.userType ===
+      UserType.SUPER_ADMIN ||
+
+      user.isSuperAdmin === true
+
+    ) {
+
+      const superRole =
+        await roleRepo.findOne({
+
+          where: {
+            name:
+              "Super_Admin"
+          }
+        });
+
+      if (superRole) {
+
+        roles = [
+          superRole
+        ];
+      }
+
+      permissions =
+        await permissionRepo.find({
+
+          relations: {
+            menu: true
+          }
+        });
+
+      menus =
+        await menuRepo.find();
+
+    }
+
+    // ==================================
+    // NORMAL USER
+    // ==================================
+
+    else {
+
+      roles =
+        await userRoleRepo.find({
+
+          where: {
+            user_id:
+              user.id
+          },
+
+          relations: {
+
+            role: true,
+
+            company: true,
+
+            branch: true
+          }
+        });
+
+      const roleIds =
+        roles.map(
+          x => x.role_id
+        );
+
+      const rolePermissions =
+        await rolePermissionRepo.find({
+
+          where:
+            roleIds.map(
+              id => ({
+                role_id: id
+              })
+            ),
+
+          relations: {
+
+            permission: {
+              menu: true
+            }
+          }
+        });
+
+      permissions =
+        rolePermissions.map(
+          (x: any) =>
+            x.permission
+        );
+
+      menus =
+        permissions.map(
+          (x: any) =>
+            x.menu
+        );
+
+      menus =
+        menus.filter(
+
+          (
+            menu,
+            index,
+            self
+          ) =>
+
+            index ===
+            self.findIndex(
+              m =>
+              m.id ===
+              menu.id
+            )
+        );
+    }
+
+    // Create token
 
     const token =
-      jwt.sign(
-        {
-          userId: user.id,
-          email: user.email,
-          userType: user.userType,
-          isSuperAdmin:
-            user.isSuperAdmin
-        },
-        process.env.JWT_SECRET!,
-        {
-          expiresIn: "1d"
-        }
+      jwt.sign({
+
+        userId:
+          user.id,
+
+        email:
+          user.email,
+
+        userType:
+          user.userType,
+
+        isSuperAdmin:
+          user.isSuperAdmin,
+
+        permissions,
+
+        menus
+
+      },
+      process.env.JWT_SECRET!,
+      {
+
+        expiresIn:
+          "1d"
+      });
+
+    return res.status(200).json({
+
+      success: true,
+
+      message:
+        "Login successful",
+
+      token,
+
+      user: {
+
+        id:
+          user.id,
+
+        name:
+          user.name,
+
+        email:
+          user.email,
+
+        userType:
+          user.userType,
+
+        isSuperAdmin:
+          user.isSuperAdmin
+      },
+
+      roles,
+
+      permissions,
+
+      menus
+    });
+
+  }
+
+  catch (error: any) {
+
+    return res.status(500).json({
+
+      success: false,
+
+      message:
+        error.message
+    });
+  }
+}
+
+@Post("/create-superadmin")
+@Swagger(
+  "Create SuperAdmin",
+  "Create Super Admin with role assignment"
+)
+public async createSuperAdmin(
+  req: any,
+  res: any
+) {
+
+  try {
+
+    const {
+      name,
+      email,
+      password,
+      mobilenumber
+    } = req.body;
+
+    const userRepo =
+      dataSource.getRepository(User);
+
+    const roleRepo =
+      dataSource.getRepository(Role);
+
+    const userRoleRepo =
+      dataSource.getRepository(UserRole);
+
+    // Check existing user
+
+    const existing =
+      await userRepo.findOne({
+        where: { email }
+      });
+
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Email already exists"
+      });
+    }
+
+    // Hash password
+
+    const hashedPassword =
+      await bcrypt.hash(
+        password,
+        10
       );
+
+    // Create Super Admin user
+
+    const user =
+      userRepo.create({
+
+        name,
+        email,
+        password:
+          hashedPassword,
+
+        mobilenumber,
+
+        isSuperAdmin: true,
+
+        userType:
+          UserType.SUPER_ADMIN,
+
+        mustChangePassword: false,
+
+        isActive: true
+      });
+
+    await userRepo.save(user);
+
+    // Find Super_Admin role
+
+    let superRole =
+      await roleRepo.findOne({
+        where: {
+          name:
+            "Super_Admin"
+        }
+      });
+
+    // Create role if not exists
+
+    if (!superRole) {
+
+      superRole =
+        roleRepo.create({
+
+          name:
+            "Super_Admin",
+
+          isActive:
+            true
+        });
+
+      await roleRepo.save(
+        superRole
+      );
+    }
+
+    // Assign role to user
+
+    const userRole =
+      userRoleRepo.create({
+
+        user_id:
+          user.id,
+
+        role_id:
+          superRole.id
+      });
+
+    await userRoleRepo.save(
+      userRole
+    );
+
+    return res.status(201).json({
+
+      success: true,
+
+      message:
+        "Super Admin created successfully",
+
+      data: {
+
+        id:
+          user.id,
+
+        name:
+          user.name,
+
+        email:
+          user.email,
+
+        userType:
+          user.userType,
+
+        role:
+          superRole.name,
+
+        isSuperAdmin:
+          user.isSuperAdmin
+      }
+    });
+
+  } catch (error: any) {
+
+    return res.status(500).json({
+
+      success: false,
+
+      message:
+        error.message
+    });
+  }
+}
+
+/**
+ * SELECT CONTEXT
+ */
+@Post("/select-context")
+@Middleware([authenticateMiddleware])
+@Swagger(
+  "Select Context",
+  "Company + Branch + Role selection"
+)
+public async selectContext(
+  req: any,
+  res: any
+) {
+
+  const {
+    user_id,
+    company_id,
+    branch_id,
+    role_id
+  } = req.body;
+
+  try {
+
+    const userRepo =
+      dataSource.getRepository(User);
+
+    const permissionRepo =
+      dataSource.getRepository(Permission);
+
+    const rolePermissionRepo =
+      dataSource.getRepository(RolePermission);
+
+    const user =
+      await userRepo.findOne({
+        where: {
+          id: user_id
+        }
+      });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    let permissions: any[] = [];
+    let menus: any[] = [];
+
+    // ===============================
+    // SUPER ADMIN => FULL ACCESS
+    // ===============================
+    if (
+      user.userType === UserType.SUPER_ADMIN ||
+      user.isSuperAdmin === true
+    ) {
+
+      permissions =
+        await permissionRepo.find({
+          relations: {
+            menu: true
+          }
+        });
+
+      menus = permissions.map((p: any) => ({
+        id: p.menu.id,
+        name: p.menu.name,
+        path: p.menu.path,
+        icon: p.menu.icon
+      }));
+
+    }
+
+    // ===============================
+    // NORMAL USER => ROLE ACCESS
+    // ===============================
+    else {
+
+      if (!role_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Role Id required"
+        });
+      }
+
+      const rolePermissions =
+        await rolePermissionRepo.find({
+          where: {
+            role_id
+          },
+          relations: {
+            permission: {
+              menu: true
+            }
+          }
+        });
+
+      permissions = rolePermissions.map(
+        (rp: any) => rp.permission
+      );
+
+      menus = rolePermissions.map(
+        (rp: any) => ({
+          id: rp.permission.menu.id,
+          name: rp.permission.menu.name,
+          path: rp.permission.menu.path,
+          icon: rp.permission.menu.icon
+        })
+      );
+    }
+
+    // Remove duplicate menus
+    menus = menus.filter(
+      (menu, index, self) =>
+        index ===
+        self.findIndex(
+          m => m.id === menu.id
+        )
+    );
+
+    // Create token
+    const token = jwt.sign(
+      {
+        user_id,
+        company_id,
+        branch_id,
+        role_id,
+
+        userType: user.userType,
+        isSuperAdmin: user.isSuperAdmin,
+
+        permissions,
+        menus
+      },
+      process.env.JWT_SECRET!,
+      {
+        expiresIn: "7d"
+      }
+    );
 
     return res.status(200).json({
       success: true,
-      message: "Login successful",
+      message: "Context selected",
+
       token,
 
       user: {
@@ -294,12 +754,10 @@ public async login(
         name: user.name,
         email: user.email,
         userType: user.userType,
-        isSuperAdmin:
-          user.isSuperAdmin
+        isSuperAdmin: user.isSuperAdmin
       },
 
-      roles: userRoles,
-
+      menus,
       permissions
     });
 
@@ -309,107 +767,9 @@ public async login(
       success: false,
       message: error.message
     });
+
   }
 }
-
-  /**
-   * BOOTSTRAP SUPERADMIN
-   */
-@Post("/create-superadmin")
-@Swagger(
-  "Create SuperAdmin",
-  "Create multiple Super Admins"
-)
-public async createSuperAdmin(
-  req: any,
-  res: any
-) {
-
-  const {
-    name,
-    email,
-    password,
-    mobilenumber
-  } = req.body;
-
-  const repo =
-    dataSource.getRepository(User);
-
-  const existing =
-    await repo.findOne({
-      where: { email }
-    });
-
-  if (existing) {
-    return res.status(400).json({
-      success: false,
-      message:
-        "Email already exists"
-    });
-  }
-
-  const hashed =
-    await bcrypt.hash(
-      password,
-      10
-    );
-
-  const user =
-    repo.create({
-      name,
-      email,
-      password: hashed,
-      mobilenumber,
-      isSuperAdmin: true
-    });
-
-  await repo.save(user);
-
-  return res.status(201).json({
-    success: true,
-    message:
-      "Super Admin created successfully",
-    data: {
-      id: user.id,
-      name: user.name,
-      email: user.email
-    }
-  });
-}
-
-  /**
-   * SELECT CONTEXT
-   */
-  @Post("/select-context")
-  @Middleware([authenticateMiddleware])
-  @Swagger("Select Context", "Company + Branch + Role selection")
-  public async selectContext(req: any, res: any) {
-
-    const { user_id, company_id, branch_id, role_id } = req.body;
-
-    const roleRepo = dataSource.getRepository(RolePermission);
-
-    const permissions = await roleRepo.find({
-      where: { role_id }
-    });
-
-    const token = jwt.sign(
-      {
-        user_id,
-        company_id,
-        branch_id,
-        role_id,
-        permissions
-      },
-      process.env.JWT_SECRET!,
-      { expiresIn: "7d" }
-    );
-
-    return res.json({
-      token,
-      message: "Context selected"
-    });
-  }
 
 
 @Post("/create-user")

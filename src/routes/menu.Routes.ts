@@ -116,4 +116,17 @@ router.get(
   menuController.getAllPermissions.bind(menuController)
 );
 
+/**
+ * @swagger
+ * /permissions/grouped:
+ *   get:
+ *     tags:
+ *       - Menus
+ *     summary: Get Group Permissions
+ */
+router.get(
+  "/permissions/grouped",
+  menuController.getGroupedPermissions.bind(menuController)
+);
+
 export default router;
