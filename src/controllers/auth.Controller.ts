@@ -33,6 +33,8 @@ import { EmailService, generateTempPassword } from "../utils/sendEmailOtp";
 import { UserType } from "../utils/Role-Access";
 import { Menu, Permission } from "../entities/menu";
 import { Role } from "../entities/roles";
+import { Company } from "../entities/company";
+import { Branch } from "../entities/branch";
 
 const buildUploadedFileUrl = (
   file?: Express.Multer.File
@@ -109,498 +111,974 @@ export class AuthController {
     // =====================================================
   // REGISTER (PUBLIC - CUSTOMER ONLY)
   // =====================================================
-  @Post("/register")
-  @Middleware([validate(RegisterDto)]) // ❌ NO AUTH MIDDLEWARE
-  @Swagger("Register User", "Customer registration")
-  public async register(req: any, res: any, next: NextFunction) {
 
-    const queryRunner = dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+ @Post("/register")
+@Middleware([validate(RegisterDto)])
+@Swagger(
+"Register User",
+"Customer registration"
+)
+public async register(
+req:any,
+res:any,
+next:NextFunction
+){
 
-    try {
+const queryRunner=
+dataSource.createQueryRunner();
 
-      const { name, email, password, mobilenumber } = req.body;
+await queryRunner.connect();
 
-      const userRepo = queryRunner.manager.getRepository(User);
-      const roleRepo = queryRunner.manager.getRepository(UserRole);
+await queryRunner.startTransaction();
 
-      const exists = await userRepo.findOne({ where: { email } });
+try{
 
-      if (exists) {
-        await queryRunner.rollbackTransaction();
-        return res.status(400).json({
-          success: false,
-          message: "Email already exists"
-        });
-      }
+const{
 
-      const hashed = await bcrypt.hash(password, 10);
+name,
+email,
+password,
+mobilenumber,
+role_id,
+company_id
 
-      const user = userRepo.create({
-        name,
-        email,
-        password: hashed,
-        mobilenumber,
-        userType: UserType.CUSTOMER,
-        isSuperAdmin: false,
-        mustChangePassword: true,
-        isActive: true
-      });
+}=req.body;
 
-      await userRepo.save(user);
 
-      await roleRepo.save({
-        user_id: user.id,
-        role_id: 7,
-        company_id: 1
-      });
+const userRepo=
+queryRunner.manager.getRepository(
+User
+);
 
-      await queryRunner.commitTransaction();
+const roleRepo=
+queryRunner.manager.getRepository(
+UserRole
+);
 
-      return res.json({
-        success: true,
-        message: "User registered successfully",
-        data: user
-      });
+const roleMasterRepo=
+queryRunner.manager.getRepository(
+Role
+);
 
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      next(err);
-    } finally {
-      await queryRunner.release();
-    }
-  }
+
+// Email exists check
+
+const exists=
+await userRepo.findOne({
+
+where:{
+email
+}
+
+});
+
+if(exists){
+
+await queryRunner.rollbackTransaction();
+
+return res.status(400)
+.json({
+
+success:false,
+message:"Email already exists"
+
+});
+
+}
+
+
+// Role validation
+
+const role=
+await roleMasterRepo.findOne({
+
+where:{
+id:role_id
+}
+
+});
+
+if(!role){
+
+await queryRunner.rollbackTransaction();
+
+return res.status(404)
+.json({
+
+success:false,
+message:"Role not found"
+
+});
+
+}
+
+
+// Optional security
+// Prevent Super Admin registration
+
+if(
+role.name==="Super_Admin"
+){
+
+await queryRunner.rollbackTransaction();
+
+return res.status(403)
+.json({
+
+success:false,
+message:
+"Cannot assign Super Admin role"
+
+});
+
+}
+
+
+// Password hash
+
+const hashed=
+await bcrypt.hash(
+password,
+12
+);
+
+
+// Create user
+
+const user=
+userRepo.create({
+
+name,
+email,
+password:hashed,
+mobilenumber,
+
+userType:
+UserType.CUSTOMER,
+
+isSuperAdmin:false,
+
+mustChangePassword:false,
+
+isActive:true
+
+});
+
+
+const savedUser=
+await userRepo.save(
+user
+);
+
+
+// Save role mapping
+
+await roleRepo.save({
+
+user:{
+id:savedUser.id
+},
+
+role:{
+id:role_id
+},
+
+company:
+company_id
+?{
+id:company_id
+}
+:undefined
+
+});
+
+
+await queryRunner
+.commitTransaction();
+
+
+// remove password from response
+
+const{
+password:removed,
+...userResponse
+}=savedUser;
+
+
+return res.status(201)
+.json({
+
+success:true,
+
+message:
+"User registered successfully",
+
+data:
+userResponse
+
+});
+
+}
+catch(error:any){
+
+await queryRunner
+.rollbackTransaction();
+
+return res.status(500)
+.json({
+
+success:false,
+message:error.message
+
+});
+
+}
+finally{
+
+await queryRunner.release();
+
+}
+
+}
 
 
   /**
    * LOGIN USER
    */
 @Post("/login")
-@Middleware([validate(LoginDto)])
+@Middleware([
+validate(LoginDto)
+])
 public async login(
-  req: Request,
-  res: Response
-) {
+req:Request,
+res:Response
+){
 
-  try {
+try{
 
-    const {
-      email,
-      password
-    } = req.body;
+const{
+email,
+password
+}=req.body;
 
-    const userRepo =
-      dataSource.getRepository(User);
+const userRepo=
+dataSource.getRepository(
+User
+);
 
-    const userRoleRepo =
-      dataSource.getRepository(UserRole);
+const userRoleRepo=
+dataSource.getRepository(
+UserRole
+);
 
-    const rolePermissionRepo =
-      dataSource.getRepository(RolePermission);
+const rolePermissionRepo=
+dataSource.getRepository(
+RolePermission
+);
 
-    const permissionRepo =
-      dataSource.getRepository(Permission);
 
-    const menuRepo =
-      dataSource.getRepository(Menu);
+// =====================================
+// FIND USER
+// =====================================
 
-    const roleRepo =
-      dataSource.getRepository(Role);
+const user=
+await userRepo.findOne({
 
-    const user =
-      await userRepo.findOne({
+where:{
+email
+}
 
-        where: {
-          email
-        }
-      });
+});
 
-    if (!user) {
+if(!user){
 
-      return res.status(401).json({
+return res.status(401)
+.json({
 
-        success: false,
-        message:
-          "Invalid email or password"
-      });
-    }
+success:false,
+message:
+"Invalid email or password"
 
-    const matched =
-      await bcrypt.compare(
-        password,
-        user.password
-      );
+});
 
-    if (!matched) {
+}
 
-      return res.status(401).json({
 
-        success: false,
-        message:
-          "Invalid email or password"
-      });
-    }
+// =====================================
+// USER ACTIVE CHECK
+// =====================================
 
-    let roles: any[] = [];
-    let permissions: any[] = [];
-    let menus: any[] = [];
+if(!user.isActive){
 
-    // ==================================
-    // SUPER ADMIN
-    // ==================================
+return res.status(403)
+.json({
 
-    if (
+success:false,
+message:
+"Account disabled"
 
-      user.userType ===
-      UserType.SUPER_ADMIN ||
+});
 
-      user.isSuperAdmin === true
+}
 
-    ) {
 
-      const superRole =
-        await roleRepo.findOne({
+// =====================================
+// PASSWORD CHECK
+// =====================================
 
-          where: {
-            name:
-              "Super_Admin"
-          }
-        });
+const matched=
+await bcrypt.compare(
 
-      if (superRole) {
+password,
+user.password
 
-        roles = [
-          superRole
-        ];
-      }
+);
 
-      permissions =
-        await permissionRepo.find({
+if(!matched){
 
-          relations: {
-            menu: true
-          }
-        });
+return res.status(401)
+.json({
 
-      menus =
-        await menuRepo.find();
+success:false,
+message:
+"Invalid email or password"
 
-    }
+});
 
-    // ==================================
-    // NORMAL USER
-    // ==================================
+}
 
-    else {
 
-      roles =
-        await userRoleRepo.find({
+// =====================================
+// GET USER ROLES
+// =====================================
 
-          where: {
-            user_id:
-              user.id
-          },
+const userRoles=
+await userRoleRepo.find({
 
-          relations: {
+where:{
 
-            role: true,
+user:{
+id:user.id
+}
 
-            company: true,
+},
 
-            branch: true
-          }
-        });
+relations:{
 
-      const roleIds =
-        roles.map(
-          x => x.role_id
-        );
+role:true,
+company:true,
+branch:true
 
-      const rolePermissions =
-        await rolePermissionRepo.find({
+}
 
-          where:
-            roleIds.map(
-              id => ({
-                role_id: id
-              })
-            ),
+});
 
-          relations: {
 
-            permission: {
-              menu: true
-            }
-          }
-        });
+if(
+!userRoles.length &&
+!user.isSuperAdmin
+){
 
-      permissions =
-        rolePermissions.map(
-          (x: any) =>
-            x.permission
-        );
+return res.status(403)
+.json({
 
-      menus =
-        permissions.map(
-          (x: any) =>
-            x.menu
-        );
+success:false,
+message:
+"No role assigned"
 
-      menus =
-        menus.filter(
+});
 
-          (
-            menu,
-            index,
-            self
-          ) =>
+}
 
-            index ===
-            self.findIndex(
-              m =>
-              m.id ===
-              menu.id
-            )
-        );
-    }
 
-    // Create token
+// =====================================
+// SUPER ADMIN
+// =====================================
 
-    const token =
-      jwt.sign({
+let permissions:any[]=[];
+let menus:any[]=[];
 
-        userId:
-          user.id,
+if(user.isSuperAdmin){
 
-        email:
-          user.email,
+permissions=[
+"FULL_ACCESS"
+];
 
-        userType:
-          user.userType,
+menus=[
+"ALL"
+];
 
-        isSuperAdmin:
-          user.isSuperAdmin,
+}
 
-        permissions,
+else{
 
-        menus
+const roleIds=
+userRoles.map(
 
-      },
-      process.env.JWT_SECRET!,
-      {
+x=>x.role.id
 
-        expiresIn:
-          "1d"
-      });
+);
 
-    return res.status(200).json({
 
-      success: true,
+// =====================================
+// LOAD PERMISSIONS
+// =====================================
 
-      message:
-        "Login successful",
+const rolePermissions=
+await rolePermissionRepo.find({
 
-      token,
+where:
 
-      user: {
+roleIds.map(
 
-        id:
-          user.id,
+id=>({
 
-        name:
-          user.name,
+role:{
+id
+}
 
-        email:
-          user.email,
+})
 
-        userType:
-          user.userType,
+),
 
-        isSuperAdmin:
-          user.isSuperAdmin
-      },
+relations:{
 
-      roles,
+permission:{
 
-      permissions,
+menu:true
 
-      menus
-    });
+}
 
-  }
+}
 
-  catch (error: any) {
+});
 
-    return res.status(500).json({
 
-      success: false,
+permissions=
+rolePermissions.map(
 
-      message:
-        error.message
-    });
-  }
+(rp:any)=>({
+id:
+rp.permission.id,
+
+name:
+rp.permission.name
+})
+
+);
+
+
+menus=
+rolePermissions.map(
+
+(rp:any)=>({
+
+id:
+rp.permission.menu.id,
+
+name:
+rp.permission.menu.name,
+
+path:
+rp.permission.menu.path
+
+})
+
+);
+
+
+// remove duplicate menus
+
+menus=
+menus.filter(
+
+(menu,index,self)=>
+
+index===
+
+self.findIndex(
+
+m=>m.id===menu.id
+
+)
+
+);
+
+}
+
+
+// =====================================
+// SMALL TOKEN PAYLOAD
+// =====================================
+
+const token=
+jwt.sign({
+
+userId:
+user.id,
+
+email:
+user.email,
+
+userType:
+user.userType,
+
+isSuperAdmin:
+user.isSuperAdmin,
+
+roleIds:
+userRoles.map(
+x=>x.role.id
+)
+
+},
+
+process.env.JWT_SECRET!,
+
+{
+
+expiresIn:"1d"
+
+}
+
+);
+
+
+// =====================================
+// REMOVE PASSWORD
+// =====================================
+
+const{
+password:userPassword,
+...safeUser
+
+}=user;
+
+
+// =====================================
+// RESPONSE
+// =====================================
+
+return res.status(200)
+.json({
+
+success:true,
+
+message:
+"Login successful",
+
+token,
+
+user:safeUser,
+
+roles:
+userRoles.map(
+
+r=>({
+
+roleId:
+r.role.id,
+
+role:
+r.role.name,
+
+company:
+r.company,
+
+branch:
+r.branch
+
+})
+
+),
+
+permissions,
+
+menus
+
+});
+
+}
+catch(error:any){
+
+return res.status(500)
+.json({
+
+success:false,
+message:
+error.message
+
+});
+
+}
+
 }
 
 @Post("/create-superadmin")
 @Swagger(
-  "Create SuperAdmin",
-  "Create Super Admin with role assignment"
+"Create SuperAdmin",
+"Create first Super Admin or create additional Super Admins"
 )
 public async createSuperAdmin(
-  req: any,
-  res: any
-) {
+req:any,
+res:any
+){
 
-  try {
+const queryRunner=
+dataSource.createQueryRunner();
 
-    const {
-      name,
-      email,
-      password,
-      mobilenumber
-    } = req.body;
+await queryRunner.connect();
 
-    const userRepo =
-      dataSource.getRepository(User);
+await queryRunner.startTransaction();
 
-    const roleRepo =
-      dataSource.getRepository(Role);
+try{
 
-    const userRoleRepo =
-      dataSource.getRepository(UserRole);
+const userRepo=
+queryRunner.manager.getRepository(
+User
+);
 
-    // Check existing user
+const roleRepo=
+queryRunner.manager.getRepository(
+Role
+);
 
-    const existing =
-      await userRepo.findOne({
-        where: { email }
-      });
+const userRoleRepo=
+queryRunner.manager.getRepository(
+UserRole
+);
 
-    if (existing) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Email already exists"
-      });
-    }
 
-    // Hash password
+// =====================================
+// CHECK EXISTING SUPER ADMINS
+// =====================================
 
-    const hashedPassword =
-      await bcrypt.hash(
-        password,
-        10
-      );
+const superAdminCount=
+await userRepo.count({
 
-    // Create Super Admin user
+where:{
+isSuperAdmin:true
+}
 
-    const user =
-      userRepo.create({
+});
 
-        name,
-        email,
-        password:
-          hashedPassword,
 
-        mobilenumber,
+// =====================================
+// IF SUPER ADMIN EXISTS
+// REQUIRE AUTH
+// =====================================
 
-        isSuperAdmin: true,
+if(
 
-        userType:
-          UserType.SUPER_ADMIN,
+superAdminCount>0 &&
 
-        mustChangePassword: false,
+!req.user?.isSuperAdmin
 
-        isActive: true
-      });
+){
 
-    await userRepo.save(user);
+if(
+queryRunner.isTransactionActive
+){
 
-    // Find Super_Admin role
+await queryRunner.rollbackTransaction();
 
-    let superRole =
-      await roleRepo.findOne({
-        where: {
-          name:
-            "Super_Admin"
-        }
-      });
+}
 
-    // Create role if not exists
+return res.status(403)
+.json({
 
-    if (!superRole) {
+success:false,
 
-      superRole =
-        roleRepo.create({
+message:
+"Only Super Admin can create another Super Admin"
 
-          name:
-            "Super_Admin",
+});
 
-          isActive:
-            true
-        });
+}
 
-      await roleRepo.save(
-        superRole
-      );
-    }
 
-    // Assign role to user
+// =====================================
+// REQUEST BODY
+// =====================================
 
-    const userRole =
-      userRoleRepo.create({
+const{
 
-        user_id:
-          user.id,
+name,
+email,
+password,
+mobilenumber
 
-        role_id:
-          superRole.id
-      });
+}=req.body;
 
-    await userRoleRepo.save(
-      userRole
-    );
 
-    return res.status(201).json({
+// =====================================
+// VALIDATION
+// =====================================
 
-      success: true,
+if(
 
-      message:
-        "Super Admin created successfully",
+!name ||
+!email ||
+!password ||
+!mobilenumber
 
-      data: {
+){
 
-        id:
-          user.id,
+if(
+queryRunner.isTransactionActive
+){
 
-        name:
-          user.name,
+await queryRunner.rollbackTransaction();
 
-        email:
-          user.email,
+}
 
-        userType:
-          user.userType,
+return res.status(400)
+.json({
 
-        role:
-          superRole.name,
+success:false,
 
-        isSuperAdmin:
-          user.isSuperAdmin
-      }
-    });
+message:
+"All fields are required"
 
-  } catch (error: any) {
+});
 
-    return res.status(500).json({
+}
 
-      success: false,
 
-      message:
-        error.message
-    });
-  }
+if(
+password.length<8
+){
+
+if(
+queryRunner.isTransactionActive
+){
+
+await queryRunner.rollbackTransaction();
+
+}
+
+return res.status(400)
+.json({
+
+success:false,
+
+message:
+"Password must be at least 8 characters"
+
+});
+
+}
+
+
+// =====================================
+// EMAIL EXISTS
+// =====================================
+
+const existing=
+await userRepo.findOne({
+
+where:{
+email
+}
+
+});
+
+
+if(existing){
+
+if(
+queryRunner.isTransactionActive
+){
+
+await queryRunner.rollbackTransaction();
+
+}
+
+return res.status(400)
+.json({
+
+success:false,
+
+message:
+"Email already exists"
+
+});
+
+}
+
+
+// =====================================
+// HASH PASSWORD
+// =====================================
+
+const hashedPassword=
+await bcrypt.hash(
+password,
+12
+);
+
+
+// =====================================
+// CREATE USER
+// =====================================
+
+const user=
+userRepo.create({
+
+name,
+email,
+
+password:
+hashedPassword,
+
+mobilenumber,
+
+isSuperAdmin:true,
+
+userType:
+UserType.SUPER_ADMIN,
+
+mustChangePassword:false,
+
+isActive:true
+
+});
+
+
+const savedUser=
+await userRepo.save(
+user);
+
+
+// =====================================
+// GET ROLE
+// =====================================
+
+let superRole=
+await roleRepo.findOne({
+
+where:{
+
+name:
+"Super_Admin"
+
+}
+
+});
+
+
+// =====================================
+// CREATE ROLE IF MISSING
+// =====================================
+
+if(!superRole){
+
+superRole=
+roleRepo.create({
+
+name:
+"Super_Admin",
+
+isActive:true
+
+});
+
+superRole=
+await roleRepo.save(
+superRole);
+
+}
+
+
+// =====================================
+// ASSIGN ROLE
+// =====================================
+
+const userRole=
+userRoleRepo.create({
+
+user:{
+id:savedUser.id
+},
+
+role:{
+id:superRole.id
+}
+
+});
+
+await userRoleRepo.save(
+userRole);
+
+
+// =====================================
+// COMMIT
+// =====================================
+
+await queryRunner.commitTransaction();
+
+
+// =====================================
+// REMOVE PASSWORD
+// =====================================
+
+const{
+password:removedPassword,
+...safeUser
+
+}=savedUser;
+
+
+// =====================================
+// RESPONSE
+// =====================================
+
+return res.status(201)
+.json({
+
+success:true,
+
+message:
+"Super Admin created successfully",
+
+data:{
+
+...safeUser,
+
+role:
+superRole.name
+
+}
+
+});
+
+}
+catch(error:any){
+
+if(
+queryRunner.isTransactionActive
+){
+
+await queryRunner.rollbackTransaction();
+
+}
+
+return res.status(500)
+.json({
+
+success:false,
+message:
+error.message
+
+});
+
+}
+finally{
+
+await queryRunner.release();
+
+}
+
 }
 
 /**
@@ -773,333 +1251,374 @@ public async selectContext(
 
 
 @Post("/create-user")
-@Middleware([authenticateMiddleware])
+@Middleware([
+authenticateMiddleware
+])
 public async createUser(
-  req: any,
-  res: any
-) {
+req:any,
+res:any
+){
 
-  try {
+const queryRunner=
+dataSource.createQueryRunner();
 
-    if (!req.user?.isSuperAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "Only Super Admin can create users"
-      });
-    }
+await queryRunner.connect();
+await queryRunner.startTransaction();
 
-    const {
-      name,
-      email,
-      mobilenumber,
-      userType,
-      role_id,
-      company_id,
-      branch_id
-    } = req.body;
+try{
 
-    const userRepo =
-      dataSource.getRepository(User);
 
-    const roleRepo =
-      dataSource.getRepository(UserRole);
+// Only super admin
 
-    const exists =
-      await userRepo.findOne({
-        where: { email }
-      });
+if(
+!req.user?.isSuperAdmin
+){
 
-    if (exists) {
-      return res.status(409).json({
-        success: false,
-        message: "Email already exists"
-      });
-    }
+await queryRunner.rollbackTransaction();
 
-    const tempPassword =
-      generateTempPassword();
+return res.status(403)
+.json({
 
-    const hashedPassword =
-      await bcrypt.hash(
-        tempPassword,
-        12
-      );
+success:false,
+message:
+"Only Super Admin can create users"
 
-    const user =
-      userRepo.create({
-        name,
-        email,
-        mobilenumber,
-        password: hashedPassword,
-        userType,
-        mustChangePassword: true,
-        isActive: true
-      });
+});
 
-    await userRepo.save(user);
+}
 
-    await roleRepo.save({
-      user_id: user.id,
-      role_id,
-      company_id,
-      branch_id
-    });
 
-    await EmailService.sendTemporaryPassword(
-      email,
-      tempPassword,
-      name
-    );
+const{
 
-    return res.status(201).json({
-      success: true,
-      message: `${userType} created successfully`
-    });
+name,
+email,
+mobilenumber,
+userType,
+role_id,
+company_id,
+branch_id
 
-  } catch (error: any) {
+}=req.body;
 
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
+
+const userRepo=
+queryRunner.manager.getRepository(
+User
+);
+
+const roleMapRepo=
+queryRunner.manager.getRepository(
+UserRole
+);
+
+const roleRepo=
+queryRunner.manager.getRepository(
+Role
+);
+
+const companyRepo=
+queryRunner.manager.getRepository(
+Company
+);
+
+const branchRepo=
+queryRunner.manager.getRepository(
+Branch
+);
+
+
+// email exists
+
+const exists=
+await userRepo.findOne({
+
+where:{
+email
+}
+
+});
+
+if(exists){
+
+await queryRunner.rollbackTransaction();
+
+return res.status(409)
+.json({
+
+success:false,
+message:
+"Email already exists"
+
+});
+
+}
+
+
+// validate role
+
+const role=
+await roleRepo.findOne({
+
+where:{
+id:role_id
+}
+
+});
+
+if(!role){
+
+await queryRunner.rollbackTransaction();
+
+return res.status(404)
+.json({
+
+success:false,
+message:
+"Role not found"
+
+});
+
+}
+
+
+// validate company
+
+if(company_id){
+
+const company=
+await companyRepo.findOne({
+
+where:{
+id:company_id
+}
+
+});
+
+if(!company){
+
+await queryRunner.rollbackTransaction();
+
+return res.status(404)
+.json({
+
+success:false,
+message:
+"Company not found"
+
+});
+
+}
+
+}
+
+
+// validate branch
+
+if(branch_id){
+
+const branch=
+await branchRepo.findOne({
+
+where:{
+id:branch_id
+}
+
+});
+
+if(!branch){
+
+await queryRunner.rollbackTransaction();
+
+return res.status(404)
+.json({
+
+success:false,
+message:
+"Branch not found"
+
+});
+
+}
+
+}
+
+
+// generate password
+
+const tempPassword=
+generateTempPassword();
+
+const hashedPassword=
+await bcrypt.hash(
+tempPassword,
+12
+);
+
+
+// create user
+
+const user=
+userRepo.create({
+
+name,
+email,
+mobilenumber,
+
+password:
+hashedPassword,
+
+userType,
+
+mustChangePassword:true,
+
+isActive:true,
+
+isSuperAdmin:false
+
+});
+
+
+const savedUser=
+await userRepo.save(
+user
+);
+
+
+// assign role
+
+await roleMapRepo.save({
+
+user:{
+id:savedUser.id
+},
+
+role:{
+id:role_id
+},
+
+company:
+company_id
+?{
+id:company_id
+}
+:undefined,
+
+branch:
+branch_id
+?{
+id:branch_id
+}
+:undefined
+
+});
+
+
+await queryRunner.commitTransaction();
+
+
+// send mail outside transaction
+
+EmailService
+.sendTemporaryPassword(
+
+email,
+tempPassword,
+name
+
+).catch(console.error);
+
+
+return res.status(201)
+.json({
+
+success:true,
+message:
+`${userType} created successfully`
+
+});
+
+}
+catch(error:any){
+
+await queryRunner.rollbackTransaction();
+
+return res.status(500)
+.json({
+
+success:false,
+message:
+error.message
+
+});
+
+}
+finally{
+
+await queryRunner.release();
+
+}
+
+}
+
+@Get("/") @Middleware([ authenticateMiddleware ]) 
+public async getUsers( req:any, res:any )
+{ 
+  try{ const users= await dataSource .getRepository(User) .find(); 
+    return res.status(200).json({
+       success:true, 
+       count:users.length, 
+       data:users 
+      }); 
+    } catch(error:any){
+       return res.status(500).json({ 
+        success:false, 
+        message:error.message 
+      }); 
+    } 
   }
+
+  @Get("/:id") @Middleware([ authenticateMiddleware ])
+  public async getUserById( req:any, res:any )
+  { try
+    { const user= await dataSource .getRepository(User) .findOne({ where:{ id:Number( req.params.id ) } }); 
+    if(!user){ return res.status(404).json({
+       success:false, 
+       message:"User not found" 
+      }); 
+    } return res.status(200).json({
+       success:true, 
+       data:user }); 
+      } catch(error:any){ 
+        return res.status(500).json({
+           success:false,
+            message:error.message 
+          }); 
+        } 
+      } 
+      
+/* ========================= Delete User ========================= */ 
+@Delete("/:id") @Middleware([ authenticateMiddleware ]) 
+public async deleteUser( req:any, res:any ){ 
+  try{ 
+  const userRepo= dataSource.getRepository( User ); 
+  const user= await userRepo.findOne({ where:{ id:Number( req.params.id )   
+  } 
+}); 
+if(!user){ return res.status(404).json({
+   success:false, 
+   message:"User not found" 
+  }); 
+} await userRepo.delete( req.params.id ); 
+return res.status(200).json({
+   success:true, 
+   message: "User removed successfully" 
+  }); } catch(error:any){ 
+    return res.status(500).json({ 
+      success:false, 
+      message:error.message 
+    }); 
+  } 
 }
 
 // ======================= Profile =======================
-
-
-
- @Post("/")
-  @Middleware([validate(CreateProfileDto)])
-  @Swagger(
-    "Create Profile",
-    "Create User Profile"
-  )
-  public async create(
-    req: Request,
-    res: Response
-  ) {
-
-    const repository =
-      dataSource.getRepository(Register);
-
-    const exist =
-      await repository.findOne({
-        where: {
-          email: req.body.email
-        }
-      });
-
-    if (exist) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Email already exists"
-      });
-    }
-
-    const password =
-      await bcrypt.hash(
-        req.body.password,
-        10
-      );
-
-    const image = buildUploadedFileUrl(req.file);
-
-    const user =
-      repository.create({
-        name: req.body.name,
-        email: req.body.email,
-        password,
-        mobilenumber:
-          req.body.mobilenumber,
-        address:
-          req.body.address,
-        status:
-          req.body.status
-      });
-
-    await repository.save(user);
-
-    return res.status(201).json({
-      success: true,
-      message:
-        "Profile created successfully",
-      data: user
-    });
-  }
-
-  // GET PROFILE BY ID
-
-  @Get("/:id")
-  @Swagger(
-    "Get Profile",
-    "Get Profile By Id"
-  )
-  public async getById(
-    req: Request,
-    res: Response
-  ) {
-
-    const repository =
-      dataSource.getRepository(Register);
-
-    const user =
-      await repository.findOne({
-        where: {
-          id: Number(req.params.id)
-        }
-      });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "User not found"
-      });
-    }
-
-    return res.json({
-      success: true,
-      data: user
-    });
-  }
-
-  // GET ALL
-
-  @Get("/")
-  @Swagger(
-    "Get All Profiles",
-    "Get All Profiles"
-  )
-  public async getAll(
-    req: Request,
-    res: Response
-  ) {
-
-    const repository =
-      dataSource.getRepository(Register);
-
-    const page =
-      Number(req.query.page) || 1;
-
-    const limit =
-      Number(req.query.limit) || 10;
-
-    const [users, total] =
-      await repository.findAndCount({
-        skip: (page - 1) * limit,
-        take: limit,
-        order: {
-          id: "DESC"
-        }
-      });
-
-    return res.json({
-      success: true,
-      page,
-      limit,
-      total,
-      data: users
-    });
-  }
-
-  // UPDATE
-
-  @Put("/:id")
-  @Middleware([
-    validate(UpdateProfileDto)
-  ])
-  @Swagger(
-    "Update Profile",
-    "Update User Profile"
-  )
-  public async update(
-    req: Request,
-    res: Response
-  ) {
-
-    const repository =
-      dataSource.getRepository(Register);
-
-    const user =
-      await repository.findOne({
-        where: {
-          id: Number(req.params.id)
-        }
-      });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "User not found"
-      });
-    }
-
-    // let image = user.image;
-
-    // if (req.file) {
-    //   image =
-    //     `/uploads/${req.file.filename}`;
-    // }
-
-    await repository.update(
-      Number(req.params.id),
-      {
-        name: req.body.name,
-        email: req.body.email,
-        mobilenumber:
-          req.body.mobilenumber,
-        address:
-          req.body.address,
-        // usertype:
-        //   req.body.usertype,
-        status:
-          req.body.status,
-        // image
-      }
-    );
-
-    return res.json({
-      success: true,
-      message:
-        "Profile updated successfully"
-    });
-  }
-
-  // DELETE
-
-  @Delete("/:id")
-  @Swagger(
-    "Delete Profile",
-    "Delete User Profile"
-  )
-  public async delete(
-    req: Request,
-    res: Response
-  ) {
-
-    const repository =
-      dataSource.getRepository(Register);
-
-    const result =
-      await repository.delete(
-        Number(req.params.id)
-      );
-
-    if (!result.affected) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "User not found"
-      });
-    }
-
-    return res.json({
-      success: true,
-      message:
-        "User deleted successfully"
-    });
-  }
 }

@@ -113,7 +113,7 @@ router.post(
  *         description: Already exists
  */
 router.post(
-  "/auth/create-superadmin",authenticateMiddleware,
+  "/auth/create-superadmin",
   authController.createSuperAdmin.bind(authController)
 );
 
@@ -149,10 +149,9 @@ router.post(
  *         description: Context selected successfully
  */
 router.post(
-  "/auth/select-context",
+  "/auth/select-context",authenticateMiddleware,
   authController.selectContext.bind(authController)
 );
-
 
 /**
  * @swagger
@@ -160,7 +159,45 @@ router.post(
  *   post:
  *     tags:
  *       - Auth
- *     summary: Create User
+ *     summary: Select Company Context
+ *     description: Select company, branch and role after login
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *            schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               mobilenumber:
+ *                 type: string
+ *               userType : 
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Context selected successfully
+ */
+router.post(
+  "/auth/create-user",authenticateMiddleware,
+  authController.createUser.bind(authController)
+);
+
+/**
+ * @swagger
+ * /auth/user/{:id}:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: get Id Based On User
  *     description: Super Admin can create Admin, Branch Manager, Employee and Customer users
  *     security:
  *       - bearerAuth: []
@@ -175,19 +212,41 @@ router.post(
  *               - email
  *               - userType
  *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               mobilenumber:
- *                 type: string
- *               userType:
- *                 type: string
- *                 enum:
- *                   - Admin
- *                   - Branches
- *                   - Employees
- *                   - Customer
+ *               
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ *       403:
+ *         description: Access denied
+ */
+router.get(
+  "/auth/user/:id",authenticateMiddleware,
+  authController.getUserById.bind(
+    authController
+  )
+);
+
+/**
+ * @swagger
+ * /auth/get-users:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: All Users 
+ *     description: Select company, branch and role after login
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - user_id
+ *               - company_id
+ *               - role_id
+ *             properties:
+ *               user_id:
+ *                 type: number
  *               company_id:
  *                 type: number
  *               branch_id:
@@ -195,15 +254,49 @@ router.post(
  *               role_id:
  *                 type: number
  *     responses:
- *       201:
- *         description: User created successfully
- *       403:
- *         description: Access denied
+ *       200:
+ *         description: Context selected successfully
  */
-router.post(
-  "/auth/create-user",
-  authController.createUser.bind(
-    authController
-  )
+router.get(
+  "/auth/get-users",authenticateMiddleware,
+  authController.getUsers.bind(authController)
 );
+
+/**
+ * @swagger
+ * /auth/delete/{:id}:
+ *   delete:
+ *     tags:
+ *       - Auth
+ *     summary: Delete Users
+ *     description: Select company, branch 
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - user_id
+ *               - company_id
+ *               - role_id
+ *             properties:
+ *               user_id:
+ *                 type: number
+ *               company_id:
+ *                 type: number
+ *               branch_id:
+ *                 type: number
+ *               role_id:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Context selected successfully
+ */
+router.delete(
+  "/auth/delete/:id",authenticateMiddleware,
+  authController.deleteUser.bind(authController)
+);
+
+
 export default router;

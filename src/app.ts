@@ -20,15 +20,15 @@ import { responseFormatter } from "./middleware/responseFormatter";
 import { autoPagination } from "./middleware/autoPagination";
 
 // Routes that must remain reachable without a bearer token
-const PUBLIC_API_ROUTES = [
-  "/auth/register",
-  "/auth/login",
-  "/auth/send-otp",
-  "/auth/verify-otp",
-  "/password/send-otp",
-  "/password/verify-otp",
-  "/password/reset",
-];
+// const PUBLIC_API_ROUTES = [
+//   "/auth/register",
+//   "/auth/login",
+//   "/auth/send-otp",
+//   "/auth/verify-otp",
+//   "/password/send-otp",
+//   "/password/verify-otp",
+//   "/password/reset",
+// ];
 
 const app = express();
 
@@ -149,13 +149,13 @@ app.use(
    bearer token except the public auth routes above.
 ========================================== */
 
-app.use("/api", (req, res, next) => {
-  if (PUBLIC_API_ROUTES.includes(req.path)) {
-    return next();
-  }
+// app.use("/api", (req, res, next) => {
+//   // if (PUBLIC_API_ROUTES.includes(req.path)) {
+//   //   return next();
+//   // }
 
-  return authenticateMiddleware(req, res, next);
-});
+//   return authenticateMiddleware(req, res, next);
+// });
 
 /* ==========================================
    DYNAMIC ROUTE LOADER

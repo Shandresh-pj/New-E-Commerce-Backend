@@ -84,7 +84,7 @@ router.post(
  * /auth/select-context:
  *   post:
  *     tags:
- *       - Auth
+ *       - Super Admin
  *     summary: Select Company and Branch Context
  *     description: After login user selects company + branch + role to generate JWT
  *     requestBody:
@@ -122,7 +122,7 @@ router.post(
  * /auth/removeUserAccess:
  *   delete:
  *     tags:
- *       - Auth
+ *       - Super Admin
  *     summary: Select Company and Branch Context
  *     description: After login user selects company + branch + role to generate JWT
  *     requestBody:

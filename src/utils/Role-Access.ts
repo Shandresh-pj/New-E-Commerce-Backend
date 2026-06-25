@@ -2,6 +2,7 @@ export enum UserType {
   SUPER_ADMIN = "Super_Admin",
   ADMIN = "Admin",
   BRANCH_MANAGER = "Branch_Manager",
+  BRANCH = "Branch",
   EMPLOYEE = "Employee",
   CUSTOMER = "Customer"
 }

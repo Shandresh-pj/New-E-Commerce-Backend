@@ -4,7 +4,11 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from "typeorm";
+import { Company } from "./company";
+import { Branch } from "./branch";
 
 @Entity("employees")
 export class Employee {
@@ -15,8 +19,18 @@ export class Employee {
   @Column()
   company_id!: number;
 
+ @JoinColumn({
+   name:"company_id"
+ })
+ company:Company;
+
   @Column()
-  branch_id!: number;
+ branch_id:number;
+
+ @JoinColumn({
+   name:"branch_id"
+ })
+ branch:Branch;
 
   @Column({
     unique: true,
@@ -48,12 +62,8 @@ export class Employee {
  @Column({
   type: "enum",
   enum: [
-    "SUPER_ADMIN",
-    "ADMIN",
-    "BRANCH_MANAGER",
     "SHOP_KEEPER",
-    "DELIVERY_BOY",
-    "CUSTOMER",
+    "DELIVERY_BOY"
   ],
 })
 role!: string;

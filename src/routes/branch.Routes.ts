@@ -4,17 +4,20 @@ import authenticateMiddleware from "../middleware/authenticate";
 
 const router = Router();
 
-/* =========================================================
+/* =====================================================
    CREATE BRANCH
-========================================================= */
+===================================================== */
+
 /**
  * @swagger
- * /branch/create:
+ * /branches:
  *   post:
  *     tags:
  *       - Branch
  *     summary: Create Branch
  *     description: Create a new branch under a company
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -25,117 +28,208 @@ const router = Router();
  *               - company_id
  *               - name
  *               - location
+ *               - email
+ *               - phone
  *             properties:
  *               company_id:
- *                 type: number
+ *                 type: integer
  *                 example: 1
+ *
  *               name:
  *                 type: string
- *                 example: Main Branch
+ *                 example: Chennai Branch
+ *
  *               location:
  *                 type: string
- *                 example: Madurai
+ *                 example: Chennai
+ *
+ *               email:
+ *                 type: string
+ *                 example: chennai@gmail.com
+ *
+ *               phone:
+ *                 type: string
+ *                 example: "9876543210"
+ *
+ *     responses:
+ *       201:
+ *         description: Branch created successfully
+ *
+ *       400:
+ *         description: Invalid request
+ *
+ *       401:
+ *         description: Unauthorized
  */
-router.post("/branch/create", authenticateMiddleware, branchController.create.bind(branchController));
+router.post(
+  "/branches",authenticateMiddleware,
+  branchController.create.bind(
+    branchController
+  )
+);
 
-/* =========================================================
+
+/* =====================================================
    GET ALL BRANCHES
-========================================================= */
+===================================================== */
+
 /**
  * @swagger
- * /branch/all:
+ * /branches:
  *   get:
  *     tags:
  *       - Branch
  *     summary: Get all branches
- *     description: Get all branches by company_id
+ *     description: Returns all branches
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Branch list fetched successfully
+ */
+router.get(
+  "/branches",authenticateMiddleware,
+  branchController.getAll.bind(
+    branchController
+  )
+);
+
+
+/* =====================================================
+   GET BRANCH BY ID
+===================================================== */
+
+/**
+ * @swagger
+ * /branches/{id}:
+ *   get:
+ *     tags:
+ *       - Branch
+ *     summary: Get Branch by ID
+ *     description: Returns single branch details
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
- *       - in: query
- *         name: company_id
+ *       - in: path
+ *         name: id
  *         required: true
  *         schema:
- *           type: number
- *           example: 1
+ *           type: integer
+ *         example: 1
+ *
+ *     responses:
+ *       200:
+ *         description: Branch found
+ *
+ *       404:
+ *         description: Branch not found
  */
-router.get("/branch/all", branchController.getAll.bind(branchController));
+router.get(
+  "/branches/:id",authenticateMiddleware,
+  branchController.getById.bind(
+    branchController
+  )
+);
 
-// /* =========================================================
-//    GET BRANCH BY ID
-// ========================================================= */
-// /**
-//  * @swagger
-//  * /branch/{id}:
-//  *   get:
-//  *     tags:
-//  *       - Branch
-//  *     summary: Get branch by ID
-//  *     description: Get single branch details
-//  *     parameters:
-//  *       - in: path
-//  *         name: id
-//  *         required: true
-//  *         schema:
-//  *           type: number
-//  *           example: 1
-//  */
-// router.get("/branch/:id", branchController.getById.bind(branchController));
 
-// /* =========================================================
-//    UPDATE BRANCH
-// ========================================================= */
-// /**
-//  * @swagger
-//  * /branch/update:
-//  *   put:
-//  *     tags:
-//  *       - Branch
-//  *     summary: Update branch
-//  *     description: Update branch details
-//  *     requestBody:
-//  *       required: true
-//  *       content:
-//  *         application/json:
-//  *           schema:
-//  *             type: object
-//  *             required:
-//  *               - id
-//  *             properties:
-//  *               id:
-//  *                 type: number
-//  *                 example: 1
-//  *               name:
-//  *                 type: string
-//  *                 example: Updated Branch Name
-//  *               location:
-//  *                 type: string
-//  *                 example: Chennai
-//  */
-// router.put("/branch/update", branchController.update.bind(branchController));
+/* =====================================================
+   UPDATE BRANCH
+===================================================== */
 
-// /* =========================================================
-//    DELETE BRANCH
-// ========================================================= */
-// /**
-//  * @swagger
-//  * /branch/delete:
-//  *   delete:
-//  *     tags:
-//  *       - Branch
-//  *     summary: Delete branch
-//  *     description: Delete branch by ID
-//  *     requestBody:
-//  *       required: true
-//  *       content:
-//  *         application/json:
-//  *           schema:
-//  *             type: object
-//  *             required:
-//  *               - id
-//  *             properties:
-//  *               id:
-//  *                 type: number
-//  *                 example: 1
-//  */
-// router.delete("/branch/delete", branchController.delete.bind(branchController));
+/**
+ * @swagger
+ * /branches/{id}:
+ *   put:
+ *     tags:
+ *       - Branch
+ *     summary: Update Branch
+ *     description: Update branch details
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Updated Branch
+ *
+ *               location:
+ *                 type: string
+ *                 example: Madurai
+ *
+ *               email:
+ *                 type: string
+ *                 example: updated@gmail.com
+ *
+ *               phone:
+ *                 type: string
+ *                 example: "9999999999"
+ *
+ *               isActive:
+ *                 type: boolean
+ *                 example: true
+ *
+ *     responses:
+ *       200:
+ *         description: Branch updated successfully
+ *
+ *       404:
+ *         description: Branch not found
+ */
+router.put(
+  "/branches/:id",authenticateMiddleware,
+  branchController.update.bind(
+    branchController
+  )
+);
+
+
+/* =====================================================
+   DELETE BRANCH
+===================================================== */
+
+/**
+ * @swagger
+ * /branches/{id}:
+ *   delete:
+ *     tags:
+ *       - Branch
+ *     summary: Delete Branch
+ *     description: Delete branch by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *
+ *     responses:
+ *       200:
+ *         description: Branch deleted successfully
+ *
+ *       404:
+ *         description: Branch not found
+ */
+router.delete(
+  "/branches/:id",authenticateMiddleware,
+  branchController.delete.bind(
+    branchController
+  )
+);
 
 export default router;

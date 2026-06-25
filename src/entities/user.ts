@@ -2,7 +2,7 @@ import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, Pri
 import { Branch } from "./branch";
 import { Company } from "./company";
 import { Role } from "./roles";
-import { UserType } from "../utils/Role-Access";
+import { StatusType, UserType } from "../utils/Role-Access";
 
 @Entity("users")
 export class User {
@@ -69,6 +69,15 @@ export class User {
 })
 verificationToken: string;
 
+@Column({ nullable: true })
+  image!: string;
+
+  @Column({ nullable: true })
+  address!: string;
+
+  @Column({ default: "ACTIVE" })
+  status!: StatusType;
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -83,41 +92,28 @@ export class UserRole {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  user_id: number;
+//   @Column()
+//  user_id:number;
 
-  @Column()
-  role_id: number;
+//  @Column()
+//  role_id:number;
 
-  @Column()
-  company_id: number;
+//  @Column()
+//  company_id:number;
 
-  @Column({
-    nullable: true
-  })
-  branch_id: number;
+//  @Column()
+//  branch_id:number;
 
-  @ManyToOne(() => User)
-  @JoinColumn({
-    name: "user_id"
-  })
-  user: User;
+ @ManyToOne(()=>User,user=>user.userRoles)
+ @JoinColumn({name:"user_id" })user:User;
 
-  @ManyToOne(() => Role)
-  @JoinColumn({
-    name: "role_id"
-  })
-  role: Role;
+ @ManyToOne(()=>Role) @JoinColumn({name:"role_id"})role:Role;
 
-  @ManyToOne(() => Company)
-  @JoinColumn({
-    name: "company_id"
-  })
-  company: Company;
 
-  @ManyToOne(() => Branch)
-  @JoinColumn({
-    name: "branch_id"
-  })
-  branch: Branch;
+ @ManyToOne(()=>Company,company=>company.userRoles)
+ @JoinColumn({name:"company_id"})company:Company;
+
+
+ @ManyToOne(()=>Branch, branch=>branch.userRoles )
+ @JoinColumn({ name:"branch_id"})branch:Branch;
 }

@@ -1,4 +1,4 @@
-import { authController } from "../controllers";
+import { authController, profileController } from "../controllers";
 import { uploadImage } from "../utils/upload";
 
 import { Router } from "express";
@@ -47,7 +47,7 @@ const router = Router();
  */
 router.get(
   "/profile/all",
-  authController.getAll.bind(authController)
+  profileController.getAll.bind(profileController)
 );
 
 
@@ -68,7 +68,7 @@ router.get(
  */
 router.get(
   "/profile/:id",
-  authController.getById.bind(authController)
+  profileController.getById.bind(profileController)
 );
 
 
@@ -115,7 +115,7 @@ router.get(
 router.post(
   "/profile/add",
   uploadImage.upload.single("image"),uploadImage.compressor,
-  authController.create.bind(authController)
+  profileController.create.bind(profileController)
 );
 
 /**
@@ -154,7 +154,7 @@ router.post(
 router.put(
   "/profile/:id",
   uploadImage.upload.single("image"),uploadImage.compressor,
-  authController.update.bind(authController)
+  profileController.update.bind(profileController)
 );
 
 /**
@@ -173,7 +173,7 @@ router.put(
  */
 router.delete(
   "/profile/:id",
-  authController.delete.bind(authController)
+  profileController.delete.bind(profileController)
 );
 
 export default router;

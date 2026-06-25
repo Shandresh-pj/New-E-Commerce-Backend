@@ -11,6 +11,7 @@ import { Global } from "../global";
 import { initializeSocket } from "./socket/socket";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
+import { seedRoles } from "./utils/seeds/role.seed";
 
 /* ================= DB ================= */
 export const dataSource = new DataSource(Global.dbConfig);
@@ -20,6 +21,7 @@ async function initDatabase(retries = 3) {
   while (retries > 0) {
     try {
       await dataSource.initialize();
+      await seedRoles();
 
       console.log("================================");
       console.log("✅ Database Connected");
@@ -37,6 +39,9 @@ async function initDatabase(retries = 3) {
     }
   }
 }
+// dataSource.initialize().then(async()=>{console.log("Database connected");
+// await seedRoles();})
+// .catch(error=>{console.log(error);});
 
 /* ================= START SERVER ================= */
 async function startServer() {
@@ -66,6 +71,8 @@ async function startServer() {
       console.log(`📍 URL      : ${appUrl}`);
       console.log(`📘 Swagger  : ${appUrl}/pjsv`);
       console.log(`⚙️ Mode     : ${process.env.NODE_ENV || "development"}`);
+      console.log("Aaaaaaaa-0",process.env.EMAIL_USER);
+      console.log("Aaaaaaaa-1",process.env.EMAIL_PASS);
       console.log("================================");
     });
 

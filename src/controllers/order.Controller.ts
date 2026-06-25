@@ -37,7 +37,8 @@ import { Register } from "../entities/register";
 import { generateInvoiceNumber } from "../utils/invoiceNumber";
 import { generateInvoicePDF } from "../utils/invoice";
 import { generateQR } from "../utils/qr";
-import { sendInvoiceEmail } from "../services/email.Service";
+import { sendInvoiceEmail } from "../utils/email-invoice";
+// import { sendInvoiceEmail } from "../services/email.Service";
 
 @Controller("/orders")
 export class OrderController {

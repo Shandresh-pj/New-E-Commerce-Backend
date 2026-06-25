@@ -1,151 +1,737 @@
-import { Request, Response } from "express";
+import bcrypt from "bcrypt";
+import crypto from "crypto";
+
+import { Response } from "express";
 import { dataSource } from "../server";
-import { Register } from "../entities/register";
+
+import { User, UserRole } from "../entities/user";
+
+import { EmailService } from "../utils/sendEmailOtp";
+import { UserType } from "../utils/Role-Access";
+
+import {
+  Delete,
+  Get,
+  Middleware,
+  Post,
+  Put,
+  Swagger
+} from "../decorators";
+
+import authenticateMiddleware from "../middleware/authenticate";
+import { Employee } from "../entities/employee.entity";
+import { Company } from "../entities/company";
+import { Branch } from "../entities/branch";
+import { Role } from "../entities/roles";
 
 export class EmployeeController {
 
-  // ======================================
+  // =====================================
   // CREATE EMPLOYEE
-  // ======================================
-  async create(req: any, res: Response) {
+  // =====================================
 
-    const repo = dataSource.getRepository(Register);
+@Post("/")
+@Middleware([authenticateMiddleware])
+@Swagger(
+ "Create Employee",
+ "Create employee with company, branch and role assignment"
+)
+async create(
+ req:any,
+ res:Response
+){
 
-    const employee = repo.create({
-      name: req.body.name,
-      email: req.body.email,
-      mobilenumber: req.body.mobilenumber,
-      password: req.body.password,
-      // usertype: req.body.usertype || "Customer",
-      // company_id: req.body.company_id
-    });
+const queryRunner=
+dataSource.createQueryRunner();
 
-    await repo.save(employee);
+await queryRunner.connect();
 
-    return res.json({
-      success: true,
-      message: "Employee created",
-      data: employee
-    });
-  }
+await queryRunner.startTransaction();
 
-  // ======================================
-  // GET ALL EMPLOYEES (COMPANY WISE)
-  // ======================================
-  async getAll(req: any, res: Response) {
+try{
 
-    const company_id = Number(req.query.company_id);
+const userRepo=
+queryRunner.manager.getRepository(
+User
+);
 
-    const repo = dataSource.getRepository(Register);
+const roleRepo=
+queryRunner.manager.getRepository(
+UserRole
+);
 
-    const data = await repo.find({
-      // where: { company_id },
-      order: { id: "DESC" }
-    });
+const companyRepo=
+queryRunner.manager.getRepository(
+Company
+);
 
-    return res.json({
-      success: true,
-      data
-    });
-  }
+const branchRepo=
+queryRunner.manager.getRepository(
+Branch
+);
 
-  // ======================================
+const roleMasterRepo=
+queryRunner.manager.getRepository(
+Role
+);
+
+
+const{
+
+name,
+email,
+mobilenumber,
+company_id,
+branch_id,
+role_id,
+userType
+
+}=req.body;
+
+
+// ====================
+// Existing email check
+// ====================
+
+const exists=
+await userRepo.findOne({
+
+where:{
+email
+}
+
+});
+
+if(exists){
+
+return res.status(409)
+.json({
+
+success:false,
+message:"Email already exists"
+
+});
+
+}
+
+
+// ====================
+// Validate relations
+// ====================
+
+const company=
+await companyRepo.findOne({
+
+where:{
+id:company_id
+}
+
+});
+
+if(!company){
+
+return res.status(404)
+.json({
+
+success:false,
+message:"Company not found"
+
+});
+
+}
+
+
+const branch=
+await branchRepo.findOne({
+
+where:{
+id:branch_id
+}
+
+});
+
+if(!branch){
+
+return res.status(404)
+.json({
+
+success:false,
+message:"Branch not found"
+
+});
+
+}
+
+
+const role=
+await roleMasterRepo.findOne({
+
+where:{
+id:role_id
+}
+
+});
+
+if(!role){
+
+return res.status(404)
+.json({
+
+success:false,
+message:"Role not found"
+
+});
+
+}
+
+
+
+// ====================
+// Generate password
+// ====================
+
+const tempPassword=
+crypto
+.randomBytes(4)
+.toString("hex");
+
+const hashedPassword=
+await bcrypt.hash(
+tempPassword,
+12
+);
+
+
+// ====================
+// Create employee
+// ====================
+
+const employee=
+userRepo.create({
+
+name,
+email,
+mobilenumber,
+
+password:
+hashedPassword,
+
+userType:
+userType ||
+UserType.EMPLOYEE,
+
+mustChangePassword:true,
+
+isActive:true,
+
+isSuperAdmin:false
+
+});
+
+await userRepo.save(
+employee
+);
+
+
+// ====================
+// Create assignment
+// ====================
+
+const userRole=
+roleRepo.create({
+
+user:{
+id:employee.id
+},
+
+company:{
+id:company_id
+},
+
+branch:{
+id:branch_id
+},
+
+role:{
+id:role_id
+}
+
+});
+
+await roleRepo.save(
+userRole);
+
+
+// ====================
+// Send mail
+// ====================
+
+await EmailService
+.sendTemporaryPassword(
+
+email,
+tempPassword,
+name
+
+);
+
+
+await queryRunner
+.commitTransaction();
+
+
+return res.status(201)
+.json({
+
+success:true,
+
+message:
+"Employee created successfully",
+
+data:{
+
+id:
+employee.id,
+
+name:
+employee.name,
+
+email:
+employee.email,
+
+mobilenumber:
+employee.mobilenumber,
+
+userRole:{
+
+company_id,
+branch_id,
+role_id
+
+}
+
+}
+
+});
+
+}
+catch(error:any){
+
+await queryRunner
+.rollbackTransaction();
+
+return res.status(500)
+.json({
+
+success:false,
+message:error.message
+
+});
+
+}
+finally{
+
+await queryRunner.release();
+
+}
+
+}
+  // =====================================
+  // GET ALL EMPLOYEES
+  // =====================================
+
+@Get("/")
+@Middleware([authenticateMiddleware])
+async getAll(
+ req:any,
+ res:Response
+){try{
+
+const page=Number(req.query.page)||1;
+
+const limit=Number(req.query.limit)||10;
+
+const skip=(page-1)*limit;
+
+const repo=dataSource.getRepository(User);
+
+const [users,total]=
+await repo.findAndCount({
+
+where:{
+ userType:UserType.EMPLOYEE
+},
+
+relations:{
+ userRoles:{
+   company:true,
+   branch:true,
+   role:true
+ }
+},
+
+select:{
+
+id:true,
+name:true,
+email:true,
+mobilenumber:true,
+userType:true,
+
+userRoles:{
+
+id:true,
+
+company:{
+id:true,
+name:true
+},
+
+branch:{
+id:true,
+name:true,
+location:true
+},
+
+role:{
+id:true,
+name:true
+}
+
+}
+
+}
+
+});
+
+return res.json({
+
+success:true,
+data:users,
+
+pagination:{
+
+total,
+page,
+limit,
+
+totalPages:
+Math.ceil(
+total/limit
+)
+
+}
+
+});
+
+}
+catch(error:any){
+
+return res.status(500)
+.json({
+
+success:false,
+message:error.message
+
+});
+
+}
+
+}
+
+  // =====================================
   // GET SINGLE EMPLOYEE
-  // ======================================
-  async getOne(req: any, res: Response) {
+  // =====================================
 
-    const repo = dataSource.getRepository(Register);
+  @Get("/:id")
+  @Middleware([authenticateMiddleware])
+  @Swagger(
+    "Get Employee",
+    "Get employee by id"
+  )
+  async getOne(
+    req:any,
+    res:Response
+  ){
 
-    const data = await repo.findOne({
-      where: { id: Number(req.params.id) }
-    });
+    try{
 
-    if (!data) {
-      return res.status(404).json({
-        success: false,
-        message: "Employee not found"
+      const repo =
+      dataSource.getRepository(User);
+
+      const employee =
+      await repo.findOne({
+
+        where:{
+
+          id:Number(
+            req.params.id
+          ),
+
+          userType:
+          UserType.EMPLOYEE
+        },
+
+        select:{
+          id:true,
+          name:true,
+          email:true,
+          mobilenumber:true,
+          userType:true
+        }
+
       });
+
+      if(!employee){
+
+        return res.status(404)
+        .json({
+
+          success:false,
+          message:
+          "Employee not found"
+
+        });
+
+      }
+
+      return res.json({
+
+        success:true,
+        data:employee
+
+      });
+
+    }
+    catch(error:any){
+
+      return res.status(500)
+      .json({
+
+        success:false,
+        message:error.message
+
+      });
+
     }
 
-    return res.json({
-      success: true,
-      data
-    });
   }
 
-  // ======================================
+  // =====================================
   // UPDATE EMPLOYEE
-  // ======================================
-  async update(req: any, res: Response) {
+  // =====================================
 
-    const repo = dataSource.getRepository(Register);
+  @Put("/:id")
+  @Middleware([authenticateMiddleware])
+  @Swagger(
+    "Update Employee",
+    "Update employee"
+  )
+  async update(
+    req:any,
+    res:Response
+  ){
 
-    const employee = await repo.findOne({
-      where: { id: Number(req.params.id) }
-    });
+    try{
 
-    if (!employee) {
-      return res.status(404).json({
-        success: false,
-        message: "Employee not found"
+      const repo =
+      dataSource.getRepository(User);
+
+      const employee =
+      await repo.findOne({
+
+        where:{
+          id:Number(
+            req.params.id
+          )
+        }
+
       });
+
+      if(!employee){
+
+        return res.status(404)
+        .json({
+
+          success:false,
+          message:
+          "Employee not found"
+
+        });
+
+      }
+
+      delete req.body.password;
+
+      repo.merge(
+        employee,
+        req.body
+      );
+
+      await repo.save(
+        employee
+      );
+
+      return res.json({
+
+        success:true,
+
+        message:
+        "Employee updated",
+
+        data:employee
+
+      });
+
+    }
+    catch(error:any){
+
+      return res.status(500)
+      .json({
+
+        success:false,
+        message:error.message
+
+      });
+
     }
 
-    repo.merge(employee, req.body);
-
-    await repo.save(employee);
-
-    return res.json({
-      success: true,
-      message: "Employee updated",
-      data: employee
-    });
   }
 
-  // ======================================
+  // =====================================
   // DELETE EMPLOYEE
-  // ======================================
-  async delete(req: any, res: Response) {
+  // =====================================
 
-    const repo = dataSource.getRepository(Register);
+  @Delete("/:id")
+  @Middleware([authenticateMiddleware])
+  @Swagger(
+    "Delete Employee",
+    "Delete employee"
+  )
+  async delete(
+    req:any,
+    res:Response
+  ){
 
-    await repo.delete(req.params.id);
+    try{
 
-    return res.json({
-      success: true,
-      message: "Employee deleted"
-    });
-  }
+      const repo =
+      dataSource.getRepository(User);
 
-  // ======================================
-  // ASSIGN BRANCH + ROLE
-  // ======================================
-  async assign(req: any, res: Response) {
+      const employee =
+      await repo.findOne({
 
-    const { user_id, branch_id, role } = req.body;
+        where:{
+          id:Number(
+            req.params.id
+          )
+        }
 
-    const repo = dataSource.getRepository(Register);
-
-    const user = await repo.findOne({
-      where: { id: user_id }
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
       });
+
+      if(!employee){
+
+        return res.status(404)
+        .json({
+
+          success:false,
+          message:
+          "Employee not found"
+
+        });
+
+      }
+
+      await repo.delete(
+        employee.id
+      );
+
+      return res.json({
+
+        success:true,
+
+        message:
+        "Employee deleted"
+
+      });
+
+    }
+    catch(error:any){
+
+      return res.status(500)
+      .json({
+
+        success:false,
+        message:error.message
+
+      });
+
     }
 
-    // user.branch = branch_id;
-    // user.usertype = role;
-
-    await repo.save(user);
-
-    return res.json({
-      success: true,
-      message: "Employee assigned to branch",
-      data: user
-    });
   }
+
+  // =====================================
+  // ASSIGN ROLE + BRANCH
+  // =====================================
+
+  // @Post("/assign")
+  // @Middleware([authenticateMiddleware])
+  // @Swagger(
+  //   "Assign Employee",
+  //   "Assign branch and role"
+  // )
+  // async assign(
+  //   req:any,
+  //   res:Response
+  // ){
+
+  //   try{
+
+  //     const {
+
+  //       user_id,
+  //       branch_id,
+  //       company_id,
+  //       role_id
+
+  //     } = req.body;
+
+  //     const roleRepo =
+  //     dataSource.getRepository(
+  //       UserRole
+  //     );
+
+  //     await roleRepo.save({
+
+  //       user_id,
+  //       branch_id,
+  //       company_id,
+  //       role_id
+
+  //     });
+
+  //     return res.json({
+
+  //       success:true,
+
+  //       message:
+  //       "Employee assigned successfully"
+
+  //     });
+
+  //   }
+  //   catch(error:any){
+
+  //     return res.status(500)
+  //     .json({
+
+  //       success:false,
+  //       message:error.message
+
+  //     });
+
+  //   }
+
+  // }
+
 }
