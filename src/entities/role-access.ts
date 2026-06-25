@@ -6,6 +6,7 @@ import {
   JoinColumn,
   Unique,
   CreateDateColumn,
+  OneToMany,
 } from "typeorm";
 
 import { Role } from "./roles";
@@ -31,6 +32,9 @@ export class RolePermission {
   @ManyToOne(() => Permission, { eager: true })
   @JoinColumn({ name: "permission_id" })
   permission: Permission;
+
+  @OneToMany(()=>Permission,(permission)=>permission.menu)
+  permissions:Permission[];
 
   @CreateDateColumn()
   createdAt: Date;

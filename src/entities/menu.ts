@@ -80,16 +80,16 @@ export class Permission {
   menu_id: number;
 
   @ManyToOne(
-    () => Menu,
-    menu => menu.permissions,
-    {
-      onDelete: "CASCADE"
-    }
-  )
-  @JoinColumn({
-    name: "menu_id"
-  })
-  menu: Menu;
+()=>Menu,
+(menu)=>
+menu.permissions
+)
+@JoinColumn({
+name:"menu_id"
+})
+menu:Menu;
+
+  
 }
 
 

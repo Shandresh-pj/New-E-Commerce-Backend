@@ -1,8 +1,10 @@
 import {
   Entity,
   PrimaryGeneratedColumn,
-  Column
+  Column,
+  OneToMany
 } from "typeorm";
+import { RolePermission } from "./role-access";
 
 @Entity("roles")
 export class Role {
@@ -19,4 +21,12 @@ export class Role {
     default: true
   })
   isActive: boolean;
+
+  @OneToMany(
+()=>RolePermission,
+(rolePermission)=>
+rolePermission.role
+)
+rolePermissions:
+RolePermission[];
 }
