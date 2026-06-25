@@ -9,6 +9,7 @@ import {
 } from "typeorm";
 import { Company } from "./company";
 import { Branch } from "./branch";
+import { EmployeeType } from "../utils/Role-Access";
 
 @Entity("employees")
 export class Employee {
@@ -59,13 +60,11 @@ export class Employee {
   @Column()
   department!: string;
 
- @Column({
-  type: "enum",
-  enum: [
-    "SHOP_KEEPER",
-    "DELIVERY_BOY"
-  ],
-})
+  @Column({
+    type: "enum",
+    enum: EmployeeType
+  })
+  type: EmployeeType;
 role!: string;
 
   @Column({

@@ -25,6 +25,13 @@ import { UserType } from "../utils/Role-Access";
 import { Role } from "../entities/roles";
 import { AuditLog } from "../entities/auditLogs";
 import { Branch } from "../entities/branch";
+import rateLimit from "express-rate-limit";
+
+export const verifyEmailLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: "Too many verification attempts"
+});
 
 @Controller("/companies")
 export class CompanyController {
@@ -854,49 +861,63 @@ message:error.message
   // VERIFY EMAIL
   // ============================================
 
-  @Get("/verify/:token")
-  @Swagger("Verify Email","Verify Company Admin Email")
-  public async verifyEmail(
-    req: any,
-    res: any
-  ) {
+@Get("/verify/:token")
+@Swagger("Verify Email", "Verify user email securely")
+public async verifyEmail(req: any, res: any) {
+  const userRepo = dataSource.getRepository(User);
 
-    const userRepo =
-      dataSource.getRepository(
-        User
-      );
+  try {
+    const token = req.params.token;
 
-    const user =
-      await userRepo.findOne({
-        where: {
-          verificationToken:
-            req.params.token
-        }
-      });
-
-    if (!user) {
-
+    if (!token) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid token"
+        message: "Token is required"
       });
     }
 
-    user.emailVerified =
-      true;
+    const user = await userRepo.findOne({
+      where: {
+        verificationToken: token
+      }
+    });
 
-    user.verificationToken =
-      null as any;
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or already used token"
+      });
+    }
+
+    // expiry validation
+    if (
+      user.verificationTokenExpires &&
+      new Date() > user.verificationTokenExpires
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Verification token expired"
+      });
+    }
+
+    user.emailVerified = true;
+    user.verificationToken = null;
+    user.verificationTokenExpires = null;
 
     await userRepo.save(user);
 
     return res.json({
       success: true,
-      message:
-        "Email verified successfully"
+      message: "Email verified successfully"
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
     });
   }
+}
 
 @Delete("/:id")
 @Middleware([

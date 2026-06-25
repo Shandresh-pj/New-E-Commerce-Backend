@@ -1,331 +1,115 @@
 import "dotenv/config";
-import "reflect-metadata";
-
 import express from "express";
 import fs from "fs";
 import path from "path";
 
 import cors from "cors";
-import helmet from "helmet";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
+import swaggerUi from "swagger-ui-express";
 
-import { swaggerSpec, swaggerUi } from "./config/swagger";
+import { swaggerSpec } from "./config/swagger";
 import { timezoneMiddleware } from "./middleware/timezone";
 import { preventDuplicateCalls } from "./middleware/preventDuplicatecalls";
 import errorHandler from "./middleware/errorHandler";
-import authenticateMiddleware from "./middleware/authenticate";
 import logger from "./utils/logger";
-import { responseFormatter } from "./middleware/responseFormatter";
-import { autoPagination } from "./middleware/autoPagination";
-
-// Routes that must remain reachable without a bearer token
-// const PUBLIC_API_ROUTES = [
-//   "/auth/register",
-//   "/auth/login",
-//   "/auth/send-otp",
-//   "/auth/verify-otp",
-//   "/password/send-otp",
-//   "/password/verify-otp",
-//   "/password/reset",
-// ];
 
 const app = express();
 
-/* ==========================================
-   SECURITY
-========================================== */
-
-app.disable("x-powered-by");
-
-// app.use(helmet());
+/* ================= PERFORMANCE ================= */
 
 app.use(compression());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-app.use(timezoneMiddleware);
-app.use(responseFormatter);
+/* ================= SECURITY ================= */
+
+app.disable("x-powered-by");
 
 app.use(
   cors({
     origin: true,
-    credentials: true,
+    credentials: true
   })
 );
-
-/* ==========================================
-   RATE LIMIT
-========================================== */
 
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
+    max: 200
   })
 );
 
-/* ==========================================
-   BODY PARSER
-========================================== */
-
-app.use(
-  express.json({
-    limit: "10mb",
-  })
-);
-
-app.use(
-  express.urlencoded({
-    extended: true,
-    limit: "10mb",
-  })
-);
-
-/* ==========================================
-   CUSTOM MIDDLEWARE
-========================================== */
-
-app.use(preventDuplicateCalls);
-
-app.use(timezoneMiddleware);
-
-/* ==========================================
-   STATIC FILES
-========================================== */
-
-// Allow cross-origin access to all uploaded media (images, videos, etc.)
-const setCORP = (_req: any, res: any, next: any) => {
-  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-  next();
-};
-
-// Serve organised subfolders (new uploads)
-app.use("/uploads", setCORP, express.static(path.join(process.cwd(), "uploads")));
-
-// Backwards-compat: old files saved flat in ./uploads/ are
-// reachable at /uploads/images/* and /uploads/videos/* too
-app.use("/uploads/images", setCORP, express.static(path.join(process.cwd(), "uploads")));
-app.use("/uploads/videos", setCORP, express.static(path.join(process.cwd(), "uploads")));
-
-/* ==========================================
-   CACHE CONTROL
-========================================== */
+/* ================= REQUEST LOGGER ================= */
 
 app.use((req, res, next) => {
-  res.setHeader(
-    "Cache-Control",
-    "no-store"
-  );
+  const start = Date.now();
 
-  next();
-}); 
-
-/* ==========================================
-   REQUEST LOGGER
-========================================== */
-
-app.use((req, res, next) => {
-  console.log(
-    `[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`
-  );
+  res.on("finish", () => {
+    console.log(`${req.method} ${req.url} - ${Date.now() - start}ms`);
+  });
 
   next();
 });
 
-/* ==========================================
-   SWAGGER
-========================================== */
+/* ================= CUSTOM MIDDLEWARE ================= */
 
-app.use(
-  "/pjsv",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec)
-);
+app.use(preventDuplicateCalls);
+app.use(timezoneMiddleware);
 
-/* ==========================================
-   AUTHENTICATION GATE
-   Every /api route requires a valid, non-expired
-   bearer token except the public auth routes above.
-========================================== */
+/* ================= SWAGGER ================= */
 
-// app.use("/api", (req, res, next) => {
-//   // if (PUBLIC_API_ROUTES.includes(req.path)) {
-//   //   return next();
-//   // }
+app.use("/pjsv", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-//   return authenticateMiddleware(req, res, next);
-// });
+/* ================= ROUTE LOADER ================= */
 
-/* ==========================================
-   DYNAMIC ROUTE LOADER
-========================================== */
-
-const loadRoutes = (
-  directory: string
-): void => {
-
-  if (!fs.existsSync(directory)) {
-
-    console.error(
-      `Routes directory not found: ${directory}`
-    );
-
+const loadRoutes = (dir: string) => {
+  if (!fs.existsSync(dir)) {
+    console.error("Routes directory not found:", dir);
     return;
   }
 
-  const files =
-    fs.readdirSync(directory);
+  const files = fs.readdirSync(dir);
 
-  files.forEach((file) => {
+  for (const file of files) {
+    const fullPath = path.join(dir, file);
 
-    const fullPath =
-      path.join(directory, file);
+    const stat = fs.statSync(fullPath);
 
-    try {
-
-      const stat =
-        fs.statSync(fullPath);
-
-      if (stat.isDirectory()) {
-
-        loadRoutes(fullPath);
-
-        return;
-      }
-
-      const isRouteFile =
-        file.endsWith("Routes.ts") ||
-        file.endsWith("Routes.js");
-
-      if (!isRouteFile) {
-        return;
-      }
-
-      console.log(
-        `Loading Route File: ${fullPath}`
-      );
-
-      const routeModule =
-        require(fullPath);
-
-      const router =
-        routeModule.default ||
-        routeModule;
-
-      if (!router) {
-
-        console.error(
-          `Invalid router export in ${file}`
-        );
-
-        return;
-      }
-
-      app.use("/api", router);
-
-      console.log(
-        `Route Loaded Successfully: ${file}`
-      );
-
-      logger.info(
-        `Route Loaded: ${file}`
-      );
-
-    } catch (error) {
-
-      console.error(
-        `Failed to load route ${fullPath}`,
-        error
-      );
-
+    if (stat.isDirectory()) {
+      loadRoutes(fullPath);
+      continue;
     }
 
-  });
+    if (!file.endsWith("Routes.ts") && !file.endsWith("Routes.js")) continue;
 
+    try {
+      const route = require(fullPath).default;
+
+      if (route) {
+        app.use("/api", route);
+        console.log("Loaded Route:", file);
+      }
+
+    } catch (err) {
+      console.error("Route Load Error:", file, err);
+    }
+  }
 };
 
-/* ==========================================
-   LOAD ROUTES
-========================================== */
+loadRoutes(path.join(__dirname, "routes"));
 
-const routesPath =
-  path.join(__dirname, "routes");
-
-console.log(
-  "Routes Directory:",
-  routesPath
-);
-
-loadRoutes(routesPath);
-
-/* ==========================================
-   ROOT ROUTE
-========================================== */
-
-app.get("/", (req, res) => {
-
-  res.json({
-    success: true,
-    message: "API Running Successfully",
-  });
-
-});
-
-/* ==========================================
-   HEALTH CHECK
-========================================== */
+/* ================= HEALTH CHECK ================= */
 
 app.get("/health", (req, res) => {
-
   res.json({
-    success: true,
     status: "UP",
-    timestamp: new Date(),
+    time: new Date()
   });
-
 });
 
-/* ==========================================
-   ROUTE NOT FOUND
-========================================== */
-
-app.use((req, res) => {
-
-  console.error(
-    `Route Not Found => ${req.method} ${req.originalUrl}`
-  );
-
-  res.status(404).json({
-    success: false,
-    message: "Route Not Found",
-    path: req.originalUrl,
-    method: req.method,
-  });
-
-});
-
-/* ==========================================
-   auto Pagination
-========================================== */
-
-// app.use(autoPagination);
-/* ==========================================
-   GLOBAL ERROR HANDLER
-========================================== */
+/* ================= ERROR HANDLER ================= */
 
 app.use(errorHandler);
-
-/* ==========================================
-   STARTUP LOG
-========================================== */
-
-console.log(
-  "Application Initialized Successfully"
-);
-
-logger.info(
-  "Application Initialized Successfully"
-);
 
 export default app;

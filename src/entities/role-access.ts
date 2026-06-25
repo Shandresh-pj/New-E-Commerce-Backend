@@ -25,16 +25,13 @@ export class RolePermission {
   @Column()
   permission_id: number;
 
-  @ManyToOne(() => Role, { eager: true })
+  @ManyToOne(() => Role)
   @JoinColumn({ name: "role_id" })
   role: Role;
 
   @ManyToOne(() => Permission, { eager: true })
   @JoinColumn({ name: "permission_id" })
   permission: Permission;
-
-  @OneToMany(()=>Permission,(permission)=>permission.menu)
-  permissions:Permission[];
 
   @CreateDateColumn()
   createdAt: Date;

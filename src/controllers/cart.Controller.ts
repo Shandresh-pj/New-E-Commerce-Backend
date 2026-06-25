@@ -17,128 +17,96 @@ import { Cart, Product } from "../entities/products";
 
 @Controller("/cart")
 export class CartController {
-
-  // ==========================================
+ // =========================
   // ADD TO CART
-  // ==========================================
-
+  // =========================
   @Post("/add")
-  @Swagger(
-    "Add To Cart",
-    "Add product to user cart"
-  )
-  async add(
-    req: any,
-    res: Response
-  ) {
+  @Swagger("Add To Cart", "Add product to cart")
+  async add(req: any, res: any) {
 
-    const cartRepo =
-      dataSource.getRepository(Cart);
+    const cartRepo = dataSource.getRepository(Cart);
+    const productRepo = dataSource.getRepository(Product);
 
-    const productRepo =
-      dataSource.getRepository(Product);
+    const { product_id, quantity } = req.body;
+    const userId = req.user.id;
 
-    const {
-      product_id,
-      quantity,
-    } = req.body;
-
-    const user_id =
-      req.user.id;
-
-    const product =
-      await productRepo.findOne({
-        where: {
-          id: product_id,
-        },
-      });
+    const product = await productRepo.findOne({
+      where: { id: product_id }
+    });
 
     if (!product) {
-      throw new Error(
-        "Product not found"
-      );
+      return res.status(404).json({
+        success: false,
+        message: "Product not found"
+      });
     }
 
-    let cart =
-      await cartRepo.findOne({
-        where: {
-          user_id,
-          product_id,
-        },
-      });
+    // ✅ FIX: use relations instead of FK fields
+    let cart = await cartRepo.findOne({
+      where: {
+        user: { id: userId },
+        product: { id: product_id }
+      },
+      relations: {
+        user: true,
+        product: true
+      }
+    });
 
     if (cart) {
-
       cart.quantity += quantity;
-
-      await cartRepo.save(cart);
-
     } else {
-
       cart = cartRepo.create({
-        user_id,
-        product_id,
         quantity,
+        user: { id: userId } as any,
+        product: { id: product_id } as any
       });
-
-      await cartRepo.save(cart);
     }
 
+    await cartRepo.save(cart);
+
     return res.json({
       success: true,
-      data: cart,
+      data: cart
     });
   }
 
-  // ==========================================
-  // GET MY CART
-  // ==========================================
-
+  // =========================
+  // GET CART
+  // =========================
   @Get("/")
-  async getCart(
-    req: any,
-    res: Response
-  ) {
+  async getCart(req: any, res: any) {
 
-    const data =
-      await dataSource
-        .getRepository(Cart)
-        .find({
-          where: {
-            user_id:
-              req.user.id,
-          },
-          relations: {product : true}
-            
-          ,
-        });
+    const cartRepo = dataSource.getRepository(Cart);
+
+    const data = await cartRepo.find({
+      where: {
+        user: { id: req.user.id }
+      },
+      relations: {
+        product: true
+      }
+    });
 
     return res.json({
       success: true,
-      data,
+      data
     });
   }
 
-  // ==========================================
-  // REMOVE CART ITEM
-  // ==========================================
-
+  // =========================
+  // REMOVE ITEM
+  // =========================
   @Delete("/:id")
-  async remove(
-    req: Request,
-    res: Response
-  ) {
+  async remove(req: any, res: any) {
 
-    await dataSource
-      .getRepository(Cart)
-      .delete(
-        req.params.id
-      );
+    await dataSource.getRepository(Cart).delete({
+      id: Number(req.params.id)
+    });
 
     return res.json({
       success: true,
-      message:
-        "Cart item removed",
+      message: "Cart item removed"
     });
   }
 }

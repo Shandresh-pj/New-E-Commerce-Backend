@@ -123,39 +123,6 @@ roleAccessController
 );
 
 
-// =======================================
-// GET ROLE MENUS
-// =======================================
-
-/**
- * @swagger
- * /role-access/role/{role_id}/menus:
- *   get:
- *     tags:
- *       - Role Access
- *     summary: Get grouped menu permissions
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: role_id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Menu permissions by role
- */
-
-router.get(
-"/role-access/role/:role_id/menus",
-authenticateMiddleware,
-roleAccessController
-.getRoleMenus
-.bind(
-roleAccessController
-)
-);
 
 
 // =======================================

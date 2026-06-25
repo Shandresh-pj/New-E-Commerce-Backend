@@ -12,21 +12,12 @@ export class Role {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({
-    unique: true
-  })
+  @Column({ unique: true })
   name: string;
 
-  @Column({
-    default: true
-  })
+  @Column({ default: true })
   isActive: boolean;
 
-  @OneToMany(
-()=>RolePermission,
-(rolePermission)=>
-rolePermission.role
-)
-rolePermissions:
-RolePermission[];
+  @OneToMany(() => RolePermission, rp => rp.role)
+  rolePermissions: RolePermission[];
 }

@@ -1,55 +1,30 @@
-import { PermissionType } from "../entities/menu";
 import { RolePermission } from "../entities/role-access";
 import { UserRole } from "../entities/user";
 import { dataSource } from "../server";
+
 export class PermissionService {
 
-  static async hasPermission(
-    userId: number,
-    menuName: string,
-    action: PermissionType
-  ): Promise<boolean> {
+  static async hasPermission(userId: number, menu: string, action: string) {
 
-    const userRoles =
-      await dataSource
-        .getRepository(UserRole)
-        .find({
-          where: {
-            user_id: userId
-          }
-        });
+    const roles = await dataSource.getRepository(UserRole).find({
+      where: { user_id: userId }
+    });
 
-    if (!userRoles.length) {
-      return false;
-    }
+    if (!roles.length) return false;
 
-    const roleIds =
-      userRoles.map(
-        role => role.role_id
-      );
+    const roleIds = roles.map(r => r.role_id);
 
-    const rolePermissions =
-      await dataSource
-        .getRepository(RolePermission)
-        .createQueryBuilder("rp")
-        .leftJoinAndSelect(
-          "rp.permission",
-          "permission"
-        )
-        .leftJoinAndSelect(
-          "permission.menu",
-          "menu"
-        )
-        .where(
-          "rp.roleId IN (:...roleIds)",
-          { roleIds }
-        )
-        .getMany();
+    const permissions = await dataSource
+      .getRepository(RolePermission)
+      .createQueryBuilder("rp")
+      .leftJoinAndSelect("rp.permission", "permission")
+      .leftJoinAndSelect("permission.menu", "menu")
+      .where("rp.role_id IN (:...roleIds)", { roleIds })
+      .getMany();
 
-    return rolePermissions.some(
-      permission =>
-        permission.permission.menu === menuName &&
-        permission.permission.action === action
+    return permissions.some(p =>
+      p.permission.menu.name === menu &&
+      p.permission.action === action
     );
   }
 }

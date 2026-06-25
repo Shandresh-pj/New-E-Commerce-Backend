@@ -64,10 +64,11 @@ export class User {
   )
   userRoles: UserRole[];
 
-  @Column({
-  nullable: true
-})
-verificationToken: string;
+  @Column({ type: "varchar", length: 255, nullable: true })
+verificationToken: string | null;
+  
+@Column({ type: "datetime", nullable: true })
+verificationTokenExpires: Date | null;
 
 @Column({ nullable: true })
   image!: string;
@@ -92,11 +93,11 @@ export class UserRole {
   @PrimaryGeneratedColumn()
   id: number;
 
-//   @Column()
-//  user_id:number;
+  @Column()
+ user_id:number;
 
-//  @Column()
-//  role_id:number;
+ @Column()
+ role_id:number;
 
 //  @Column()
 //  company_id:number;

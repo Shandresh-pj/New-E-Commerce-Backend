@@ -7,136 +7,95 @@ import {
   Middleware
 } from "../decorators";
 
-import { Response } from "express";
-
-import authenticateMiddleware from "../middleware/authenticate";
-
 import { dataSource } from "../server";
-
-import {
-  
-    Menu,
-  Permission,
-  PermissionType
-} from "../entities/menu";
+import authenticateMiddleware from "../middleware/authenticate";
+import { Menu, Permission, PermissionType } from "../entities/menu";
 
 
 @Controller("/menus")
 export class MenuController {
 
+  // =====================================================
+  // CREATE MENU
+  // =====================================================
   @Post("/")
   @Middleware([authenticateMiddleware])
-  public async create(
-    req: any,
-    res: Response
-  ) {
+  async create(req: any, res: any) {
 
-    const queryRunner =
-      dataSource.createQueryRunner();
-
+    const queryRunner = dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
 
-      const {
-        name,
-        path,
-        icon
-      } = req.body;
+      const { name, path, icon } = req.body;
 
-      const menuRepo =
-        queryRunner.manager.getRepository(Menu);
+      const menuRepo = queryRunner.manager.getRepository(Menu);
+      const permissionRepo = queryRunner.manager.getRepository(Permission);
 
-      const permissionRepo =
-        queryRunner.manager.getRepository(Permission);
+      const exists = await menuRepo.findOne({ where: { name } });
 
-      const existingMenu =
-        await menuRepo.findOne({
-          where: { name }
-        });
-
-      if (existingMenu) {
-
+      if (exists) {
         await queryRunner.rollbackTransaction();
-
         return res.status(409).json({
           success: false,
           message: "Menu already exists"
         });
-
       }
 
-      const menu =
-        menuRepo.create({
-          name,
-          path,
-          icon
-        });
-
-      await menuRepo.save(menu);
-
-      const actions = [
-        PermissionType.READ,
-        PermissionType.WRITE,
-        PermissionType.UPDATE,
-        PermissionType.DELETE,
-        PermissionType.APPROVE
-      ];
-
-      const permissions =
-        actions.map(action =>
-          permissionRepo.create({
-            menu_id: menu.id,
-            action
-          })
-        );
-
-      await permissionRepo.save(
-        permissions
+      const menu = await menuRepo.save(
+        menuRepo.create({ name, path, icon })
       );
+
+      // Auto create permissions
+      const actions = Object.values(PermissionType);
+
+      const permissions = actions.map(action =>
+        permissionRepo.create({
+          menu_id: menu.id,
+          action
+        })
+      );
+
+      await permissionRepo.save(permissions);
 
       await queryRunner.commitTransaction();
 
       return res.status(201).json({
         success: true,
-        message:
-          "Menu and permissions created successfully",
-        menu,
+        data: menu,
         permissions
       });
 
-    } catch (error: any) {
+    } catch (err: any) {
 
       await queryRunner.rollbackTransaction();
 
       return res.status(500).json({
         success: false,
-        message: error.message
+        message: err.message
       });
 
     } finally {
-
       await queryRunner.release();
-
     }
   }
 
+  // =====================================================
+  // GET ALL MENUS
+  // =====================================================
   @Get("/")
   @Middleware([authenticateMiddleware])
-  public async getAll(
-    req: any,
-    res: Response
-  ) {
+  async getAll(req: any, res: any) {
 
-    const menus =
-      await dataSource
-        .getRepository(Menu)
-        .find({
-          relations: {
-            permissions: true
-          }
-        });
+    const menus = await dataSource.getRepository(Menu).find({
+      relations: {
+        permissions: true
+      },
+      order: {
+        id: "DESC"
+      }
+    });
 
     return res.json({
       success: true,
@@ -144,164 +103,89 @@ export class MenuController {
     });
   }
 
-  @Put("/:id")
+  // =====================================================
+  // GET ONE MENU
+  // =====================================================
+  @Get("/:id")
   @Middleware([authenticateMiddleware])
-  public async update(
-    req: any,
-    res: Response
-  ) {
+  async getOne(req: any, res: any) {
 
-    const id =
-      Number(req.params.id);
+    const id = Number(req.params.id);
 
-    const repo =
-      dataSource.getRepository(Menu);
-
-    const menu =
-      await repo.findOne({
-        where: { id }
-      });
+    const menu = await dataSource.getRepository(Menu).findOne({
+      where: { id },
+      relations: { permissions: true }
+    });
 
     if (!menu) {
-
       return res.status(404).json({
         success: false,
         message: "Menu not found"
       });
-
     }
 
-    repo.merge(
-      menu,
-      req.body
-    );
+    return res.json({
+      success: true,
+      data: menu
+    });
+  }
+
+  // =====================================================
+  // UPDATE MENU
+  // =====================================================
+  @Put("/:id")
+  @Middleware([authenticateMiddleware])
+  async update(req: any, res: any) {
+
+    const id = Number(req.params.id);
+
+    const repo = dataSource.getRepository(Menu);
+
+    const menu = await repo.findOne({ where: { id } });
+
+    if (!menu) {
+      return res.status(404).json({
+        success: false,
+        message: "Menu not found"
+      });
+    }
+
+    repo.merge(menu, req.body);
 
     await repo.save(menu);
 
     return res.json({
       success: true,
-      message:
-        "Menu updated successfully",
+      message: "Menu updated",
       data: menu
     });
   }
 
+  // =====================================================
+  // DELETE MENU
+  // =====================================================
   @Delete("/:id")
   @Middleware([authenticateMiddleware])
-  public async remove(
-    req: any,
-    res: Response
-  ) {
+  async delete(req: any, res: any) {
 
-    const id =
-      Number(req.params.id);
+    const id = Number(req.params.id);
 
-    const repo =
-      dataSource.getRepository(Menu);
+    const repo = dataSource.getRepository(Menu);
 
-    const menu =
-      await repo.findOne({
-        where: { id }
-      });
+    const menu = await repo.findOne({ where: { id } });
 
     if (!menu) {
-
       return res.status(404).json({
         success: false,
         message: "Menu not found"
       });
-
     }
 
     await repo.remove(menu);
 
     return res.json({
       success: true,
-      message:
-        "Menu deleted successfully"
+      message: "Menu deleted"
     });
   }
-
-
-  @Get("/permissions")
-@Middleware([authenticateMiddleware])
-public async getAllPermissions(
-  req: any,
-  res: Response
-) {
-
-  try {
-
-    const permissions =
-      await dataSource
-        .getRepository(Permission)
-        .find({
-          relations: {
-            menu: true
-          },
-          order: {
-            menu_id: "ASC"
-          }
-        });
-
-    return res.status(200).json({
-      success: true,
-      count: permissions.length,
-      data: permissions
-    });
-
-  } catch (error: any) {
-
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
-
-  }
-}
-
-@Get("/permissions/grouped")
-@Middleware([authenticateMiddleware])
-public async getGroupedPermissions(
-  req: any,
-  res: Response
-) {
-
-  try {
-
-    const menus =
-      await dataSource
-        .getRepository(Menu)
-        .find({
-          relations: {
-            permissions: true
-          }
-        });
-
-    return res.json({
-      success: true,
-      data: menus.map(menu => ({
-        id: menu.id,
-        name: menu.name,
-        path: menu.path,
-        icon: menu.icon,
-        permissions:
-          menu.permissions.map(
-            p => ({
-              id: p.id,
-              action: p.action
-            })
-          )
-      }))
-    });
-
-  } catch (error: any) {
-
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
-
-  }
-}
 }

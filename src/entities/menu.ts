@@ -28,36 +28,25 @@ export enum PermissionType {
   APPROVE = "APPROVE",
 }
 
-@Entity("menu")
+@Entity("menus")
 export class Menu {
 
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({
-    unique: true
-  })
+  @Column({ unique: true })
   name: string;
 
-  @Column({
-    unique: true
-  })
+  @Column({ unique: true })
   path: string;
 
-  @Column({
-    nullable: true
-  })
+  @Column({ nullable: true })
   icon: string;
 
-  @Column({
-    default: true
-  })
+  @Column({ default: true })
   isActive: boolean;
 
-    @OneToMany(
-    () => Permission,
-    permission => permission.menu
-  )
+  @OneToMany(() => Permission, p => p.menu)
   permissions: Permission[];
 }
 
@@ -67,29 +56,18 @@ export class Permission {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // @Column()
-  // menu: string;
-
   @Column({
     type: "enum",
     enum: PermissionType
   })
   action: PermissionType;
 
-   @Column()
+  @Column()
   menu_id: number;
 
-  @ManyToOne(
-()=>Menu,
-(menu)=>
-menu.permissions
-)
-@JoinColumn({
-name:"menu_id"
-})
-menu:Menu;
-
-  
+  @ManyToOne(() => Menu, m => m.permissions, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "menu_id" })
+  menu: Menu;
 }
 
 

@@ -150,52 +150,32 @@ orderItems!: OrderItem[];
 export class Cart {
 
   @PrimaryGeneratedColumn()
-  id!: number;
+  id: number;
 
   @Column()
-  user_id!: number;
+  user_id: number;
 
   @Column()
-  product_id!: number;
+  product_id: number;
 
-  @Column({
-    default: 1,
-  })
-  quantity!: number;
+  @Column({ default: 1 })
+  quantity: number;
 
-  @ManyToOne(
-    () => Register,
-    { onDelete: "CASCADE" }
-  )
-  @JoinColumn({
-    name: "user_id",
-  })
-  user!: Register;
+  @ManyToOne(() => Register, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "user_id" })
+  user: Register;
 
-  @ManyToOne(
-    () => Product,
-    { onDelete: "CASCADE" }
-  )
-  @JoinColumn({
-    name: "product_id",
-  })
-  product!: Product;
+  @ManyToOne(() => Product, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "product_id" })
+  product: Product;
 
-  @Column()
-  category_id!: number;
+  @Column({ nullable: true })
+  category_id: number;
 
-  @ManyToOne(
-    () => Category,
-    (category) => category.products,
-    {
-      onDelete: "SET NULL",
-    }
-  )
-  @JoinColumn({
-    name: "category_id",
-  })
-  category!: Category;
+  @ManyToOne(() => Category, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "category_id" })
+  category: Category;
 
   @CreateDateColumn()
-  created_at!: Date;
+  created_at: Date;
 }

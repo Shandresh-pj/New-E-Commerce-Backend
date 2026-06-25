@@ -1,21 +1,11 @@
-import { Request, Response, NextFunction } from "express";
+export const companyIsolation = (req: any, res: any, next: any) => {
 
-export const companyIsolation = (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-
-  const user = (req as any).user;
-
-  if (!user?.company_id) {
+  if (!req.user.companyId && !req.user.isSuperAdmin) {
     return res.status(403).json({
-      success: false,
-      message: "Company access denied",
+      message: "Company access denied"
     });
   }
 
-  (req as any).company_id = user.company_id;
-
+  req.companyId = req.user.companyId;
   next();
 };

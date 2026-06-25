@@ -148,13 +148,47 @@ message:error.message
 @Middleware([
 authenticateMiddleware
 ])
-
 public async getById(
 req:any,
 res:any
 ){
 
 try{
+
+// ===========================
+// AUTH CHECK
+// ===========================
+
+if(!req.user){
+
+return res.status(401)
+.json({
+
+success:false,
+message:
+"Unauthorized"
+
+});
+
+}
+
+
+const userId=
+Number(req.params.id);
+
+if(isNaN(userId)){
+
+return res.status(400)
+.json({
+
+success:false,
+message:
+"Invalid user id"
+
+});
+
+}
+
 
 const repo=
 dataSource.getRepository(
@@ -166,11 +200,7 @@ const user=
 await repo.findOne({
 
 where:{
-
-id:Number(
-req.params.id
-)
-
+id:userId
 }
 
 });
@@ -190,11 +220,15 @@ message:
 }
 
 
+// ===========================
+// ONLY SELF OR SUPERADMIN
+// ===========================
+
 if(
 
-!req.user.isSuperAdmin &&
+!req.user?.isSuperAdmin &&
 
-req.user.id!==user.id
+req.user?.id!==user.id
 
 ){
 
@@ -210,13 +244,21 @@ message:
 }
 
 
-const{
+// ===========================
+// REMOVE SENSITIVE DATA
+// ===========================
+
+const {
 password,
+verificationToken,
+resetPasswordToken,
 ...safeUser
-}=user;
+
+}=user as any;
 
 
-return res.json({
+return res.status(200)
+.json({
 
 success:true,
 data:safeUser
@@ -230,15 +272,13 @@ return res.status(500)
 .json({
 
 success:false,
-message:
-error.message
+message:error.message
 
 });
 
 }
 
 }
-
 
 // =====================================
 // GET ALL

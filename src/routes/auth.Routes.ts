@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { authController } from "../controllers";
+import { authController, companyController } from "../controllers";
 import authenticateMiddleware from "../middleware/authenticate";
+import { verifyEmailLimiter } from "../controllers/company.Controller";
 
 const router = Router();
 
@@ -298,5 +299,59 @@ router.delete(
   authController.deleteUser.bind(authController)
 );
 
+
+
+ /**
+ * @swagger
+ * /auth/verify/{token}:
+ *   get:
+ *     tags:
+ *       - Authentication
+ *     summary: Verify user email
+ *     description: Verify email using verification token sent to user email
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Email verification token
+ *     responses:
+ *       200:
+ *         description: Email verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Email verified successfully
+ *
+ *       400:
+ *         description: Invalid or expired token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Invalid or already used token
+ *
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/verify/:token",
+  verifyEmailLimiter,
+  companyController.verifyEmail.bind(companyController)
+);
 
 export default router;

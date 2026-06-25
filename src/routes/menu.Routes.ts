@@ -23,6 +23,24 @@ router.get(
 
 /**
  * @swagger
+ * /menus/{id}:
+ *   get:
+ *     tags:
+ *       - Menus
+ *     summary: Get Menus with Permissions
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.get(
+  "/menus/:id",
+  menuController.getOne.bind(menuController)
+);
+
+/**
+ * @swagger
  * /menus:
  *   post:
  *     tags:
@@ -54,10 +72,11 @@ router.post(
   "/menus",
   menuController.create.bind(menuController)
 );
+
 /**
  * @swagger
  * /menus/update/{id}:
- *   post:
+ *   put:
  *     tags:
  *       - Menus
  *     summary: Create Menu + Auto Permissions
@@ -83,7 +102,7 @@ router.post(
  *       201:
  *         description: Created
  */
-router.post(
+router.put(
   "/menus/update/:id",
   menuController.update.bind(menuController)
 );
@@ -91,42 +110,16 @@ router.post(
 /**
  * @swagger
  * /menus/delete/{id}:
- *   post:
+ *   delete:
  *     tags:
  *       - Menus
  *     summary: delete the menu
  */
-router.post(
+router.delete(
   "/menus/delete/:id",
-  menuController.remove.bind(menuController)
+  menuController.delete.bind(menuController)
 );
 
 
-
-/**
- * @swagger
- * /permissions:
- *   get:
- *     tags:
- *       - Menus
- *     summary: Get All Permissions
- */
-router.get(
-  "/permissions",
-  menuController.getAllPermissions.bind(menuController)
-);
-
-/**
- * @swagger
- * /permissions/grouped:
- *   get:
- *     tags:
- *       - Menus
- *     summary: Get Group Permissions
- */
-router.get(
-  "/permissions/grouped",
-  menuController.getGroupedPermissions.bind(menuController)
-);
 
 export default router;

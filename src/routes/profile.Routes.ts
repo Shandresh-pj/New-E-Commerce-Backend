@@ -1,4 +1,5 @@
 import { authController, profileController } from "../controllers";
+import authenticateMiddleware from "../middleware/authenticate";
 import { uploadImage } from "../utils/upload";
 
 import { Router } from "express";
@@ -67,7 +68,7 @@ router.get(
  *           type: integer
  */
 router.get(
-  "/profile/:id",
+  "/profile/:id",authenticateMiddleware,
   profileController.getById.bind(profileController)
 );
 
@@ -113,7 +114,7 @@ router.get(
  *                 format: binary
  */
 router.post(
-  "/profile/add",
+  "/profile/add",authenticateMiddleware,
   uploadImage.upload.single("image"),uploadImage.compressor,
   profileController.create.bind(profileController)
 );
@@ -152,7 +153,7 @@ router.post(
  *                 format: binary
  */
 router.put(
-  "/profile/:id",
+  "/profile/:id",authenticateMiddleware,
   uploadImage.upload.single("image"),uploadImage.compressor,
   profileController.update.bind(profileController)
 );
@@ -172,7 +173,7 @@ router.put(
  *           type: integer
  */
 router.delete(
-  "/profile/:id",
+  "/profile/:id",authenticateMiddleware,
   profileController.delete.bind(profileController)
 );
 

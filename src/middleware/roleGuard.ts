@@ -1,17 +1,15 @@
-import { Request, Response, NextFunction } from "express";
+import { UserType } from "../utils/Role-Access";
 
-export const roleGuard = (roles: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const user = (req as any).user;
 
-    if (!user) {
+export const roleGuard = (roles: UserType[]) => {
+  return (req: any, res: any, next: any) => {
+
+    if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (!roles.includes(user.usertype)) {
-      return res.status(403).json({
-        message: "Access denied",
-      });
+    if (!roles.includes(req.user.userType)) {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     next();
