@@ -24,8 +24,8 @@ import { RoleController } from "./role.Controller";
 import { AlertController, PaymentController, StockController } from "./stock.Controller";
 import { DeliveryTrackingController } from "./tracking.Controller";
 import { MenuController } from "./menu.Controller";
-import { AuditLogsController } from "./auditLogs.Controller";
 import { ProfileController } from "./profile.Controller";
+import { AuditController } from "./auditLogs.Controller";
 
 export const authController = new AuthController();
 
@@ -79,6 +79,6 @@ export const rolesController = new RoleController();
 
 export const menuController = new MenuController();
 
-export const auditLogsController = new AuditLogsController();
+export const auditLogsController = new AuditController();
 
 export const profileController = new ProfileController();

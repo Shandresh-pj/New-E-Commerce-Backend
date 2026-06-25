@@ -1,105 +1,81 @@
-// AuditLog.ts
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  Index
+} from "typeorm";
 
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
-
-@Entity()
+@Entity("audit_logs")
 export class AuditLog {
 
-@PrimaryGeneratedColumn()
-id:number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-@Column()
-module:string;
-// BRANCH / USER / COMPANY
+  @Index()
+  @Column()
+  module: string; // USER, ORDER, BRANCH, PRODUCT
 
-@Column()
-action:string;
-// CREATE / UPDATE / DELETE
+  @Column()
+  action: string; // CREATE, UPDATE, DELETE
 
-@Column()
-recordId:number;
+  @Index()
+  @Column()
+  recordId: number;
 
-@Column()
-userId:number;
+  @Index()
+  @Column()
+  userId: number;
 
-@Column()
-roleId:number;
+  @Column()
+  roleId: number;
 
-@Column({
-nullable:true
-})
-companyId:number;
+  @Index()
+  @Column({ nullable: true })
+  companyId: number;
 
-@Column({
-nullable:true
-})
-branchId:number;
+  @Index()
+  @Column({ nullable: true })
+  branchId: number;
 
-@Column({
-type:"json",
-nullable:true
-})
-oldData:any;
+  @Column({ type: "json", nullable: true })
+  diff: any;
 
-@Column({
-type:"json",
-nullable:true
-})
-newData:any;
-
-@CreateDateColumn()
-createdAt:Date;
-
+  @CreateDateColumn()
+  createdAt: Date;
 }
 
-
-
-// AuditLogBackup.ts
-
-@Entity()
+@Entity("audit_logs_backup")
 export class AuditLogBackup {
 
-@PrimaryGeneratedColumn()
-id:number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-@Column()
-module:string;
+  @Index()
+  @Column()
+  module: string;
 
-@Column()
-action:string;
+  @Column()
+  action: string;
 
-@Column()
-recordId:number;
+  @Column()
+  recordId: number;
 
-@Column()
-userId:number;
+  @Column()
+  userId: number;
 
-@Column()
-roleId:number;
+  @Column()
+  roleId: number;
 
-@Column({
-nullable:true
-})
-companyId:number;
+  @Column({ nullable: true })
+  companyId: number;
 
-@Column({
-nullable:true
-})
-branchId:number;
+  @Column({ nullable: true })
+  branchId: number;
 
-@Column({
-type:"json",
-nullable:true
-})
-oldData:any;
+  @Column({ type: "json", nullable: true })
+  diff: any;
 
-@Column({
-type:"json",
-nullable:true
-})
-newData:any;
-
-@CreateDateColumn()
-createdAt:Date;
-
+  @CreateDateColumn()
+  createdAt: Date;
 }

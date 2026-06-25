@@ -33,6 +33,7 @@ import { User, UserRole } from "./src/entities/user";
 import { Role } from "./src/entities/roles";
 import { Wishlist } from "./src/entities/wishlist";
 import { RolePermission } from "./src/entities/role-access";
+import { AuditLog, AuditLogBackup } from "./src/entities/auditLogs";
 
 config({
   path: resolve(".env"),
@@ -159,6 +160,8 @@ let localConfig: DataSourceOptions = {
     UserAddress,
     User,
     Wishlist,
+    AuditLogBackup,
+    AuditLog
   ],
 
   namingStrategy:
