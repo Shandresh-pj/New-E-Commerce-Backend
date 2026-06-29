@@ -136,4 +136,4 @@ router.delete(
   productAttributeValueController.deleteItem.bind(productAttributeValueController)
 );
 
-module.exports = router;
+export default router;

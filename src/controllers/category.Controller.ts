@@ -47,7 +47,12 @@ export class CategoryController {
       dataSource.getRepository(Category);
 
     const category =
-      repo.create(req.body);
+      repo.create({
+        ...req.body,
+        ...(req.file
+          ? { image: `/uploads/images/${req.file.filename}` }
+          : {}),
+      });
 
     await repo.save(category);
 
@@ -145,7 +150,12 @@ export class CategoryController {
 
     await repo.update(
       Number(req.params.id),
-      req.body
+      {
+        ...req.body,
+        ...(req.file
+          ? { image: `/uploads/images/${req.file.filename}` }
+          : {}),
+      }
     );
 
     return res.json({

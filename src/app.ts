@@ -10,9 +10,9 @@ import swaggerUi from "swagger-ui-express";
 
 import { swaggerSpec } from "./config/swagger";
 import { timezoneMiddleware } from "./middleware/timezone";
-import { preventDuplicateCalls } from "./middleware/preventDuplicatecalls";
 import errorHandler from "./middleware/errorHandler";
 import logger from "./utils/logger";
+import { preventDuplicateCalls } from "./middleware/preventDuplicateCalls";
 
 const app = express();
 
@@ -21,6 +21,7 @@ const app = express();
 app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 /* ================= SECURITY ================= */
 
