@@ -107,7 +107,7 @@ public async create(req: any, res: any) {
       email,
       mobilenumber: phone,
       password: hashedPassword,
-      userType: UserType.BRANCH_MANAGER,
+      userType: UserType.BRANCH,
       mustChangePassword: true,
       isActive: true,
       isSuperAdmin: false

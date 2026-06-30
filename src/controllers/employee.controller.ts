@@ -3,6 +3,7 @@ import crypto from "crypto";
 
 import { Response } from "express";
 import { dataSource } from "../server";
+import { In } from "typeorm";
 
 import { User, UserRole } from "../entities/user";
 
@@ -19,7 +20,6 @@ import {
 } from "../decorators";
 
 import authenticateMiddleware from "../middleware/authenticate.middleware";
-import { Employee } from "../entities/employee.entity";
 import { Company } from "../entities/company";
 import { Branch } from "../entities/branch";
 import { Role } from "../entities/roles";
@@ -219,7 +219,7 @@ hashedPassword,
 
 userType:
 userType ||
-UserType.EMPLOYEE,
+UserType.SHOPKEEPER,
 
 mustChangePassword:true,
 
@@ -360,7 +360,7 @@ const [users,total]=
 await repo.findAndCount({
 
 where:{
- userType:UserType.EMPLOYEE
+ userType: In([UserType.BRANCH_MANAGER, UserType.SHOPKEEPER, UserType.DELIVERY_BOY, UserType.EMPLOYEE])
 },
 
 relations:{
@@ -469,8 +469,7 @@ message:error.message
             req.params.id
           ),
 
-          userType:
-          UserType.EMPLOYEE
+          userType: In([UserType.BRANCH_MANAGER, UserType.SHOPKEEPER, UserType.DELIVERY_BOY, UserType.EMPLOYEE])
         },
 
         select:{
