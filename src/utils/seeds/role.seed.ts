@@ -2,22 +2,7 @@
 
 import { Role } from "../../entities/roles";
 import { dataSource } from "../../server";
-
-export enum UserType {
-
-SUPER_ADMIN="Super_Admin",
-
-ADMIN="Admin",
-
-BRANCH_MANAGER="Branch_Manager",
-
-BRANCH="Branch",
-
-EMPLOYEE="Employee",
-
-CUSTOMER="Customer"
-
-}
+import { UserType } from "../Role-Access";
 
 export async function seedRoles(){
 

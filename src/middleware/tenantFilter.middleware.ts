@@ -1,79 +1,35 @@
-export class TenantService{
+import { UserType } from "../utils/Role-Access";
 
-static apply(
-user:any,
-qb:any,
-alias:string
-){
+export class TenantService {
 
-if(
-user.isSuperAdmin
-){
+  static apply(user: any, qb: any, alias: string) {
 
-return qb;
-}
+    if (user.isSuperAdmin || user.userType === UserType.SUPER_ADMIN) {
+      return qb;
+    }
 
-if(
-user.userType==="Admin"
-){
+    switch (user.userType) {
 
-qb.andWhere(
+      case UserType.ADMIN:
+        qb.andWhere(`${alias}.company_id = :companyId`, { companyId: user.companyId });
+        break;
 
-`${alias}.company_id=:companyId`,
+      case UserType.BRANCH_MANAGER:
+      case UserType.STAFF_KEEPER:
+        qb.andWhere(`${alias}.company_id = :companyId`, { companyId: user.companyId });
+        qb.andWhere(`${alias}.branch_id = :branchId`,   { branchId:  user.branchId  });
+        break;
 
-{
-companyId:
-user.companyId
-}
+      case UserType.DELIVERY_BOY:
+        qb.andWhere(`${alias}.assigned_to = :userId`, { userId: user.userId });
+        break;
 
-);
+      case UserType.CUSTOMER:
+        qb.andWhere(`${alias}.user_id = :userId`, { userId: user.userId });
+        break;
 
-}
+    }
 
-if(
-user.userType==="Branch"
-){
-
-qb.andWhere(
-
-`${alias}.company_id=:companyId`,
-{
-companyId:
-user.companyId
-}
-
-);
-
-qb.andWhere(
-
-`${alias}.branch_id=:branchId`,
-{
-branchId:
-user.branchId
-}
-
-);
-
-}
-
-if(
-user.userType==="Employee"
-){
-
-qb.andWhere(
-
-`${alias}.user_id=:userId`,
-{
-userId:
-user.userId
-}
-
-);
-
-}
-
-return qb;
-
-}
-
+    return qb;
+  }
 }

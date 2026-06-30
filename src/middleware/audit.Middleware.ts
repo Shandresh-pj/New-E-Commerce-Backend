@@ -32,17 +32,16 @@ export const auditMiddleware = (moduleName: string) => {
                 : "READ";
 
         await auditRepo.save({
-          module: moduleName,
+          module:    moduleName,
           action,
-          recordId: req.params.id || 0,
-          userId: req.user?.id,
-          roleId: req.user?.role_id,
-          companyId: req.user?.company_id,
-          branchId: req.user?.branch_id,
-          diff: {
-            request: req.body,
-            response: oldBody
-          }
+          recordId:  req.params.id ? Number(req.params.id) : 0,
+          userId:    req.user?.userId   ?? req.user?.id,
+          roleId:    req.user?.roleId   ?? req.user?.role_id ?? 0,
+          companyId: req.user?.companyId ?? req.user?.company_id,
+          branchId:  req.user?.branchId  ?? req.user?.branch_id,
+          ip:        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.ip,
+          device:    req.headers["user-agent"] as string,
+          diff:      { request: req.body, response: oldBody },
         });
 
       } catch (err) {

@@ -99,11 +99,11 @@ export class UserRole {
  @Column()
  role_id:number;
 
- @Column()
- company_id:number;
+ @Column({ nullable: true })
+ company_id: number;
 
- @Column()
- branch_id:number;
+ @Column({ nullable: true })
+ branch_id: number;
 
  @ManyToOne(()=>User,user=>user.userRoles)
  @JoinColumn({name:"user_id" })user:User;

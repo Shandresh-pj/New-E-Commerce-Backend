@@ -1,80 +1,44 @@
 import jwt from "jsonwebtoken";
+import { UserType } from "../utils/Role-Access";
 
-const authenticateMiddleware =
-(
-  req:any,
-  res:any,
-  next:any
-)=>{
+const authenticateMiddleware = (req: any, res: any, next: any) => {
 
-try{
+  try {
 
-const auth=
-req.headers.authorization;
+    const auth = req.headers.authorization;
 
-if(
-!auth ||
-!auth.startsWith("Bearer ")
-){
+    if (!auth || !auth.startsWith("Bearer ")) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
 
-return res.status(401)
-.json({
+    const token   = auth.split(" ")[1];
+    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
 
-success:false,
-message:"Unauthorized"
+    if (decoded.type === "refresh") {
+      return res.status(401).json({ success: false, message: "Invalid token type" });
+    }
 
-});
+    req.user = {
+      // handle both login JWT (userId) and select-context JWT (user_id)
+      userId:      decoded.userId    ?? decoded.user_id,
+      companyId:   decoded.company_id ?? decoded.companyId,
+      branchId:    decoded.branch_id  ?? decoded.branchId,
+      roleId:      decoded.role_id    ?? decoded.roleId,
+      userType:    decoded.userType,
+      roles:       decoded.roles       || [],
+      permissions: decoded.permissions || [],
+      isSuperAdmin:
+        decoded.isSuperAdmin === true ||
+        decoded.userType === UserType.SUPER_ADMIN,
+    };
 
-}
+    next();
 
-const token=
-auth.split(" ")[1];
+  } catch {
 
-const decoded:any=
-jwt.verify(
-token,
-process.env.JWT_SECRET!
-);
+    return res.status(401).json({ success: false, message: "Invalid token" });
 
-req.user={
-
-userId:
-decoded.userId,
-
-companyId:
-decoded.company_id,
-
-branchId:
-decoded.branch_id,
-
-userType:
-decoded.userType,
-
-roles:
-decoded.roles || [],
-
-permissions:
-decoded.permissions || [],
-
-isSuperAdmin:
-decoded.isSuperAdmin
-
-};
-
-next();
-
-}
-catch{
-
-return res.status(401)
-.json({
-
-success:false,
-message:"Invalid token"
-
-});
-
-}
+  }
 
 };
 

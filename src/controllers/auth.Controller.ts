@@ -5,7 +5,6 @@ import {
 } from "express";
 
 import bcrypt from "bcrypt";
-import path from "path";
 
 import {
   Controller,
@@ -21,31 +20,17 @@ import validate from "../middleware/validate";
 import { dataSource } from "../server";
 import jwt from "jsonwebtoken";
 
-import { Register } from "../entities/register";
-import { CreateProfileDto, LoginDto, RegisterDto, UpdateProfileDto } from "../dto/register.dto";
-import { Put } from "../decorators/put";
+import { LoginDto, RegisterDto } from "../dto/register.dto";
 import authenticateMiddleware from "../middleware/authenticate";
-import { generateToken } from "../utils/jwt";
-// import { permissionGuard } from "../middleware/permissionGuard.middleware";
+import { generateRefreshToken } from "../utils/refreshToken";
 import { User, UserRole } from "../entities/user";
 import { RolePermission } from "../entities/role-access";
 import { EmailService, generateTempPassword } from "../utils/sendEmailOtp";
 import { UserType } from "../utils/Role-Access";
-import { Menu, Permission } from "../entities/menu";
+import { Permission } from "../entities/menu";
 import { Role } from "../entities/roles";
 import { Company } from "../entities/company";
 import { Branch } from "../entities/branch";
-
-const buildUploadedFileUrl = (
-  file?: Express.Multer.File
-): string | undefined => {
-  if (!file) return undefined;
-  const relativePath = path
-    .relative(process.cwd(), file.path)
-    .split(path.sep)
-    .join("/");
-  return `/${relativePath}`;
-};
 
 @Controller("/auth")
 export class AuthController {
@@ -645,38 +630,27 @@ m=>m.id===menu.id
 
 const token = jwt.sign({
 
-userId:user.id,
-
-email:user.email,
-
-userType:user.userType,
-
+userId:      user.id,
+email:       user.email,
+userType:    user.userType,
 isSuperAdmin:user.isSuperAdmin,
-
-company_id:
-userRoles[0]?.company_id,
-
-branch_id:
-userRoles[0]?.branch_id,
-
-roles:
-userRoles.map(x=>({
-
-roleId:x.role.id,
-name:x.role.name
-
-}))
+company_id:  userRoles[0]?.company_id,
+branch_id:   userRoles[0]?.branch_id,
+roles:       userRoles.map(x => ({ roleId: x.role.id, name: x.role.name }))
 
 },
 
 process.env.JWT_SECRET!,
-
-{
-
-expiresIn:"1d"
-
-}
+{ expiresIn: "15m" }
 );
+
+const refreshToken = await generateRefreshToken({
+  userId:    user.id,
+  userType:  user.userType,
+  companyId: userRoles[0]?.company_id,
+  branchId:  userRoles[0]?.branch_id,
+  roleId:    userRoles[0]?.role_id,
+});
 
 
 // =====================================
@@ -703,6 +677,7 @@ message:
 "Login successful",
 
 token,
+refreshToken,
 
 user:safeUser,
 

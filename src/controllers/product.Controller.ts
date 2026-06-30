@@ -283,120 +283,34 @@ const extractUploadedFiles = (req: Request) => {
   return { image, video, images };
 };
 
-/**
- * Parses the optional `existing_images` field — the gallery URLs the
- * client wants to keep (after any deletions made in the UI). Lets update
- * actually shrink/replace the gallery instead of only ever appending.
- * Absent entirely => fall back to whatever is already on the product
- * (old append-only behaviour, for clients that don't send this field).
- */
-/**
- * `stock` stays on the entity and drives order/low-stock business logic,
- * but the admin UI only ever shows `stock_in_hand` — strip it (and the
- * legacy `qr_code` key, in case it still lingers on an un-synced DB row)
- * out of anything sent back to clients.
- */
+
 const HIDDEN_RESPONSE_FIELDS = ["stock", "qr_code"];
 
-const pushAttribute = (
-  attributesById: Map<number, any>,
-  attribute: any
-): void => {
-  if (!attribute || attributesById.has(attribute.Id)) return;
-  attributesById.set(attribute.Id, {
-    Id: attribute.Id,
-    CompanyId: attribute.CompanyId,
-    AttributeNameCode: attribute.AttributeNameCode,
-    Name: attribute.Name,
-    CreatedAt: attribute.CreatedAt,
-    UpdatedAt: attribute.UpdatedAt,
-  });
-};
 
-const pushValue = (
-  valuesById: Map<number, any>,
-  value: any
-): void => {
-  if (!value || valuesById.has(value.Id)) return;
-  valuesById.set(value.Id, {
-    Id: value.Id,
-    CompanyId: value.CompanyId,
-    ProductAttributeId: value.ProductAttributeId,
-    AttributeValueCode: value.AttributeValueCode,
-    Name: value.Name,
-    CreatedAt: value.CreatedAt,
-    UpdatedAt: value.UpdatedAt,
-  });
-};
-
-/**
- * Builds the product-level `ProductAttributes` / `ProductAttributeValues`
- * arrays the UI needs to render selectable options directly from a
- * product. A product can be tied to an attribute/value pair through two
- * independent paths — the ProductAttributeValueProduct junction rows
- * (`attributeValueLinks`, used to tag a simple product without creating a
- * variant) and the attribute/value each `variant` row already carries —
- * so both are merged and deduped here. Shaped the same way as the
- * ProductAttribute / ProductAttributeValue objects already nested under
- * each variant, for a consistent contract.
- */
-const extractProductAttributeData = (
+const buildSimpleAttributeList = (
   links: any[] | undefined,
-  variants: any[] | undefined
-): { ProductAttributes: any[]; ProductAttributeValues: any[] } => {
-  const attributesById = new Map<number, any>();
-  const valuesById = new Map<number, any>();
-
-  (links || []).forEach((link) => {
-    const value = link?.ProductAttributeValue;
-    if (!value) return;
-    pushAttribute(attributesById, value.ProductAttribute);
-    pushValue(valuesById, value);
-  });
-
-  (variants || []).forEach((variant) => {
-    pushAttribute(attributesById, variant?.ProductAttribute);
-    pushValue(valuesById, variant?.ProductAttributeValue);
-  });
-
-  return {
-    ProductAttributes: Array.from(attributesById.values()),
-    ProductAttributeValues: Array.from(valuesById.values()),
-  };
-};
-
-/**
- * Builds the flat `attribute_values` pair list (the shape the create/update
- * endpoints accept back) directly from the loaded junction rows, so an
- * edit form can reconstruct its rows the same way it does for `variants`.
- */
-const buildAttributeValuePairs = (links: any[] | undefined): any[] =>
+  productId?: number
+): any[] =>
   (links || []).map((link) => ({
     Id: link.Id,
+    ProductId: productId,
     ProductAttributeId: link.ProductAttributeValue?.ProductAttributeId,
     ProductAttributeValueId: link.ProductAttributeValueId,
-    ProductAttribute: link.ProductAttributeValue?.ProductAttribute,
-    ProductAttributeValue: link.ProductAttributeValue
-      ? {
-          Id: link.ProductAttributeValue.Id,
-          ProductAttributeId: link.ProductAttributeValue.ProductAttributeId,
-          AttributeValueCode: link.ProductAttributeValue.AttributeValueCode,
-          Name: link.ProductAttributeValue.Name,
-        }
-      : undefined,
+    AttributeName: link.ProductAttributeValue?.ProductAttribute?.Name || "",
+    AttributeValue: link.ProductAttributeValue?.Name || "",
   }));
+
 
 const sanitizeProduct = (product: any): any => {
   if (!product) return product;
   const { attributeValueLinks, ...rest } = product;
   HIDDEN_RESPONSE_FIELDS.forEach((key) => delete rest[key]);
 
-  if (attributeValueLinks !== undefined) {
-    Object.assign(
-      rest,
-      extractProductAttributeData(attributeValueLinks, rest.variants)
-    );
-    rest.attribute_values = buildAttributeValuePairs(attributeValueLinks);
+  if (rest.product_type === "single") {
+    rest.Attributes = buildSimpleAttributeList(attributeValueLinks, product.id);
+    delete rest.variants;
+  } else if (rest.product_type === "variant") {
+    rest.Attributes = buildSimpleAttributeList(attributeValueLinks, product.id);
   }
 
   return rest;
@@ -673,8 +587,11 @@ export class ProductController {
         .createQueryBuilder("product")
         .leftJoinAndSelect("product.creator", "creator")
         .leftJoinAndSelect("product.variants", "variants")
+        .leftJoinAndSelect("variants.ProductAttribute", "variantAttr")
+        .leftJoinAndSelect("variants.ProductAttributeValue", "variantAttrVal")
         .leftJoinAndSelect("product.attributeValueLinks", "attributeValueLinks")
         .leftJoinAndSelect("attributeValueLinks.ProductAttributeValue", "linkValue")
+        .leftJoinAndSelect("linkValue.ProductAttribute", "linkValueAttr")
         .orderBy("product.id", "DESC");
 
       if (req.query.status) {

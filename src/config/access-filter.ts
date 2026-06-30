@@ -1,102 +1,34 @@
-// middleware/accessFilter.ts
+import { UserType } from "../utils/Role-Access";
 
-import {
-UserType,
-EmployeeType
-}
-from "../utils/Role-Access";
+export function applyAccess(req: any, qb: any, alias: string) {
 
-export function applyAccess(
-req:any,
-qb:any,
-alias:string
-){
+  const user = req.user;
 
-const user=
-req.user;
+  if (user.isSuperAdmin || user.userType === UserType.SUPER_ADMIN) {
+    return qb;
+  }
 
-if(
-user.isSuperAdmin
-){
+  switch (user.userType) {
 
-return qb;
-}
+    case UserType.ADMIN:
+      qb.andWhere(`${alias}.company_id = :companyId`, { companyId: user.companyId });
+      break;
 
+    case UserType.BRANCH_MANAGER:
+    case UserType.STAFF_KEEPER:
+      qb.andWhere(`${alias}.company_id = :companyId`, { companyId: user.companyId });
+      qb.andWhere(`${alias}.branch_id = :branchId`,   { branchId:  user.branchId  });
+      break;
 
-switch(
-user.userType
-){
+    case UserType.DELIVERY_BOY:
+      qb.andWhere(`${alias}.assigned_to = :userId`, { userId: user.userId });
+      break;
 
-case UserType.ADMIN:
+    case UserType.CUSTOMER:
+      qb.andWhere(`${alias}.user_id = :userId`, { userId: user.userId });
+      break;
 
-qb.andWhere(
+  }
 
-`${alias}.company_id=:companyId`,
-{
-companyId:
-user.companyId
-}
-
-);
-
-break;
-
-
-case UserType.EMPLOYEE:
-
-if(
-user.employeeType===
-
-EmployeeType.BRANCH_MANAGER ||
-
-user.employeeType===
-
-EmployeeType.STAFF_KEEPER
-){
-
-qb.andWhere(
-
-`${alias}.company_id=:companyId`,
-{
-companyId:
-user.companyId
-}
-
-);
-
-qb.andWhere(
-
-`${alias}.branch_id=:branchId`,
-{
-branchId:
-user.branchId
-}
-
-);
-
-}
-
-if(
-user.employeeType===
-
-EmployeeType.DELIVERY_BOY
-){
-
-qb.andWhere(
-
-`${alias}.assigned_to=:userId`,
-{
-userId:
-user.id
-}
-
-);
-
-}
-
-break;
-
-}
-
-return qb;
+  return qb;
 }

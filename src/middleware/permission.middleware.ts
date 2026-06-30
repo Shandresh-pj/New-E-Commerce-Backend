@@ -1,53 +1,19 @@
-export const permissionGuard=
-(
-menu:string,
-action:string
-)=>{
+// Canonical permission guard — checks menu name + action against JWT permissions
+export const permissionGuard = (menu: string, action: string) => {
+  return (req: any, res: any, next: any) => {
 
-return(
-req:any,
-res:any,
-next:any
-)=>{
+    if (req.user?.isSuperAdmin) return next();
 
-if(
-req.user.isSuperAdmin
-){
+    const permissions: any[] = req.user?.permissions || [];
 
-return next();
+    const allowed = permissions.some(
+      (p: any) => p.menu?.name === menu && p.action === action
+    );
 
-}
+    if (!allowed) {
+      return res.status(403).json({ success: false, message: "Permission denied" });
+    }
 
-const permissions=
-req.user.permissions || [];
-
-const allowed=
-permissions.some(
-
-(p:any)=>
-
-p.menu===menu &&
-p.action===action
-
-);
-
-if(
-!allowed
-){
-
-return res.status(403)
-.json({
-
-success:false,
-message:
-"Permission denied"
-
-});
-
-}
-
-next();
-
-};
-
+    next();
+  };
 };

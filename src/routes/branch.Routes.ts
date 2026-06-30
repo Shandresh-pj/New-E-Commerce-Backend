@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { branchController } from "../controllers";
 import authenticateMiddleware from "../middleware/authenticate";
+import validate from "../middleware/validate";
+import { CreateBranchDto, UpdateBranchDto } from "../dto";
 
 const router = Router();
 
@@ -62,10 +64,10 @@ const router = Router();
  *         description: Unauthorized
  */
 router.post(
-  "/branches",authenticateMiddleware,
-  branchController.create.bind(
-    branchController
-  )
+  "/branches",
+  authenticateMiddleware,
+  validate(CreateBranchDto),
+  branchController.create.bind(branchController)
 );
 
 
@@ -189,10 +191,10 @@ router.get(
  *         description: Branch not found
  */
 router.put(
-  "/branches/:id",authenticateMiddleware,
-  branchController.update.bind(
-    branchController
-  )
+  "/branches/:id",
+  authenticateMiddleware,
+  validate(UpdateBranchDto),
+  branchController.update.bind(branchController)
 );
 
 

@@ -2,6 +2,7 @@ import { Controller, Get, Middleware } from "../decorators";
 import authenticateMiddleware from "../middleware/authenticate";
 import { dataSource } from "../server";
 import { AuditLog } from "../entities/auditLogs";
+import { UserType } from "../utils/Role-Access";
 
 @Controller("/audit")
 export class AuditController {
@@ -15,11 +16,14 @@ export class AuditController {
     let where: any = {};
 
     if (!req.user.isSuperAdmin) {
-      where.companyId = req.user.company_id;
+      where.companyId = req.user.companyId;
     }
 
-    if (req.user.role === "Branch") {
-      where.branchId = req.user.branch_id;
+    if (
+      req.user.userType === UserType.BRANCH_MANAGER ||
+      req.user.userType === UserType.STAFF_KEEPER
+    ) {
+      where.branchId = req.user.branchId;
     }
 
     const logs = await repo.find({

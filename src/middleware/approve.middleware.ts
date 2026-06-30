@@ -1,34 +1,17 @@
 import { Response, NextFunction } from "express";
-import { UserType } from "../utils/Role-Access";
+import { UserType, ROLE_PERMISSIONS } from "../utils/Role-Access";
 
 export const approveGuard = () => {
-  return (
-    req: any,
-    res: Response,
-    next: NextFunction
-  ) => {
+  return (req: any, res: Response, next: NextFunction) => {
 
     if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized"
-      });
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const allowedRoles = [
-      UserType.SUPER_ADMIN,
-      UserType.ADMIN
-    ];
+    const perms = ROLE_PERMISSIONS[req.user.userType as UserType];
 
-    if (
-      !allowedRoles.includes(
-        req.user.userType
-      )
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "Approval access denied"
-      });
+    if (!perms?.canApprove) {
+      return res.status(403).json({ success: false, message: "Approval access denied" });
     }
 
     next();

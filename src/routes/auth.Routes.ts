@@ -1,7 +1,16 @@
 import { Router } from "express";
+import jwt from "jsonwebtoken";
 import { authController, companyController } from "../controllers";
 import authenticateMiddleware from "../middleware/authenticate";
 import { verifyEmailLimiter } from "../controllers/company.Controller";
+import {
+  verifyRefreshToken,
+  revokeRefreshToken,
+  generateRefreshToken
+} from "../utils/refreshToken";
+import { dataSource } from "../server";
+import { User } from "../entities/user";
+import { RolePermission } from "../entities/role-access";
 
 const router = Router();
 
@@ -353,5 +362,130 @@ router.get(
   verifyEmailLimiter,
   companyController.verifyEmail.bind(companyController)
 );
+
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Refresh access token
+ *     description: Exchange a valid refresh token for a new 15-minute access token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: New access token issued
+ *       401:
+ *         description: Invalid or expired refresh token
+ */
+router.post("/auth/refresh", async (req: any, res: any) => {
+  try {
+
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ success: false, message: "Refresh token required" });
+    }
+
+    const payload = await verifyRefreshToken(refreshToken);
+
+    if (!payload) {
+      return res.status(401).json({ success: false, message: "Invalid or expired refresh token" });
+    }
+
+    const userRepo = dataSource.getRepository(User);
+    const user = await userRepo.findOne({ where: { id: payload.userId } });
+
+    if (!user || !user.isActive) {
+      return res.status(401).json({ success: false, message: "User not found or inactive" });
+    }
+
+    // Load current permissions for this role
+    let permissions: any[] = [];
+    if (payload.roleId) {
+      const rolePermRepo = dataSource.getRepository(RolePermission);
+      const rps = await rolePermRepo.find({
+        where: { role_id: payload.roleId },
+        relations: { permission: { menu: true } }
+      });
+      permissions = rps.map((rp: any) => rp.permission);
+    }
+
+    const accessToken = jwt.sign(
+      {
+        userId:      user.id,
+        userType:    user.userType,
+        isSuperAdmin: user.isSuperAdmin,
+        company_id:  payload.companyId,
+        branch_id:   payload.branchId,
+        role_id:     payload.roleId,
+        permissions,
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: "15m" }
+    );
+
+    return res.json({
+      success: true,
+      message: "Token refreshed",
+      accessToken
+    });
+
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     tags:
+ *       - Auth
+ *     summary: Logout
+ *     description: Revoke the refresh token (invalidates the session)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Logged out
+ */
+router.post("/auth/logout", async (req: any, res: any) => {
+  try {
+
+    const { refreshToken } = req.body;
+
+    if (refreshToken) {
+      const payload = await verifyRefreshToken(refreshToken);
+      if (payload) {
+        await revokeRefreshToken(payload.userId, payload.tokenId);
+      }
+    }
+
+    return res.json({ success: true, message: "Logged out" });
+
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 export default router;

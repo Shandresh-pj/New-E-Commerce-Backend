@@ -4,6 +4,7 @@ import { getMetadataStorage } from "class-validator";
 
 
 export * from "./Attendance.dto";
+export * from "./branch.dto";
 export * from "./branchStock.dto";
 export * from "./category.dto"
 export * from "./coupon.dto";

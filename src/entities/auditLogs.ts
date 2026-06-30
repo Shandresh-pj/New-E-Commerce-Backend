@@ -38,6 +38,12 @@ export class AuditLog {
   @Column({ nullable: true })
   branchId: number;
 
+  @Column({ nullable: true })
+  ip: string;
+
+  @Column({ nullable: true, length: 512 })
+  device: string;
+
   @Column({ type: "json", nullable: true })
   diff: any;
 
@@ -72,6 +78,12 @@ export class AuditLogBackup {
 
   @Column({ nullable: true })
   branchId: number;
+
+  @Column({ nullable: true })
+  ip: string;
+
+  @Column({ nullable: true, length: 512 })
+  device: string;
 
   @Column({ type: "json", nullable: true })
   diff: any;
