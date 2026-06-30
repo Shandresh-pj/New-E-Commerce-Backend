@@ -295,4 +295,4 @@ router.delete(
  */
 router.get("/barcode", productController.scan.bind(productController));
 
-module.exports = router;
+export default router;

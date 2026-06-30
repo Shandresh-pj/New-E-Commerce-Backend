@@ -12,7 +12,7 @@ import {
 import { Type } from "class-transformer";
 
 export enum ProductType {
-  SIMPLE = "simple",
+  SINGLE = "single",
   VARIANT = "variant",
 }
 
@@ -42,6 +42,16 @@ export class ProductVariantDto {
   @Min(0)
   Stock!: number;
 
+  @IsNotEmpty()
+  @IsNumber()
+  ProductAttributeId!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  ProductAttributeValueId!: number;
+}
+
+export class ProductAttributeValueLinkDto {
   @IsNotEmpty()
   @IsNumber()
   ProductAttributeId!: number;
@@ -96,6 +106,12 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => ProductVariantDto)
   variants?: ProductVariantDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductAttributeValueLinkDto)
+  attribute_values?: ProductAttributeValueLinkDto[];
 }
 
 export class UpdateProductDto {
@@ -146,6 +162,12 @@ export class UpdateProductDto {
   @ValidateNested({ each: true })
   @Type(() => ProductVariantDto)
   variants?: ProductVariantDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductAttributeValueLinkDto)
+  attribute_values?: ProductAttributeValueLinkDto[];
 
   // JSON string array of gallery image paths to keep on update; see
   // product.Controller.ts's parseExistingImages.

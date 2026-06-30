@@ -55,4 +55,4 @@ router.delete(
   statusController.deleteItem.bind(statusController)
 );
 
-module.exports = router;
+export default router;

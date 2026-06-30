@@ -9,7 +9,7 @@ import {
   OneToMany,
 } from "typeorm";
 
-import { Register } from "./register";
+import { User } from "./user";
 import { CouponProduct } from "./coupons";
 import {  StockLog } from "./stock";
 import { Order, OrderItem } from "./order";
@@ -19,6 +19,7 @@ import { Category } from "./category";
 import { ProductAttributeValueProduct } from "./productAttribute";
 import { ProductVariant } from "./productVariant";
 import { ProductType, ProductStatus } from "../dto/products.dto";
+import { Register } from "./register";
 
 @Entity("products_table_1")
 export class Product {
@@ -77,17 +78,11 @@ orderItems!: OrderItem[];
   @Column()
   registration_id!: number;
 
-  // @ManyToOne(
-  //   () => Register,
-  //   register => register.products,
-  //   {
-  //     onDelete: "CASCADE",
-  //   }
-  // )
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({
     name: "registration_id",
   })
-  creator!: Register;
+  creator!: User;
 
   @Column({
     type: "int",
@@ -103,7 +98,7 @@ orderItems!: OrderItem[];
   @Column({
     type: "enum",
     enum: ProductType,
-    default: ProductType.SIMPLE,
+    default: ProductType.SINGLE,
   })
   product_type!: ProductType;
 

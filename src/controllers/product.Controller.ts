@@ -19,13 +19,18 @@ import { dataSource } from "../server";
 import { uploadAny } from "../utils/upload";
 import { Product } from "../entities/products";
 import { ProductVariant } from "../entities/productVariant";
-import { ProductAttribute, ProductAttributeValue } from "../entities/productAttribute";
+import {
+  ProductAttribute,
+  ProductAttributeValue,
+  ProductAttributeValueProduct,
+} from "../entities/productAttribute";
 import { ApiError } from "../exceptions/ApiError";
 import { applyPagination, paginationResponse } from "../utils/controllerFunctions";
 import {
   CreateProductDto,
   UpdateProductDto,
   ProductVariantDto,
+  ProductAttributeValueLinkDto,
   ScanProductDto,
 } from "../dto";
 import { Put } from "../decorators/put";
@@ -80,10 +85,11 @@ const normalizeEmptyStrings = (
 };
 
 /**
- * Parse the `variants` field, which may arrive as a real array (JSON
- * request body) or as a JSON string (multipart/form-data field).
+ * Parse a repeatable-rows field (`variants`, `attribute_values`), which may
+ * arrive as a real array (JSON request body) or as a JSON string
+ * (multipart/form-data field).
  */
-const parseVariantsInput = (raw: any): any[] => {
+const parseJsonArrayField = (raw: any, fieldName: string): any[] => {
   if (raw === undefined || raw === null || raw === "") return [];
 
   if (Array.isArray(raw)) return raw;
@@ -92,17 +98,23 @@ const parseVariantsInput = (raw: any): any[] => {
     try {
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) {
-        throw new ApiError(422, "variants must be a JSON array");
+        throw new ApiError(422, `${fieldName} must be a JSON array`);
       }
       return parsed;
     } catch (err) {
       if (err instanceof ApiError) throw err;
-      throw new ApiError(422, "Invalid JSON in variants field");
+      throw new ApiError(422, `Invalid JSON in ${fieldName} field`);
     }
   }
 
-  throw new ApiError(422, "variants must be an array");
+  throw new ApiError(422, `${fieldName} must be an array`);
 };
+
+const parseVariantsInput = (raw: any): any[] =>
+  parseJsonArrayField(raw, "variants");
+
+const parseAttributeValuesInput = (raw: any): any[] =>
+  parseJsonArrayField(raw, "attribute_values");
 
 /**
  * New variant rows from the UI carry a blank Id/CompanyId (e.g. "")
@@ -173,30 +185,58 @@ const validateVariantPayloads = async (
 };
 
 /**
- * Confirm every referenced ProductAttributeId / ProductAttributeValueId
- * pair actually exists and belongs together.
+ * Validate each incoming attribute_values payload's shape (a product
+ * attribute / value pair, used to tag a single-type product). Returns a
+ * map of "attribute_values[i].field" -> messages.
  */
-const validateVariantReferences = async (
+const validateAttributeValuePayloads = async (
+  items: any[]
+): Promise<Record<string, string[]>> => {
+  const allErrors: Record<string, string[]> = {};
+
+  for (let i = 0; i < items.length; i++) {
+    const coerced = coerceNumbers(items[i], [
+      "ProductAttributeId",
+      "ProductAttributeValueId",
+    ]);
+
+    const errors = await validateAgainstDto(ProductAttributeValueLinkDto, coerced);
+
+    Object.entries(errors).forEach(([field, messages]) => {
+      allErrors[`attribute_values[${i}].${field}`] = messages;
+    });
+  }
+
+  return allErrors;
+};
+
+/**
+ * Confirm every referenced ProductAttributeId / ProductAttributeValueId
+ * pair actually exists and belongs together. Shared by `variants` and
+ * `attribute_values`, which both carry that same pair shape.
+ */
+const validateAttributeReferencePairs = async (
   manager: any,
-  variants: any[]
+  items: any[],
+  label: string
 ): Promise<Record<string, string[]>> => {
   const errors: Record<string, string[]> = {};
 
   const attributeRepo = manager.getRepository(ProductAttribute);
   const valueRepo = manager.getRepository(ProductAttributeValue);
 
-  for (let i = 0; i < variants.length; i++) {
-    const variant = coerceNumbers(variants[i], [
+  for (let i = 0; i < items.length; i++) {
+    const item = coerceNumbers(items[i], [
       "ProductAttributeId",
       "ProductAttributeValueId",
     ]);
 
     const attribute = await attributeRepo.findOne({
-      where: { Id: variant.ProductAttributeId },
+      where: { Id: item.ProductAttributeId },
     });
 
     if (!attribute) {
-      errors[`variants[${i}].ProductAttributeId`] = [
+      errors[`${label}[${i}].ProductAttributeId`] = [
         "ProductAttribute not found",
       ];
       continue;
@@ -204,13 +244,13 @@ const validateVariantReferences = async (
 
     const value = await valueRepo.findOne({
       where: {
-        Id: variant.ProductAttributeValueId,
-        ProductAttributeId: variant.ProductAttributeId,
+        Id: item.ProductAttributeValueId,
+        ProductAttributeId: item.ProductAttributeId,
       },
     });
 
     if (!value) {
-      errors[`variants[${i}].ProductAttributeValueId`] = [
+      errors[`${label}[${i}].ProductAttributeValueId`] = [
         "ProductAttributeValue not found for the given ProductAttributeId",
       ];
     }
@@ -218,6 +258,12 @@ const validateVariantReferences = async (
 
   return errors;
 };
+
+const validateVariantReferences = (manager: any, variants: any[]) =>
+  validateAttributeReferencePairs(manager, variants, "variants");
+
+const validateAttributeValueReferences = (manager: any, items: any[]) =>
+  validateAttributeReferencePairs(manager, items, "attribute_values");
 
 const extractUploadedFiles = (req: Request) => {
   const files = req as any;
@@ -319,6 +365,27 @@ const extractProductAttributeData = (
   };
 };
 
+/**
+ * Builds the flat `attribute_values` pair list (the shape the create/update
+ * endpoints accept back) directly from the loaded junction rows, so an
+ * edit form can reconstruct its rows the same way it does for `variants`.
+ */
+const buildAttributeValuePairs = (links: any[] | undefined): any[] =>
+  (links || []).map((link) => ({
+    Id: link.Id,
+    ProductAttributeId: link.ProductAttributeValue?.ProductAttributeId,
+    ProductAttributeValueId: link.ProductAttributeValueId,
+    ProductAttribute: link.ProductAttributeValue?.ProductAttribute,
+    ProductAttributeValue: link.ProductAttributeValue
+      ? {
+          Id: link.ProductAttributeValue.Id,
+          ProductAttributeId: link.ProductAttributeValue.ProductAttributeId,
+          AttributeValueCode: link.ProductAttributeValue.AttributeValueCode,
+          Name: link.ProductAttributeValue.Name,
+        }
+      : undefined,
+  }));
+
 const sanitizeProduct = (product: any): any => {
   if (!product) return product;
   const { attributeValueLinks, ...rest } = product;
@@ -329,6 +396,7 @@ const sanitizeProduct = (product: any): any => {
       rest,
       extractProductAttributeData(attributeValueLinks, rest.variants)
     );
+    rest.attribute_values = buildAttributeValuePairs(attributeValueLinks);
   }
 
   return rest;
@@ -376,6 +444,7 @@ export class ProductController {
     try {
 
       const variantsInput = normalizeVariantIds(parseVariantsInput(req.body.variants));
+      const attributeValuesInput = parseAttributeValuesInput(req.body.attribute_values);
 
       const body = normalizeEmptyStrings(
         coerceNumbers(req.body, [
@@ -389,11 +458,19 @@ export class ProductController {
       const dtoErrors = await validateAgainstDto(CreateProductDto, {
         ...body,
         variants: undefined,
+        attribute_values: undefined,
       });
 
       const variantShapeErrors = await validateVariantPayloads(variantsInput);
+      const attributeValueShapeErrors = await validateAttributeValuePayloads(
+        attributeValuesInput
+      );
 
-      const combinedErrors = { ...dtoErrors, ...variantShapeErrors };
+      const combinedErrors = {
+        ...dtoErrors,
+        ...variantShapeErrors,
+        ...attributeValueShapeErrors,
+      };
 
       if (Object.keys(combinedErrors).length > 0) {
         throw new ApiError(422, "Validation Failed", combinedErrors);
@@ -407,6 +484,17 @@ export class ProductController {
 
         if (Object.keys(refErrors).length > 0) {
           throw new ApiError(400, "Invalid variant references", refErrors);
+        }
+      }
+
+      if (attributeValuesInput.length > 0) {
+        const refErrors = await validateAttributeValueReferences(
+          qr.manager,
+          attributeValuesInput
+        );
+
+        if (Object.keys(refErrors).length > 0) {
+          throw new ApiError(400, "Invalid attribute value references", refErrors);
         }
       }
 
@@ -475,12 +563,40 @@ export class ProductController {
         savedVariants = await variantRepo.save(variantEntities);
       }
 
+      let savedAttributeValues: any[] = [];
+
+      if (attributeValuesInput.length > 0) {
+        const linkRepo = qr.manager.getRepository(ProductAttributeValueProduct);
+
+        const linkEntities = attributeValuesInput.map((item) => {
+          const coerced = coerceNumbers(item, ["ProductAttributeValueId"]);
+          return linkRepo.create({
+            ProductId: product.id,
+            ProductAttributeValueId: coerced.ProductAttributeValueId,
+          });
+        });
+
+        const savedLinks = await linkRepo.save(linkEntities);
+
+        savedAttributeValues = savedLinks.map((link, i) => ({
+          Id: link.Id,
+          ProductAttributeId: coerceNumbers(attributeValuesInput[i], [
+            "ProductAttributeId",
+          ]).ProductAttributeId,
+          ProductAttributeValueId: link.ProductAttributeValueId,
+        }));
+      }
+
       await qr.commitTransaction();
 
       return res.status(201).json({
         success: true,
         message: "Product created",
-        data: { ...sanitizeProduct(product), variants: savedVariants },
+        data: {
+          ...sanitizeProduct(product),
+          variants: savedVariants,
+          attribute_values: savedAttributeValues,
+        },
       });
 
     } catch (err) {
@@ -557,6 +673,8 @@ export class ProductController {
         .createQueryBuilder("product")
         .leftJoinAndSelect("product.creator", "creator")
         .leftJoinAndSelect("product.variants", "variants")
+        .leftJoinAndSelect("product.attributeValueLinks", "attributeValueLinks")
+        .leftJoinAndSelect("attributeValueLinks.ProductAttributeValue", "linkValue")
         .orderBy("product.id", "DESC");
 
       if (req.query.status) {
@@ -653,6 +771,11 @@ export class ProductController {
         ? normalizeVariantIds(parseVariantsInput(req.body.variants))
         : [];
 
+      const hasAttributeValuesField = req.body.attribute_values !== undefined;
+      const attributeValuesInput = hasAttributeValuesField
+        ? parseAttributeValuesInput(req.body.attribute_values)
+        : [];
+
       const body = normalizeEmptyStrings(
         coerceNumbers(req.body, [
           "price",
@@ -665,13 +788,22 @@ export class ProductController {
       const dtoErrors = await validateAgainstDto(UpdateProductDto, {
         ...body,
         variants: undefined,
+        attribute_values: undefined,
       });
 
       const variantShapeErrors = hasVariantsField
         ? await validateVariantPayloads(variantsInput)
         : {};
 
-      const combinedErrors = { ...dtoErrors, ...variantShapeErrors };
+      const attributeValueShapeErrors = hasAttributeValuesField
+        ? await validateAttributeValuePayloads(attributeValuesInput)
+        : {};
+
+      const combinedErrors = {
+        ...dtoErrors,
+        ...variantShapeErrors,
+        ...attributeValueShapeErrors,
+      };
 
       if (Object.keys(combinedErrors).length > 0) {
         throw new ApiError(422, "Validation Failed", combinedErrors);
@@ -685,6 +817,17 @@ export class ProductController {
 
         if (Object.keys(refErrors).length > 0) {
           throw new ApiError(400, "Invalid variant references", refErrors);
+        }
+      }
+
+      if (hasAttributeValuesField && attributeValuesInput.length > 0) {
+        const refErrors = await validateAttributeValueReferences(
+          qr.manager,
+          attributeValuesInput
+        );
+
+        if (Object.keys(refErrors).length > 0) {
+          throw new ApiError(400, "Invalid attribute value references", refErrors);
         }
       }
 
@@ -789,14 +932,45 @@ export class ProductController {
         savedVariants = upserted;
       }
 
+      let savedAttributeValues: any[] | undefined;
+
+      if (hasAttributeValuesField) {
+        const linkRepo = qr.manager.getRepository(ProductAttributeValueProduct);
+
+        await linkRepo.delete({ ProductId: productId });
+
+        const linkEntities = attributeValuesInput.map((item) => {
+          const coerced = coerceNumbers(item, ["ProductAttributeValueId"]);
+          return linkRepo.create({
+            ProductId: productId,
+            ProductAttributeValueId: coerced.ProductAttributeValueId,
+          });
+        });
+
+        const savedLinks =
+          linkEntities.length > 0 ? await linkRepo.save(linkEntities) : [];
+
+        savedAttributeValues = savedLinks.map((link, i) => ({
+          Id: link.Id,
+          ProductAttributeId: coerceNumbers(attributeValuesInput[i], [
+            "ProductAttributeId",
+          ]).ProductAttributeId,
+          ProductAttributeValueId: link.ProductAttributeValueId,
+        }));
+      }
+
       await qr.commitTransaction();
+
+      const responseData: any = sanitizeProduct(product);
+      if (savedVariants) responseData.variants = savedVariants;
+      if (savedAttributeValues !== undefined) {
+        responseData.attribute_values = savedAttributeValues;
+      }
 
       return res.json({
         success: true,
         message: "Updated successfully",
-        data: savedVariants
-          ? { ...sanitizeProduct(product), variants: savedVariants }
-          : sanitizeProduct(product),
+        data: responseData,
       });
     } catch (err) {
       await qr.rollbackTransaction();
@@ -827,6 +1001,10 @@ export class ProductController {
 
       await qr.manager
         .getRepository(ProductVariant)
+        .delete({ ProductId: productId });
+
+      await qr.manager
+        .getRepository(ProductAttributeValueProduct)
         .delete({ ProductId: productId });
 
       await repo.delete(productId);
