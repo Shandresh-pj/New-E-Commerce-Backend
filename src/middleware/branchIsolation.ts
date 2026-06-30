@@ -1,6 +1,6 @@
-// middleware/companyIsolation.ts
+// middleware/branchIsolation.ts
 
-export const companyIsolation=
+export const branchIsolation=
 (
 req:any,
 res:any,
@@ -15,11 +15,10 @@ user.isSuperAdmin
 ){
 
 return next();
-
 }
 
 if(
-!user.companyId
+!user.branchId
 ){
 
 return res.status(403)
@@ -27,14 +26,14 @@ return res.status(403)
 
 success:false,
 message:
-"Company access denied"
+"Branch access denied"
 
 });
 
 }
 
-req.companyId=
-user.companyId;
+req.branchId=
+user.branchId;
 
 next();
 

@@ -11,7 +11,7 @@ Swagger
 import { NextFunction } from "express";
 
 import authenticateMiddleware
-from "../middleware/authenticate";
+from "../middleware/authenticate.middleware";
 
 import validate
 from "../middleware/validate";
@@ -33,6 +33,7 @@ import { User, UserRole } from "../entities/user";
 import * as crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { Role } from "../entities/roles";
+import { auditMiddleware } from "../middleware/audit.Middleware";
 
 @Controller("/branches")
 export class BranchController{
@@ -42,7 +43,7 @@ export class BranchController{
 // CREATE BRANCH
 // =====================================
 @Post("/")
-@Middleware([authenticateMiddleware, validate(CreateBranchDto)])
+@Middleware([authenticateMiddleware,auditMiddleware("BRANCH"), validate(CreateBranchDto)])
 public async create(req: any, res: any) {
   const queryRunner = dataSource.createQueryRunner();
 

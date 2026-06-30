@@ -611,25 +611,61 @@ m=>m.id===menu.id
 // SMALL TOKEN PAYLOAD
 // =====================================
 
-const token=
-jwt.sign({
+// const token=
+// jwt.sign({
 
-userId:
-user.id,
+// userId:
+// user.id,
 
-email:
-user.email,
+// email:
+// user.email,
 
-userType:
-user.userType,
+// userType:
+// user.userType,
 
-isSuperAdmin:
-user.isSuperAdmin,
+// isSuperAdmin:
+// user.isSuperAdmin,
 
-roleIds:
-userRoles.map(
-x=>x.role.id
-)
+// roleIds:
+// userRoles.map(
+// x=>x.role.id
+// )
+
+// },
+
+// process.env.JWT_SECRET!,
+
+// {
+
+// expiresIn:"1d"
+
+// }
+
+// );
+
+const token = jwt.sign({
+
+userId:user.id,
+
+email:user.email,
+
+userType:user.userType,
+
+isSuperAdmin:user.isSuperAdmin,
+
+company_id:
+userRoles[0]?.company_id,
+
+branch_id:
+userRoles[0]?.branch_id,
+
+roles:
+userRoles.map(x=>({
+
+roleId:x.role.id,
+name:x.role.name
+
+}))
 
 },
 
@@ -640,7 +676,6 @@ process.env.JWT_SECRET!,
 expiresIn:"1d"
 
 }
-
 );
 
 

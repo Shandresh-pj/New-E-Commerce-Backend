@@ -1,17 +1,24 @@
-import { Request, Response, NextFunction } from "express";
+export const tenantMiddleware=
+(req:any,res:any,next:any)=>{
 
-export function tenantMiddleware(req: any, res: Response, next: NextFunction) {
-  if (!req.user) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
+if(
+req.user.isSuperAdmin
+){
 
-  req.tenant = {
-    userId: req.user.id,
-    companyId: req.user.company_id,
-    branchId: req.user.branch_id,
-    role: req.user.role,
-    isSuperAdmin: req.user.isSuperAdmin,
-  };
+return next();
 
-  next();
 }
+
+req.tenant={
+
+company_id:
+req.user.company_id,
+
+branch_id:
+req.user.branch_id
+
+};
+
+next();
+
+};

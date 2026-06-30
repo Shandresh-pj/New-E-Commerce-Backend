@@ -1,14 +1,23 @@
-export function abacCheck(user: any, resource: any, action: string) {
+export function abacCheck(user:any,resource:any,action:string){
 
-  if (user.isSuperAdmin) return true;
+if(user.isSuperAdmin){
 
-  if (resource.company_id !== user.companyId) {
-    return false;
-  }
+return true;
+}
 
-  if (user.role === "EMPLOYEE" && action === "delete") {
-    return false;
-  }
+if(resource.company_id!==user.company_id){
 
-  return true;
+return false;
+}
+
+if(user.employeeType=== "DELIVERY BOY" && action==="DELETE"){
+return false;
+}
+
+if(action==="APPROVE"){
+return ["Super_Admin","Admin"].includes(user.userType);
+}
+
+return true;
+
 }

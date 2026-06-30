@@ -26,6 +26,7 @@ import { Role } from "../entities/roles";
 import { AuditLog } from "../entities/auditLogs";
 import { Branch } from "../entities/branch";
 import rateLimit from "express-rate-limit";
+import { auditMiddleware } from "../middleware/audit.Middleware";
 
 export const verifyEmailLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -41,7 +42,7 @@ export class CompanyController {
   // ============================================
 
 @Post("/")
-@Middleware([authenticateMiddleware])
+@Middleware([authenticateMiddleware,auditMiddleware("ADMIN"),])
 @Swagger(
 "Create Company",
 "Super Admin Create Company"

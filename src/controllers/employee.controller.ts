@@ -23,6 +23,7 @@ import { Employee } from "../entities/employee.entity";
 import { Company } from "../entities/company";
 import { Branch } from "../entities/branch";
 import { Role } from "../entities/roles";
+import { auditMiddleware } from "../middleware/audit.Middleware";
 
 export class EmployeeController {
 
@@ -31,7 +32,7 @@ export class EmployeeController {
   // =====================================
 
 @Post("/")
-@Middleware([authenticateMiddleware])
+@Middleware([authenticateMiddleware,auditMiddleware("EMPLOYEE"),])
 @Swagger(
  "Create Employee",
  "Create employee with company, branch and role assignment"

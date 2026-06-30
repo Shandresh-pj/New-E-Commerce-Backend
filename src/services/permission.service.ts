@@ -22,9 +22,10 @@ export class PermissionService {
       .where("rp.role_id IN (:...roleIds)", { roleIds })
       .getMany();
 
-    return permissions.some(p =>
-      p.permission.menu.name === menu &&
-      p.permission.action === action
-    );
+    return permissions.some(
+  p =>
+    p.permission?.menu?.name === menu &&
+    p.permission?.action === action
+);
   }
 }

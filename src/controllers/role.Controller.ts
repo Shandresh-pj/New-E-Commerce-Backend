@@ -1,48 +1,38 @@
 import {
-  Controller,
-  Post,
-  Get,
-  Middleware,
-  Swagger
-} from "../decorators";
+Controller,
+Post,
+Get,
+Middleware
+}
+from "../decorators";
 
-import { Request, Response } from "express";
-import { dataSource } from "../server";
-import authenticateMiddleware from "../middleware/authenticate";
-import { Role } from "../entities/roles";
+import authenticateMiddleware
+from "../middleware/authenticate.middleware";
 
+
+
+import { dataSource }
+from "../server";
+
+import { Role }
+from "../entities/roles";
+import { superAdminGuard } from "../services/Guard/superAdmin.Guard";
 
 @Controller("/roles")
 export class RoleController {
 
-  // =====================================================
-  // CREATE ROLE
-  // =====================================================
 @Post("/")
 @Middleware([
-authenticateMiddleware
+authenticateMiddleware,
+superAdminGuard
 ])
-public async create(
+
+async create(
 req:any,
 res:any
 ){
 
 try{
-
-if(
-!req.user.isSuperAdmin
-){
-
-return res.status(403)
-.json({
-
-success:false,
-message:
-"Only SuperAdmin can create roles"
-
-});
-
-}
 
 const repo=
 dataSource.getRepository(
@@ -53,19 +43,18 @@ const exists=
 await repo.findOne({
 
 where:{
-name:req.body.name
+name:req.body.name.trim()
 }
 
 });
 
 if(exists){
 
-return res.status(400)
+return res.status(409)
 .json({
 
 success:false,
-message:
-"Role already exists"
+message:"Role already exists"
 
 });
 
@@ -75,7 +64,6 @@ const role=
 repo.create({
 
 name:req.body.name,
-
 isActive:true
 
 });
@@ -84,7 +72,8 @@ await repo.save(
 role
 );
 
-return res.json({
+return res.status(201)
+.json({
 
 success:true,
 data:role
@@ -106,21 +95,38 @@ message:error.message
 
 }
 
-  // =====================================================
-  // GET ALL ROLES
-  // =====================================================
-  @Get("/")
-  @Middleware([authenticateMiddleware])
-  @Swagger("Get Roles", "List all roles")
-  public async getAll(req: any, res: any) {
+@Get("/")
+@Middleware([
+authenticateMiddleware
+])
 
-    const repo = dataSource.getRepository(Role);
+async getAll(
+req:any,
+res:any
+){
 
-    const roles = await repo.find();
+const repo=
+dataSource.getRepository(
+Role
+);
 
-    return res.json({
-      success: true,
-      data: roles
-    });
-  }
+const roles=
+await repo.find({
+
+order:{
+id:"DESC"
+}
+
+});
+
+return res.json({
+
+success:true,
+count:roles.length,
+data:roles
+
+});
+
+}
+
 }

@@ -1,42 +1,102 @@
-import { UserType } from "../utils/Role-Access";
+// middleware/accessFilter.ts
 
-export function applyTenantFilter(req: any, qb: any, alias: string) {
+import {
+UserType,
+EmployeeType
+}
+from "../utils/Role-Access";
 
-  const user = req.user;
+export function applyAccess(
+req:any,
+qb:any,
+alias:string
+){
 
-  // 👑 SUPER ADMIN
-  if (user.isSuperAdmin) return qb;
+const user=
+req.user;
 
-  // 🏢 ADMIN (company level)
-  if (user.userType === UserType?.ADMIN) {
-    qb.andWhere(`${alias}.company_id = :companyId`, {
-      companyId: user.companyId
-    });
-  }
+if(
+user.isSuperAdmin
+){
 
-  // 🏬 BRANCH
-  if (user.userType === UserType?.BRANCH) {
-    qb.andWhere(`${alias}.branch_id = :branchId`, {
-      branchId: user.branchId
-    });
-  }
+return qb;
+}
 
-  // 👷 EMPLOYEE
-  if (user.userType === UserType?.EMPLOYEE) {
-    qb.andWhere(`${alias}.company_id = :companyId`, {
-      companyId: user.companyId
-    });
-    qb.andWhere(`${alias}.branch_id = :branchId`, {
-      branchId: user.branchId
-    });
-  }
 
-  // 👤 CUSTOMER
-  if (user.userType === UserType?.CUSTOMER) {
-    qb.andWhere(`${alias}.user_id = :userId`, {
-      userId: user.userId
-    });
-  }
+switch(
+user.userType
+){
 
-  return qb;
+case UserType.ADMIN:
+
+qb.andWhere(
+
+`${alias}.company_id=:companyId`,
+{
+companyId:
+user.companyId
+}
+
+);
+
+break;
+
+
+case UserType.EMPLOYEE:
+
+if(
+user.employeeType===
+
+EmployeeType.BRANCH_MANAGER ||
+
+user.employeeType===
+
+EmployeeType.STAFF_KEEPER
+){
+
+qb.andWhere(
+
+`${alias}.company_id=:companyId`,
+{
+companyId:
+user.companyId
+}
+
+);
+
+qb.andWhere(
+
+`${alias}.branch_id=:branchId`,
+{
+branchId:
+user.branchId
+}
+
+);
+
+}
+
+if(
+user.employeeType===
+
+EmployeeType.DELIVERY_BOY
+){
+
+qb.andWhere(
+
+`${alias}.assigned_to=:userId`,
+{
+userId:
+user.id
+}
+
+);
+
+}
+
+break;
+
+}
+
+return qb;
 }

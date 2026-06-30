@@ -1,13 +1,13 @@
 import { Router } from "express";
 
 import {
-roleAccessController
+  roleAccessController
 } from "../controllers";
 
 import authenticateMiddleware
-from "../middleware/authenticate";
+from "../middleware/authenticate.middleware";
 
-const router=Router();
+const router = Router();
 
 
 // =======================================
@@ -16,7 +16,7 @@ const router=Router();
 
 /**
  * @swagger
- * /role-access/create:
+ * /role-access:
  *   post:
  *     tags:
  *       - Role Access
@@ -38,24 +38,80 @@ const router=Router();
  *                 example: 1
  *               permission_id:
  *                 type: integer
- *                 example: 2
+ *                 example: 5
  *     responses:
  *       201:
  *         description: Permission assigned successfully
  *       400:
- *         description: Validation error
- *       403:
- *         description: Unauthorized
+ *         description: Validation failed
+ *       409:
+ *         description: Permission already exists
+ *       500:
+ *         description: Server error
  */
 
 router.post(
-"/role-access/create",
-authenticateMiddleware,
-roleAccessController
-.create
-.bind(
-roleAccessController
-)
+  "/role-access",
+  authenticateMiddleware,
+  roleAccessController.create.bind(
+    roleAccessController
+  )
+);
+
+
+// =======================================
+// UPDATE ROLE ACCESS
+// =======================================
+
+/**
+ * @swagger
+ * /role-access/{id}:
+ *   put:
+ *     tags:
+ *       - Role Access
+ *     summary: Update role permission mapping
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - role_id
+ *               - permission_id
+ *             properties:
+ *               role_id:
+ *                 type: integer
+ *                 example: 2
+ *               permission_id:
+ *                 type: integer
+ *                 example: 8
+ *
+ *     responses:
+ *       200:
+ *         description: Updated successfully
+ *       404:
+ *         description: Record not found
+ *       409:
+ *         description: Duplicate mapping
+ */
+
+router.put(
+  "/role-access/:id",
+  authenticateMiddleware,
+  roleAccessController.update.bind(
+    roleAccessController
+  )
 );
 
 
@@ -78,18 +134,16 @@ roleAccessController
  */
 
 router.get(
-"/role-access",
-authenticateMiddleware,
-roleAccessController
-.getAll
-.bind(
-roleAccessController
-)
+  "/role-access",
+  authenticateMiddleware,
+  roleAccessController.getAll.bind(
+    roleAccessController
+  )
 );
 
 
 // =======================================
-// GET ROLE PERMISSIONS
+// GET BY ROLE
 // =======================================
 
 /**
@@ -98,7 +152,7 @@ roleAccessController
  *   get:
  *     tags:
  *       - Role Access
- *     summary: Get permissions by role
+ *     summary: Get permissions by role id
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -107,22 +161,20 @@ roleAccessController
  *         required: true
  *         schema:
  *           type: integer
+ *         example: 1
+ *
  *     responses:
  *       200:
- *         description: Role permissions
+ *         description: Role permissions list
  */
 
 router.get(
-"/role-access/role/:role_id",
-authenticateMiddleware,
-roleAccessController
-.getByRole
-.bind(
-roleAccessController
-)
+  "/role-access/role/:role_id",
+  authenticateMiddleware,
+  roleAccessController.getByRole.bind(
+    roleAccessController
+  )
 );
-
-
 
 
 // =======================================
@@ -138,27 +190,85 @@ roleAccessController
  *     summary: Remove permission from role
  *     security:
  *       - bearerAuth: []
+ *
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
+ *
  *     responses:
  *       200:
- *         description: Permission removed
+ *         description: Permission removed successfully
+ *
  *       404:
  *         description: Record not found
  */
 
 router.delete(
-"/role-access/:id",
-authenticateMiddleware,
-roleAccessController
-.delete
-.bind(
-roleAccessController
-)
+  "/role-access/:id",
+  authenticateMiddleware,
+  roleAccessController.delete.bind(
+    roleAccessController
+  )
+);
+
+
+// =======================================
+// APPROVE ROLE ACCESS
+// =======================================
+
+/**
+ * @swagger
+ * /role-access/{id}/approve:
+ *   put:
+ *     tags:
+ *       - Role Access
+ *     summary: Approve role access mapping
+ *     description: Only SUPER_ADMIN and ADMIN can approve pending role access
+ *     security:
+ *       - bearerAuth: []
+ *
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 example: ACTIVE
+ *
+ *     responses:
+ *       200:
+ *         description: Role access approved successfully
+ *
+ *       403:
+ *         description: Permission denied
+ *
+ *       404:
+ *         description: Record not found
+ *
+ *       500:
+ *         description: Internal server error
+ */
+
+router.put(
+  "/role-access/:id/approve",
+  authenticateMiddleware,
+  roleAccessController.approve.bind(
+    roleAccessController
+  )
 );
 
 export default router;
