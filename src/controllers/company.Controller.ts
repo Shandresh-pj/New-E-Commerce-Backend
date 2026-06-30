@@ -91,10 +91,11 @@ name,
 email,
 phone,
 address,
-gst_number,
 role_id
 
 }=req.body;
+
+const gst_number = req.body.gst_number || null;
 
 
 // =====================================
@@ -511,8 +512,9 @@ public async update(
       company.address;
 
     company.gst_number =
-      gst_number ??
-      company.gst_number;
+      req.body.gst_number !== undefined
+        ? (req.body.gst_number || null)
+        : company.gst_number;
 
     await companyRepo.save(
       company
@@ -708,13 +710,20 @@ id:"DESC"
 
 else{
 
+if(!req.user.companyId){
+return res.status(400).json({
+success:false,
+message:"No company assigned to this account"
+});
+}
+
 companies=
 await repo.find({
 
 where:{
 
 id:
-req.user.company_id
+req.user.companyId
 
 },
 

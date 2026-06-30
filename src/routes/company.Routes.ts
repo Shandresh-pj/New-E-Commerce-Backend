@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { companyController } from "../controllers";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { auditMiddleware } from "../middleware/audit.Middleware";
 
 const router = Router();
 
@@ -42,7 +43,7 @@ const router = Router();
  */
 router.post(
   "/companies",
-  authenticateMiddleware,
+  authenticateMiddleware, auditMiddleware("COMPANY"),
   companyController.create.bind(companyController)
 );
 
@@ -95,10 +96,8 @@ router.post(
  */
 router.put(
   "/companies/:id",
-  authenticateMiddleware,
-  companyController.update.bind(
-    companyController
-  )
+  authenticateMiddleware, auditMiddleware("COMPANY"),
+  companyController.update.bind(companyController)
 );
 
 
@@ -172,11 +171,9 @@ router.get(
  *         description: Internal server error
  */
 router.delete(
-"/companies/:id",
-authenticateMiddleware,
-companyController.delete.bind(
-companyController
-)
+  "/companies/:id",
+  authenticateMiddleware, auditMiddleware("COMPANY"),
+  companyController.delete.bind(companyController)
 );
 
 export default router;

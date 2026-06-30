@@ -12,10 +12,10 @@ return next();
 req.tenant={
 
 company_id:
-req.user.company_id,
+req.user.companyId,
 
 branch_id:
-req.user.branch_id
+req.user.branchId
 
 };
 

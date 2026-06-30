@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { employeeController } from "../controllers";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { auditMiddleware } from "../middleware/audit.Middleware";
 
 const router = Router();
 
@@ -131,9 +133,8 @@ router.get(
  */
 router.post(
   "/employees",
-  employeeController.create.bind(
-    employeeController
-  )
+  authenticateMiddleware, auditMiddleware("EMPLOYEE"),
+  employeeController.create.bind(employeeController)
 );
 
 
@@ -176,9 +177,8 @@ router.post(
  */
 router.put(
   "/employees/:id",
-  employeeController.update.bind(
-    employeeController
-  )
+  authenticateMiddleware, auditMiddleware("EMPLOYEE"),
+  employeeController.update.bind(employeeController)
 );
 
 
@@ -206,9 +206,8 @@ router.put(
  */
 router.delete(
   "/employees/:id",
-  employeeController.delete.bind(
-    employeeController
-  )
+  authenticateMiddleware, auditMiddleware("EMPLOYEE"),
+  employeeController.delete.bind(employeeController)
 );
 
 

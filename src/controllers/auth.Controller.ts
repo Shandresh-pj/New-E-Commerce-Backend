@@ -654,10 +654,10 @@ userType:user.userType,
 isSuperAdmin:user.isSuperAdmin,
 
 company_id:
-userRoles[0]?.company_id,
+userRoles[0]?.company?.id ?? userRoles[0]?.company_id ?? null,
 
 branch_id:
-userRoles[0]?.branch_id,
+userRoles[0]?.branch?.id ?? userRoles[0]?.branch_id ?? null,
 
 roles:
 userRoles.map(x=>({

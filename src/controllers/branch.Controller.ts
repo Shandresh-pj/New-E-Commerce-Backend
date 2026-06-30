@@ -76,14 +76,23 @@ public async create(req: any, res: any) {
       return res.status(404).json({ success: false, message: "Company not found" });
     }
 
-    // Role check
-    const role = await roleMasterRepo.findOne({
-      where: { id: role_id }
-    });
-
-    if (!role) {
+    // Email uniqueness check
+    const existingUser = await userRepo.findOne({ where: { email } });
+    if (existingUser) {
       await queryRunner.rollbackTransaction();
-      return res.status(404).json({ success: false, message: "Role not found" });
+      return res.status(409).json({ success: false, message: "A user with this email already exists" });
+    }
+
+    // Role check (only if role_id provided)
+    if (role_id !== undefined) {
+      const role = await roleMasterRepo.findOne({
+        where: { id: role_id }
+      });
+
+      if (!role) {
+        await queryRunner.rollbackTransaction();
+        return res.status(404).json({ success: false, message: "Role not found" });
+      }
     }
 
     // Create Branch
@@ -115,13 +124,15 @@ public async create(req: any, res: any) {
 
     const savedUser = await userRepo.save(branchAdmin);
 
-    // Role mapping
-    await roleRepo.save({
-      user: { id: savedUser.id },
-      company: { id: company_id },
-      branch: { id: savedBranch.id },
-      role: { id: role_id }
-    });
+    // Role mapping (only if role_id provided)
+    if (role_id !== undefined) {
+      await roleRepo.save({
+        user: { id: savedUser.id },
+        company: { id: company_id },
+        branch: { id: savedBranch.id },
+        role: { id: role_id }
+      });
+    }
 
     await queryRunner.commitTransaction();
 
@@ -186,7 +197,7 @@ public async getAll(req: any, res: any) {
     } else {
       branches = await repo.find({
         where: {
-          company: { id: req.user.company_id }
+          company: { id: req.user.companyId }
         },
         relations,
         order: { id: "DESC" }
@@ -240,7 +251,7 @@ public async getById(req: any, res: any) {
     }
 
     // Security check (important)
-    if (!req.user.isSuperAdmin && branch.company.id !== req.user.company_id) {
+    if (!req.user.isSuperAdmin && branch.company.id !== req.user.companyId) {
       return res.status(403).json({
         success: false,
         message: "Forbidden"
@@ -285,7 +296,7 @@ public async update(req: any, res: any) {
     }
 
     // security check
-    if (!req.user.isSuperAdmin && branch.company.id !== req.user.company_id) {
+    if (!req.user.isSuperAdmin && branch.company.id !== req.user.companyId) {
       return res.status(403).json({
         success: false,
         message: "Forbidden"
