@@ -9,7 +9,7 @@ import {
 } from "../decorators";
 
 import validate from "../middleware/validate";
-import authenticateMiddleware from "../middleware/authenticate";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
 
 import { dataSource } from "../server";
 

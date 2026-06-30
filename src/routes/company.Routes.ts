@@ -1,8 +1,6 @@
 import { Router } from "express";
 import { companyController } from "../controllers";
-import authenticateMiddleware from "../middleware/authenticate";
-import validate from "../middleware/validate";
-import { CreateCompanyDto, UpdateCompanyDto } from "../dto";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
 
 const router = Router();
 
@@ -45,7 +43,6 @@ const router = Router();
 router.post(
   "/companies",
   authenticateMiddleware,
-  validate(CreateCompanyDto),
   companyController.create.bind(companyController)
 );
 
@@ -99,8 +96,9 @@ router.post(
 router.put(
   "/companies/:id",
   authenticateMiddleware,
-  validate(UpdateCompanyDto),
-  companyController.update.bind(companyController)
+  companyController.update.bind(
+    companyController
+  )
 );
 
 

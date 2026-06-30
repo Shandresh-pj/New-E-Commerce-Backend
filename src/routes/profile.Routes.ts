@@ -1,5 +1,5 @@
 import { authController, profileController } from "../controllers";
-import authenticateMiddleware from "../middleware/authenticate";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
 import { uploadImage } from "../utils/upload";
 
 import { Router } from "express";

@@ -13,7 +13,7 @@ import {
 
 import { NextFunction } from "express";
 
-import authenticateMiddleware from "../middleware/authenticate";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
 
 import { dataSource } from "../server";
 

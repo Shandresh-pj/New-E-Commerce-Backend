@@ -14,7 +14,7 @@ Middleware
 } from "../decorators";
 
 import authenticateMiddleware
-from "../middleware/authenticate";
+from "../middleware/authenticate.middleware";
 
 import {
 dataSource

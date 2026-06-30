@@ -2,7 +2,6 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 
 import { Response } from "express";
-import { In } from "typeorm";
 import { dataSource } from "../server";
 
 import { User, UserRole } from "../entities/user";
@@ -19,7 +18,7 @@ import {
   Swagger
 } from "../decorators";
 
-import authenticateMiddleware from "../middleware/authenticate";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
 import { Employee } from "../entities/employee.entity";
 import { Company } from "../entities/company";
 import { Branch } from "../entities/branch";
@@ -220,7 +219,7 @@ hashedPassword,
 
 userType:
 userType ||
-UserType.STAFF_KEEPER,
+UserType.EMPLOYEE,
 
 mustChangePassword:true,
 
@@ -361,11 +360,7 @@ const [users,total]=
 await repo.findAndCount({
 
 where:{
- userType: In([
-   UserType.BRANCH_MANAGER,
-   UserType.STAFF_KEEPER,
-   UserType.DELIVERY_BOY
- ])
+ userType:UserType.EMPLOYEE
 },
 
 relations:{
@@ -474,11 +469,8 @@ message:error.message
             req.params.id
           ),
 
-          userType: In([
-            UserType.BRANCH_MANAGER,
-            UserType.STAFF_KEEPER,
-            UserType.DELIVERY_BOY
-          ])
+          userType:
+          UserType.EMPLOYEE
         },
 
         select:{
