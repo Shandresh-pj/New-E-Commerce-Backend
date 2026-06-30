@@ -881,7 +881,7 @@ message:
 
 
 if(
-password.length<8
+password.length<6
 ){
 
 if(
@@ -1121,10 +1121,7 @@ await queryRunner.release();
  */
 @Post("/select-context")
 @Middleware([authenticateMiddleware])
-@Swagger(
-  "Select Context",
-  "Company + Branch + Role selection"
-)
+@Swagger("Select Context", "Company + Branch + Role selection")
 public async selectContext(
   req: any,
   res: any
