@@ -30,7 +30,8 @@ import { generateToken } from "../utils/jwt";
 import { User, UserRole } from "../entities/user";
 import { RolePermission } from "../entities/role-access";
 import { EmailService, generateTempPassword } from "../utils/sendEmailOtp";
-import { UserType } from "../utils/Role-Access";
+import { StatusType, UserType } from "../utils/Role-Access";
+import { In, IsNull } from "typeorm";
 import { Menu, Permission } from "../entities/menu";
 import { Role } from "../entities/roles";
 import { Company } from "../entities/company";
@@ -513,34 +514,74 @@ menus=[
 
 else{
 
-const roleIds=
-userRoles.map(
-
-x=>x.role.id
-
-);
-
-
 // =====================================
-// LOAD PERMISSIONS
+// LOAD PERMISSIONS (SCOPE-AWARE)
 // =====================================
 
-const rolePermissions=
+// A grant applies to this user when its scope matches one of the
+// user's role assignments: global rows, rows for the user's company,
+// rows for the user's branch, or rows targeted directly at the user.
+const scopeConditions:any[]=[];
+
+for(const ur of userRoles){
+
+const roleId=ur.role.id;
+
+const companyId=
+ur.company?.id ?? ur.company_id ?? null;
+
+const branchId=
+ur.branch?.id ?? ur.branch_id ?? null;
+
+scopeConditions.push({
+role_id:roleId,
+company_id:IsNull(),
+branch_id:IsNull(),
+user_id:IsNull()
+});
+
+if(companyId){
+
+scopeConditions.push({
+role_id:roleId,
+company_id:companyId,
+branch_id:IsNull(),
+user_id:IsNull()
+});
+
+if(branchId){
+
+scopeConditions.push({
+role_id:roleId,
+company_id:companyId,
+branch_id:branchId,
+user_id:IsNull()
+});
+
+}
+
+}
+
+}
+
+// employee-level rows aimed at this user, whatever the role
+scopeConditions.push({
+user_id:user.id
+});
+
+// Pending stays usable so rows created before the approve flow
+// keep working; Inactive/Suspended are shut off.
+const usableStatus=
+In([StatusType.ACTIVE,StatusType.PENDING]);
+
+const matched=
 await rolePermissionRepo.find({
 
 where:
-
-roleIds.map(
-
-id=>({
-
-role:{
-id
-}
-
-})
-
-),
+scopeConditions.map(c=>({
+...c,
+status:usableStatus
+})),
 
 relations:{
 
@@ -555,15 +596,52 @@ menu:true
 });
 
 
+// =====================================
+// MOST SPECIFIC SCOPE WINS PER PERMISSION
+// employee > branch > admin > global
+// =====================================
+
+const specificity=
+(rp:any)=>
+rp.user_id   ? 4 :
+rp.branch_id ? 3 :
+rp.company_id? 2 : 1;
+
+const byPermission=
+new Map<number,any>();
+
+for(const rp of matched){
+
+const existing=
+byPermission.get(rp.permission_id);
+
+if(
+!existing ||
+specificity(rp)>specificity(existing)
+){
+
+byPermission.set(rp.permission_id,rp);
+
+}
+
+}
+
+const rolePermissions=
+Array.from(byPermission.values());
+
+
 permissions=
 rolePermissions.map(
 
 (rp:any)=>({
-id:
-rp.permission.id,
-
-name:
-rp.permission.name
+id:      rp.permission.id,
+action:  rp.permission.action,
+canApprove: rp.canApprove,
+menu: {
+  id:   rp.permission.menu.id,
+  name: rp.permission.menu.name,
+  path: rp.permission.menu.path,
+}
 })
 
 );
@@ -666,7 +744,11 @@ userRoles.map(x=>({
 roleId:x.role.id,
 name:x.role.name
 
-}))
+})),
+
+permissions,
+
+menus
 
 },
 

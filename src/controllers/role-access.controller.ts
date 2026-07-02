@@ -11,8 +11,38 @@ import { dataSource } from "../server";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
 import { RolePermission } from "../entities/role-access";
 import { StatusType } from "../utils/Role-Access";
-import { User } from "../entities/user";
 import { approveGuard } from "../middleware/approve.middleware";
+import { IsNull, Not } from "typeorm";
+
+// Normalizes the scope columns so "", 0 and undefined all become null,
+// and enforces the hierarchy: branch needs a company, employee needs a branch.
+function parseScope(body: any):
+  | { company_id: number | null; branch_id: number | null; user_id: number | null }
+  | string {
+
+  const company_id = body.company_id ? Number(body.company_id) : null;
+  const branch_id  = body.branch_id  ? Number(body.branch_id)  : null;
+  const user_id    = body.user_id    ? Number(body.user_id)    : null;
+
+  if (branch_id && !company_id) {
+    return "company_id is required when branch_id is given";
+  }
+
+  if (user_id && (!company_id || !branch_id)) {
+    return "company_id and branch_id are required when user_id is given";
+  }
+
+  return { company_id, branch_id, user_id };
+}
+
+// TypeORM needs IsNull() (not null) to match NULL columns in a WHERE clause
+function scopeWhere(scope: { company_id: number | null; branch_id: number | null; user_id: number | null }) {
+  return {
+    company_id: scope.company_id ?? IsNull(),
+    branch_id:  scope.branch_id  ?? IsNull(),
+    user_id:    scope.user_id    ?? IsNull(),
+  };
+}
 
 
 @Controller("/role-access")
@@ -25,7 +55,7 @@ export class RoleAccessController {
   @Middleware([authenticateMiddleware])
   async create(req: any, res: any) {
 
-    const { role_id, permission_id } = req.body;
+    const { role_id, permission_id, canApprove } = req.body;
 
     if (!role_id || !permission_id) {
       return res.status(400).json({
@@ -34,10 +64,19 @@ export class RoleAccessController {
       });
     }
 
+    const scope = parseScope(req.body);
+
+    if (typeof scope === "string") {
+      return res.status(400).json({
+        success: false,
+        message: scope
+      });
+    }
+
     const repo = dataSource.getRepository(RolePermission);
 
     const exists = await repo.findOne({
-      where: { role_id, permission_id }
+      where: { role_id, permission_id, ...scopeWhere(scope) }
     });
 
     if (exists) {
@@ -47,7 +86,16 @@ export class RoleAccessController {
       });
     }
 
-    const data = repo.create({ role_id, permission_id });
+    const data = repo.create({
+      role_id,
+      permission_id,
+      company_id: scope.company_id,
+      branch_id: scope.branch_id,
+      user_id: scope.user_id,
+      canApprove: !!canApprove,
+      // created directly by Super Admin — no separate approval step needed
+      status: StatusType.ACTIVE
+    } as Partial<RolePermission>);
 
     await repo.save(data);
 
@@ -80,8 +128,38 @@ export class RoleAccessController {
 
       const {
         role_id,
-        permission_id
+        permission_id,
+        canApprove
       } = req.body;
+
+      if (!role_id || !permission_id) {
+
+        await queryRunner.rollbackTransaction();
+
+        return res.status(400).json({
+
+          success: false,
+          message:
+            "role_id & permission_id required"
+
+        });
+
+      }
+
+      const scope = parseScope(req.body);
+
+      if (typeof scope === "string") {
+
+        await queryRunner.rollbackTransaction();
+
+        return res.status(400).json({
+
+          success: false,
+          message: scope
+
+        });
+
+      }
 
       const repo =
         queryRunner.manager.getRepository(
@@ -117,7 +195,8 @@ export class RoleAccessController {
           where: {
 
             role_id,
-            permission_id
+            permission_id,
+            ...scopeWhere(scope)
 
           }
 
@@ -145,6 +224,22 @@ export class RoleAccessController {
 
       record.permission_id =
         permission_id;
+
+      record.company_id =
+        scope.company_id as any;
+
+      record.branch_id =
+        scope.branch_id as any;
+
+      record.user_id =
+        scope.user_id as any;
+
+      if (canApprove !== undefined) {
+
+        record.canApprove =
+          !!canApprove;
+
+      }
 
       await repo.save(
         record
@@ -192,9 +287,28 @@ export class RoleAccessController {
   @Middleware([authenticateMiddleware])
   async getAll(req: any, res: any) {
 
+    // Optional filters so the permission form can pre-fill an exact scope:
+    // ?menu_id=&role_id=&company_id=&branch_id=&user_id=&level=admin|branch|employee|global
+    const { menu_id, role_id, company_id, branch_id, user_id, level } = req.query;
+
+    const where: any = {};
+
+    if (menu_id)     where.permission = { menu_id: Number(menu_id) };
+    if (role_id)     where.role_id    = Number(role_id);
+    if (company_id)  where.company_id = Number(company_id);
+    if (branch_id)   where.branch_id  = Number(branch_id);
+    if (user_id)     where.user_id    = Number(user_id);
+
+    if (level === "global")   { where.company_id = IsNull(); where.branch_id = IsNull(); where.user_id = IsNull(); }
+    if (level === "admin")    { where.branch_id  = IsNull(); where.user_id   = IsNull(); }
+    if (level === "branch")   { where.user_id    = IsNull(); }
+    if (level === "employee" && !user_id) { where.user_id = Not(IsNull()); }
+
     const data = await dataSource.getRepository(RolePermission).find({
+      where,
       relations: {
         role: true,
+        user: true,
         permission: {
           menu: true
         }
@@ -268,29 +382,35 @@ export class RoleAccessController {
 @Middleware([authenticateMiddleware,approveGuard()])
 public async approve(req:any,res:any){
 
-const repo = dataSource.getRepository(User);
+const repo = dataSource.getRepository(RolePermission);
 
-const user = await repo.findOne({
+const record = await repo.findOne({
 
 where:{id:Number(req.params.id)}
 });
 
-if(!user){
+if(!record){
 
 return res.status(404).json({
 success:false,
-message:"User not found"
+message:"Role access not found"
 });
 
 }
 
-user.status=StatusType.ACTIVE;
+const status = req.body?.status;
 
-await repo.save(user);
+record.status =
+Object.values(StatusType).includes(status)
+? status
+: StatusType.ACTIVE;
+
+await repo.save(record);
 
 return res.json({
 success:true,
-message:"User approved successfully"
+message:"Role access approved successfully",
+data:record
 });
 
 }

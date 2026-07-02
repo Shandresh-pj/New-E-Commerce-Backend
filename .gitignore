@@ -6,3 +6,5 @@ uploads
 package-lock.json
 package.json
 CLAUDE.md
+dist
+.claude/

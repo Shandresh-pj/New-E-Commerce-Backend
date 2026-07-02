@@ -14,6 +14,16 @@ export const preventDuplicateCalls = (
   next: NextFunction
 ): void => {
   try {
+    // Reads are idempotent — deduplicating them breaks page reloads and
+    // parallel component loads in the SPA with spurious 429s.
+    if (
+      req.method === "GET" ||
+      req.method === "HEAD" ||
+      req.method === "OPTIONS"
+    ) {
+      return next();
+    }
+
     const headers = { ...req.headers };
 
     delete headers.cookie;

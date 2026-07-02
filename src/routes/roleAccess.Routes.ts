@@ -22,7 +22,12 @@ const router = Router();
  *   post:
  *     tags:
  *       - Role Access
- *     summary: Assign permission to role
+ *     summary: Assign permission to role at a scope (admin / branch / employee)
+ *     description: >
+ *       Scope is set by which ids are given —
+ *       none = global, company_id = admin level,
+ *       company_id + branch_id = branch level,
+ *       company_id + branch_id + user_id = employee level.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -41,6 +46,21 @@ const router = Router();
  *               permission_id:
  *                 type: integer
  *                 example: 5
+ *               company_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 example: 2
+ *               branch_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 example: 3
+ *               user_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 example: 7
+ *               canApprove:
+ *                 type: boolean
+ *                 example: false
  *     responses:
  *       201:
  *         description: Permission assigned successfully
@@ -55,7 +75,7 @@ const router = Router();
 router.post(
   "/role-access",
   authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
   roleAccessController.create.bind(
     roleAccessController
   )
@@ -99,6 +119,17 @@ router.post(
  *               permission_id:
  *                 type: integer
  *                 example: 8
+ *               company_id:
+ *                 type: integer
+ *                 nullable: true
+ *               branch_id:
+ *                 type: integer
+ *                 nullable: true
+ *               user_id:
+ *                 type: integer
+ *                 nullable: true
+ *               canApprove:
+ *                 type: boolean
  *
  *     responses:
  *       200:
@@ -112,7 +143,7 @@ router.post(
 router.put(
   "/role-access/:id",
   authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
   roleAccessController.update.bind(
     roleAccessController
   )
@@ -129,9 +160,30 @@ router.put(
  *   get:
  *     tags:
  *       - Role Access
- *     summary: Get all role permissions
+ *     summary: Get all role permissions (filterable by scope)
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: menu_id
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: role_id
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: company_id
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: branch_id
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: user_id
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: level
+ *         schema:
+ *           type: string
+ *           enum: [global, admin, branch, employee]
  *     responses:
  *       200:
  *         description: List of permissions
@@ -140,7 +192,7 @@ router.put(
 router.get(
   "/role-access",
   authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
   roleAccessController.getAll.bind(
     roleAccessController
   )
@@ -176,7 +228,7 @@ router.get(
 router.get(
   "/role-access/role/:role_id",
   authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
   roleAccessController.getByRole.bind(
     roleAccessController
   )
@@ -273,7 +325,7 @@ router.delete(
 router.put(
   "/role-access/:id/approve",
   authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN], requireApproval: true }),
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
   roleAccessController.approve.bind(
     roleAccessController
   )
