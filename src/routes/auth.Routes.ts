@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { authController, companyController } from "../controllers";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { auditMiddleware } from "../middleware/audit.Middleware";
 import { verifyEmailLimiter } from "../controllers/company.Controller";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
@@ -188,7 +191,9 @@ router.post(
  *         description: Context selected successfully
  */
 router.post(
-  "/auth/create-user",authenticateMiddleware,
+  "/auth/create-user",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   authController.createUser.bind(authController)
 );
 
@@ -221,10 +226,10 @@ router.post(
  *         description: Access denied
  */
 router.get(
-  "/auth/user/:id",authenticateMiddleware,
-  authController.getUserById.bind(
-    authController
-  )
+  "/auth/user/:id",
+  authenticateMiddleware,
+  authorize(),
+  authController.getUserById.bind(authController)
 );
 
 /**
@@ -259,7 +264,9 @@ router.get(
  *         description: Context selected successfully
  */
 router.get(
-  "/auth/get-users",authenticateMiddleware,
+  "/auth/get-users",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   authController.getUsers.bind(authController)
 );
 
@@ -295,7 +302,10 @@ router.get(
  *         description: Context selected successfully
  */
 router.delete(
-  "/auth/delete/:id",authenticateMiddleware,
+  "/auth/delete/:id",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  auditMiddleware("USER"),
   authController.deleteUser.bind(authController)
 );
 

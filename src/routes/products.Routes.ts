@@ -1,5 +1,9 @@
 import { orderController, productController } from "../controllers";
 import { uploadAny } from "../utils/upload";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { auditMiddleware } from "../middleware/audit.Middleware";
+import { UserType } from "../utils/Role-Access";
 
 const express = require("express");
 const router = express.Router();
@@ -165,12 +169,17 @@ router.get(
  */
 router.post(
   "/products/add",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+  }),
   uploadAny.upload.fields([
     { name: "image", maxCount: 1 },
     { name: "images", maxCount: 10 },
     { name: "video", maxCount: 1 },
   ]),
   uploadAny.compressor,
+  auditMiddleware("PRODUCT"),
   productController.create.bind(productController)
 );
 
@@ -236,12 +245,17 @@ router.post(
  */
 router.put(
   "/products/:id",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+  }),
   uploadAny.upload.fields([
     { name: "image", maxCount: 1 },
     { name: "images", maxCount: 10 },
     { name: "video", maxCount: 1 },
   ]),
   uploadAny.compressor,
+  auditMiddleware("PRODUCT"),
   productController.update.bind(productController)
 );
 
@@ -268,6 +282,12 @@ router.put(
  */
 router.delete(
   "/products/:id",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
+    denyDelete: [UserType.SHOPKEEPER, UserType.DELIVERY_BOY],
+  }),
+  auditMiddleware("PRODUCT"),
   productController.delete.bind(productController)
 );
 

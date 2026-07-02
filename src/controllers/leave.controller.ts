@@ -14,6 +14,7 @@ import {
 import { dataSource } from "../server";
 import { Put } from "../decorators/put";
 import { LeaveRequest } from "../entities/leave.entity";
+import { TenantService } from "../middleware/tenantFilter.middleware";
 
 @Controller("/leave")
 export class LeaveController {
@@ -79,9 +80,11 @@ export class LeaveController {
   // ==========================================
   @Get("/")
   async getAll(
-    req: Request,
+    req: any,
     res: Response
   ) {
+
+    const where = TenantService.scopeWhere(req.user);
 
     const data =
       await dataSource
@@ -89,6 +92,7 @@ export class LeaveController {
           LeaveRequest
         )
         .find({
+          where,
           order: {
             id: "DESC",
           },

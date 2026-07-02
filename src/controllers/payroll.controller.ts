@@ -16,6 +16,7 @@ import { Employee } from "../entities/employee.entity";
 import { Attendance } from "../entities/attendance.entity";
 import { LeaveRequest } from "../entities/leave.entity";
 import { Salary } from "../entities/salary";
+import { TenantService } from "../middleware/tenantFilter.middleware";
 
 @Controller("/payroll")
 export class PayrollController {
@@ -166,14 +167,17 @@ export class PayrollController {
     "Get all payroll records"
   )
   async getAll(
-    req: Request,
+    req: any,
     res: Response
   ) {
+
+    const where = TenantService.scopeWhere(req.user);
 
     const payroll =
       await dataSource
         .getRepository(Salary)
         .find({
+          where,
           order: {
             id: "DESC",
           },
@@ -194,19 +198,19 @@ export class PayrollController {
     "Get payroll by id"
   )
   async getOne(
-    req: Request,
+    req: any,
     res: Response
   ) {
+
+    const where = TenantService.scopeWhere(req.user, {
+      id: Number(req.params.id),
+    });
 
     const payroll =
       await dataSource
         .getRepository(Salary)
         .findOne({
-          where: {
-            id: Number(
-              req.params.id
-            ),
-          },
+          where,
         });
 
     return res.json({

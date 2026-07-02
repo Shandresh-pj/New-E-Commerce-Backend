@@ -10,6 +10,7 @@ import {
 import { dataSource } from "../server";
 import { Attendance } from "../entities/attendance.entity";
 import { nowDate, nowTime } from "../utils/dateTime";
+import { TenantService } from "../middleware/tenantFilter.middleware";
 
 
 @Controller("/attendance")
@@ -159,18 +160,20 @@ export class AttendanceController {
   // ==========================================
 @Get("/")
 @Swagger("Attendance List", "Get all attendance")
-async getAll(req: Request, res: Response) {
+async getAll(req: any, res: Response) {
 
   const repo = dataSource.getRepository(Attendance);
 
-  const pagination = (req as any).pagination || {
+  const pagination = req.pagination || {
     page: 1,
     limit: 10,
     skip: 0,
   };
 
 const { page, limit, skip } = pagination;
+  const where = TenantService.scopeWhere(req.user);
   const [data, total] = await repo.findAndCount({
+    where,
     order: {
       id: "DESC",
     },

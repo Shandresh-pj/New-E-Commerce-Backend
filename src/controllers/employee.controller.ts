@@ -356,54 +356,30 @@ const skip=(page-1)*limit;
 
 const repo=dataSource.getRepository(User);
 
-const [users,total]=
-await repo.findAndCount({
+const qb = repo.createQueryBuilder("user")
+  .leftJoinAndSelect("user.userRoles", "ur")
+  .leftJoinAndSelect("ur.company", "company")
+  .leftJoinAndSelect("ur.branch", "branch")
+  .leftJoinAndSelect("ur.role", "role")
+  .where("user.userType IN (:...types)", {
+    types: [UserType.BRANCH_MANAGER, UserType.SHOPKEEPER, UserType.DELIVERY_BOY, UserType.EMPLOYEE]
+  })
+  .select([
+    "user.id", "user.name", "user.email", "user.mobilenumber", "user.userType",
+    "ur.id", "company.id", "company.name", "branch.id", "branch.name", "branch.location", "role.id", "role.name"
+  ]);
 
-where:{
- userType: In([UserType.BRANCH_MANAGER, UserType.SHOPKEEPER, UserType.DELIVERY_BOY, UserType.EMPLOYEE])
-},
-
-relations:{
- userRoles:{
-   company:true,
-   branch:true,
-   role:true
- }
-},
-
-select:{
-
-id:true,
-name:true,
-email:true,
-mobilenumber:true,
-userType:true,
-
-userRoles:{
-
-id:true,
-
-company:{
-id:true,
-name:true
-},
-
-branch:{
-id:true,
-name:true,
-location:true
-},
-
-role:{
-id:true,
-name:true
+if (!req.user.isSuperAdmin && req.user.companyId) {
+  qb.andWhere("ur.company_id = :companyId", { companyId: req.user.companyId });
 }
 
+if (req.user.branchId) {
+  qb.andWhere("ur.branch_id = :branchId", { branchId: req.user.branchId });
 }
 
-}
+qb.skip(skip).take(limit);
 
-});
+const [users, total] = await qb.getManyAndCount();
 
 return res.json({
 

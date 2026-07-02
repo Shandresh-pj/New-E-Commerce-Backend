@@ -1,5 +1,9 @@
 import { Router } from "express";
 import { menuController } from "../controllers";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { auditMiddleware } from "../middleware/audit.Middleware";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
@@ -7,17 +11,15 @@ const router = Router();
  * @swagger
  * /menus:
  *   get:
- *     tags:
- *       - Menus
+ *     tags: [Menus]
  *     summary: Get Menus with Permissions
  *     security:
  *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Success
  */
 router.get(
   "/menus",
+  authenticateMiddleware,
+  authorize(),
   menuController.getAll.bind(menuController)
 );
 
@@ -25,17 +27,15 @@ router.get(
  * @swagger
  * /menus/{id}:
  *   get:
- *     tags:
- *       - Menus
- *     summary: Get Menus with Permissions
+ *     tags: [Menus]
+ *     summary: Get Menu by ID
  *     security:
  *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Success
  */
 router.get(
   "/menus/:id",
+  authenticateMiddleware,
+  authorize(),
   menuController.getOne.bind(menuController)
 );
 
@@ -43,33 +43,16 @@ router.get(
  * @swagger
  * /menus:
  *   post:
- *     tags:
- *       - Menus
+ *     tags: [Menus]
  *     summary: Create Menu + Auto Permissions
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - path
- *             properties:
- *               name:
- *                 type: string
- *               path:
- *                 type: string
- *               icon:
- *                 type: string
- *     responses:
- *       201:
- *         description: Created
  */
 router.post(
   "/menus",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
+  auditMiddleware("MENU"),
   menuController.create.bind(menuController)
 );
 
@@ -77,33 +60,16 @@ router.post(
  * @swagger
  * /menus/update/{id}:
  *   put:
- *     tags:
- *       - Menus
- *     summary: Create Menu + Auto Permissions
+ *     tags: [Menus]
+ *     summary: Update Menu
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - path
- *             properties:
- *               name:
- *                 type: string
- *               path:
- *                 type: string
- *               icon:
- *                 type: string
- *     responses:
- *       201:
- *         description: Created
  */
 router.put(
   "/menus/update/:id",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
+  auditMiddleware("MENU"),
   menuController.update.bind(menuController)
 );
 
@@ -111,15 +77,17 @@ router.put(
  * @swagger
  * /menus/delete/{id}:
  *   delete:
- *     tags:
- *       - Menus
- *     summary: delete the menu
+ *     tags: [Menus]
+ *     summary: Delete Menu
+ *     security:
+ *       - bearerAuth: []
  */
 router.delete(
   "/menus/delete/:id",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
+  auditMiddleware("MENU"),
   menuController.delete.bind(menuController)
 );
-
-
 
 export default router;

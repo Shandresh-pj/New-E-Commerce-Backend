@@ -4,6 +4,7 @@ import { dataSource } from "../server";
 import { Wishlist } from "../entities/wishlist";
 import { Product } from "../entities/products";
 import { ApiError } from "../exceptions/ApiError";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
 
 interface AuthRequest extends Request {
   user?: string | JwtPayload;
@@ -73,6 +74,7 @@ function parseProductId(raw: any): number {
  */
 router.post(
   "/wishlist",
+  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);
@@ -143,6 +145,7 @@ router.post(
  */
 router.get(
   "/wishlist",
+  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);
@@ -190,6 +193,7 @@ router.get(
  */
 router.get(
   "/wishlist/check/:productId",
+  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);
@@ -239,6 +243,7 @@ router.get(
  */
 router.delete(
   "/wishlist/:productId",
+  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);

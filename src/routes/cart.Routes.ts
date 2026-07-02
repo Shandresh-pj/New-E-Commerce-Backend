@@ -1,5 +1,9 @@
-import { cartController } from "../controllers";
 import { Router } from "express";
+import { cartController } from "../controllers";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { UserType } from "../utils/Role-Access";
+
 const router = Router();
 
 /**
@@ -7,27 +11,15 @@ const router = Router();
  * /cart/add:
  *   post:
  *     summary: Add Product To Cart
- *     tags: [Products]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               product_id:
- *                 type: integer
- *               quantity:
- *                 type: integer
- *     responses:
- *       200:
- *         description: Product added to cart successfully
+ *     tags: [Cart]
+ *     security:
+ *       - bearerAuth: []
  */
 router.post(
   "/cart/add",
-  cartController.add.bind(
-    cartController
-  )
+  authenticateMiddleware,
+  authorize({ roles: [UserType.CUSTOMER, UserType.SUPER_ADMIN] }),
+  cartController.add.bind(cartController)
 );
 
 /**
@@ -35,16 +27,15 @@ router.post(
  * /cart:
  *   get:
  *     summary: Get User Cart
- *     tags: [Products]
- *     responses:
- *       200:
- *         description: Cart fetched successfully
+ *     tags: [Cart]
+ *     security:
+ *       - bearerAuth: []
  */
 router.get(
   "/cart",
-  cartController.getCart.bind(
-    cartController
-  )
+  authenticateMiddleware,
+  authorize({ roles: [UserType.CUSTOMER, UserType.SUPER_ADMIN] }),
+  cartController.getCart.bind(cartController)
 );
 
 /**
@@ -52,23 +43,15 @@ router.get(
  * /cart/{id}:
  *   delete:
  *     summary: Remove Cart Item
- *     tags: [Products]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Cart item removed successfully
+ *     tags: [Cart]
+ *     security:
+ *       - bearerAuth: []
  */
 router.delete(
   "/cart/:id",
-  cartController.remove.bind(
-    cartController
-  )
+  authenticateMiddleware,
+  authorize({ roles: [UserType.CUSTOMER, UserType.SUPER_ADMIN] }),
+  cartController.remove.bind(cartController)
 );
-
 
 export default router;

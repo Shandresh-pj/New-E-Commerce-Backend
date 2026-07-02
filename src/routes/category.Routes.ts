@@ -3,6 +3,10 @@ import {
   categoryController,
 } from "../controllers";
 import { uploadImage } from "../utils/upload";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { auditMiddleware } from "../middleware/audit.Middleware";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
@@ -17,10 +21,12 @@ const router = Router();
  *         description: Category created successfully
  */
 router.post(
-  "/categories/create",uploadImage.upload.single("image"),uploadImage.compressor,
-  categoryController.create.bind(
-    categoryController
-  )
+  "/categories/create",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
+  uploadImage.upload.single("image"), uploadImage.compressor,
+  auditMiddleware("CATEGORY"),
+  categoryController.create.bind(categoryController)
 );
 
 /**
@@ -62,10 +68,12 @@ router.get(
  *     tags: [Categories]
  */
 router.put(
-  "/categories/:id",uploadImage.upload.single("image"),uploadImage.compressor,
-  categoryController.update.bind(
-    categoryController
-  )
+  "/categories/:id",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
+  uploadImage.upload.single("image"), uploadImage.compressor,
+  auditMiddleware("CATEGORY"),
+  categoryController.update.bind(categoryController)
 );
 
 /**
@@ -77,9 +85,10 @@ router.put(
  */
 router.delete(
   "/categories/:id",
-  categoryController.delete.bind(
-    categoryController
-  )
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  auditMiddleware("CATEGORY"),
+  categoryController.delete.bind(categoryController)
 );
 
 /**

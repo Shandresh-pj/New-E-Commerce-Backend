@@ -1,12 +1,11 @@
 import { Router } from "express";
 import { payrollController } from "../controllers";
-
-
-
-
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { auditMiddleware } from "../middleware/audit.Middleware";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
-
 
 /**
  * @swagger
@@ -14,15 +13,15 @@ const router = Router();
  *   post:
  *     summary: Generate Payroll
  *     tags: [Payroll]
- *     responses:
- *       200:
- *         description: Payroll generated successfully
+ *     security:
+ *       - bearerAuth: []
  */
 router.post(
   "/payroll/generate",
-  payrollController.generate.bind(
-    payrollController
-  )
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  auditMiddleware("PAYROLL"),
+  payrollController.generate.bind(payrollController)
 );
 
 /**
@@ -31,15 +30,16 @@ router.post(
  *   get:
  *     summary: Get Payroll List
  *     tags: [Payroll]
- *     responses:
- *       200:
- *         description: Payroll list fetched successfully
+ *     security:
+ *       - bearerAuth: []
  */
 router.get(
   "/payroll",
-  payrollController.getAll.bind(
-    payrollController
-  )
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER],
+  }),
+  payrollController.getAll.bind(payrollController)
 );
 
 /**
@@ -48,21 +48,16 @@ router.get(
  *   get:
  *     summary: Get Payroll Details
  *     tags: [Payroll]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Payroll details fetched successfully
+ *     security:
+ *       - bearerAuth: []
  */
 router.get(
   "/payroll/:id",
-  payrollController.getOne.bind(
-    payrollController
-  )
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER],
+  }),
+  payrollController.getOne.bind(payrollController)
 );
 
 export default router;

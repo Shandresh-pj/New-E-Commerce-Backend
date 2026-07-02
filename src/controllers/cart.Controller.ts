@@ -28,7 +28,7 @@ export class CartController {
     const productRepo = dataSource.getRepository(Product);
 
     const { product_id, quantity } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const product = await productRepo.findOne({
       where: { id: product_id }
@@ -81,7 +81,7 @@ export class CartController {
 
     const data = await cartRepo.find({
       where: {
-        user: { id: req.user.id }
+        user: { id: req.user.userId }
       },
       relations: {
         product: true
@@ -100,9 +100,22 @@ export class CartController {
   @Delete("/:id")
   async remove(req: any, res: any) {
 
-    await dataSource.getRepository(Cart).delete({
-      id: Number(req.params.id)
+    const cartRepo = dataSource.getRepository(Cart);
+
+    const item = await cartRepo.findOne({
+      where: { id: Number(req.params.id) },
+      relations: { user: true },
     });
+
+    if (!item) {
+      return res.status(404).json({ success: false, message: "Cart item not found" });
+    }
+
+    if (item.user?.id !== req.user.userId && !req.user.isSuperAdmin) {
+      return res.status(403).json({ success: false, message: "Forbidden" });
+    }
+
+    await cartRepo.delete(item.id);
 
     return res.json({
       success: true,

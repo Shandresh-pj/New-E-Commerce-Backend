@@ -35,6 +35,7 @@ import { Menu, Permission } from "../entities/menu";
 import { Role } from "../entities/roles";
 import { Company } from "../entities/company";
 import { Branch } from "../entities/branch";
+import { TenantService } from "../middleware/tenantFilter.middleware";
 
 const buildUploadedFileUrl = (
   file?: Express.Multer.File
@@ -1595,18 +1596,38 @@ await queryRunner.release();
 @Get("/") @Middleware([ authenticateMiddleware ]) 
 public async getUsers( req:any, res:any )
 { 
-  try{ const users= await dataSource .getRepository(User) .find(); 
+  try{
+    const repo = dataSource.getRepository(User);
+
+    if (req.user.isSuperAdmin) {
+      const users = await repo.find();
+      return res.status(200).json({ success: true, count: users.length, data: users });
+    }
+
+    const qb = repo.createQueryBuilder("user")
+      .innerJoin("user.userRoles", "ur");
+
+    if (req.user.companyId) {
+      qb.andWhere("ur.company_id = :companyId", { companyId: req.user.companyId });
+    }
+
+    if (req.user.branchId) {
+      qb.andWhere("ur.branch_id = :branchId", { branchId: req.user.branchId });
+    }
+
+    const users = await qb.getMany();
+
     return res.status(200).json({
-       success:true, 
-       count:users.length, 
-       data:users 
-      }); 
+       success:true,
+       count:users.length,
+       data:users
+      });
     } catch(error:any){
-       return res.status(500).json({ 
-        success:false, 
-        message:error.message 
-      }); 
-    } 
+       return res.status(500).json({
+        success:false,
+        message:error.message
+      });
+    }
   }
 
   @Get("/:id") @Middleware([ authenticateMiddleware ])

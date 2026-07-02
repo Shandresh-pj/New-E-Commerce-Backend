@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { branchController } from "../controllers";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
 import { auditMiddleware } from "../middleware/audit.Middleware";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
@@ -63,7 +65,10 @@ const router = Router();
  *         description: Unauthorized
  */
 router.post(
-  "/branches", authenticateMiddleware, auditMiddleware("BRANCH"),
+  "/branches",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  auditMiddleware("BRANCH"),
   branchController.create.bind(branchController)
 );
 
@@ -87,10 +92,10 @@ router.post(
  *         description: Branch list fetched successfully
  */
 router.get(
-  "/branches",authenticateMiddleware,
-  branchController.getAll.bind(
-    branchController
-  )
+  "/branches",
+  authenticateMiddleware,
+  authorize(),
+  branchController.getAll.bind(branchController)
 );
 
 
@@ -124,10 +129,10 @@ router.get(
  *         description: Branch not found
  */
 router.get(
-  "/branches/:id",authenticateMiddleware,
-  branchController.getById.bind(
-    branchController
-  )
+  "/branches/:id",
+  authenticateMiddleware,
+  authorize(),
+  branchController.getById.bind(branchController)
 );
 
 
@@ -188,7 +193,10 @@ router.get(
  *         description: Branch not found
  */
 router.put(
-  "/branches/:id", authenticateMiddleware, auditMiddleware("BRANCH"),
+  "/branches/:id",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  auditMiddleware("BRANCH"),
   branchController.update.bind(branchController)
 );
 
@@ -223,7 +231,10 @@ router.put(
  *         description: Branch not found
  */
 router.delete(
-  "/branches/:id", authenticateMiddleware, auditMiddleware("BRANCH"),
+  "/branches/:id",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  auditMiddleware("BRANCH"),
   branchController.delete.bind(branchController)
 );
 

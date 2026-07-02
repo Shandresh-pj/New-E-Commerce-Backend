@@ -6,6 +6,8 @@ import {
 
 import authenticateMiddleware
 from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
@@ -53,6 +55,7 @@ const router = Router();
 router.post(
   "/role-access",
   authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   roleAccessController.create.bind(
     roleAccessController
   )
@@ -109,6 +112,7 @@ router.post(
 router.put(
   "/role-access/:id",
   authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   roleAccessController.update.bind(
     roleAccessController
   )
@@ -136,6 +140,7 @@ router.put(
 router.get(
   "/role-access",
   authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   roleAccessController.getAll.bind(
     roleAccessController
   )
@@ -171,6 +176,7 @@ router.get(
 router.get(
   "/role-access/role/:role_id",
   authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   roleAccessController.getByRole.bind(
     roleAccessController
   )
@@ -209,6 +215,7 @@ router.get(
 router.delete(
   "/role-access/:id",
   authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
   roleAccessController.delete.bind(
     roleAccessController
   )
@@ -266,6 +273,7 @@ router.delete(
 router.put(
   "/role-access/:id/approve",
   authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN], requireApproval: true }),
   roleAccessController.approve.bind(
     roleAccessController
   )

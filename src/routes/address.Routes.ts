@@ -52,6 +52,7 @@ function getUserId(req: AuthRequest): number {
  */
 router.get(
   "/address",
+  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);
@@ -94,6 +95,7 @@ router.get(
  */
 router.post(
   "/address",
+  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);
@@ -173,6 +175,7 @@ router.post(
  */
 router.put(
   "/address/:id",
+  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);
@@ -237,6 +240,7 @@ router.put(
  */
 router.delete(
   "/address/:id",
+  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);
@@ -285,6 +289,7 @@ router.delete(
  */
 router.patch(
   "/address/:id/default",
+  authenticateMiddleware,
   async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = getUserId(req);

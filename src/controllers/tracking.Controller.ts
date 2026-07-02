@@ -13,6 +13,7 @@ import {
 
 import { dataSource } from "../server";
 import { DeliveryTracking } from "../entities/delivery.entity";
+import { TenantService } from "../middleware/tenantFilter.middleware";
 
 
 @Controller("/delivery-tracking")
@@ -127,9 +128,11 @@ export class DeliveryTrackingController {
     "Fetch all tracking records"
   )
   async getAll(
-    req: Request,
+    req: any,
     res: Response
   ) {
+
+    const where = TenantService.scopeWhere(req.user);
 
     const data =
       await dataSource
@@ -137,6 +140,7 @@ export class DeliveryTrackingController {
           DeliveryTracking
         )
         .find({
+          where,
           order: {
             id: "DESC",
           },

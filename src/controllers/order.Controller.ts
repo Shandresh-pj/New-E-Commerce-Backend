@@ -32,6 +32,7 @@ import { StockLog } from "../entities/stock";
 import validate from "../middleware/validate";
 import { CreateOrderDto } from "../dto/order.dto";
 import { Register } from "../entities/register";
+import { TenantService } from "../middleware/tenantFilter.middleware";
 
 
 import { generateInvoiceNumber } from "../utils/invoiceNumber";
@@ -103,7 +104,7 @@ export class OrderController {
 @Middleware([validate(CreateOrderDto)])
 @Swagger("Create Order", "Enterprise safe order creation")
 
-public async create(req: Request, res: Response, next: NextFunction) {
+public async create(req: any, res: Response, next: NextFunction) {
 
   const queryRunner = dataSource.createQueryRunner();
   await queryRunner.connect();
@@ -112,12 +113,13 @@ public async create(req: Request, res: Response, next: NextFunction) {
   try {
 
     const {
-      user_id,
       company_id,
       items,
       coupon_code,
       payment,
     } = req.body;
+
+    const user_id = req.user.userId;
 
     const orderRepo = queryRunner.manager.getRepository(Order);
     const itemRepo = queryRunner.manager.getRepository(OrderItem);
@@ -277,11 +279,14 @@ public async create(req: Request, res: Response, next: NextFunction) {
   // GET ALL ORDERS
   // ==========================================
   @Get("/")
-  public async getAll(req: Request, res: Response) {
+  public async getAll(req: any, res: Response) {
 
     const repo = dataSource.getRepository(Order);
 
+    const where = TenantService.scopeWhere(req.user);
+
     const orders = await repo.find({
+      where,
       relations: {
         user: true,
         items: true,
@@ -300,12 +305,14 @@ public async create(req: Request, res: Response, next: NextFunction) {
   // GET BY ID
   // ==========================================
   @Get("/:id")
-  public async getById(req: Request, res: Response) {
+  public async getById(req: any, res: Response) {
 
     const repo = dataSource.getRepository(Order);
 
+    const where = TenantService.scopeWhere(req.user, { id: Number(req.params.id) });
+
     const order = await repo.findOne({
-      where: { id: Number(req.params.id) },
+      where,
       relations: {
         user: true,
         items: true,
@@ -330,13 +337,15 @@ public async create(req: Request, res: Response, next: NextFunction) {
   // DELETE ORDER (RESTORE STOCK)
   // ==========================================
   @Delete("/:id")
-  public async delete(req: Request, res: Response) {
+  public async delete(req: any, res: Response) {
 
     const repo = dataSource.getRepository(Order);
     const productRepo = dataSource.getRepository(Product);
 
+    const where = TenantService.scopeWhere(req.user, { id: Number(req.params.id) });
+
     const order = await repo.findOne({
-      where: { id: Number(req.params.id) },
+      where,
       relations: {items: true},
     });
 

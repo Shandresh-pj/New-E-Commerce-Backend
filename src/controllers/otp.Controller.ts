@@ -13,16 +13,16 @@ import { Register } from "../entities/register";
 import { SendOtpDto, VerifyOtpDto } from "../dto/otp.dto";
 import { OtpVerification } from "../entities/otp";
 import { StatusType } from "../utils/Role-Access";
-import sendSmsOtp from "../utils/sendSmsOtp";
+import { EmailService } from "../utils/sendEmailOtp";
 
 @Controller("/otp")
 export class OtpController {
 
- private generateOTP(): string {
-  return Math.floor(
-    100000 + Math.random() * 900000
-  ).toString();
-}
+  private generateOTP(): string {
+    return Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+  }
 
   @Post("/send")
   @Middleware([
@@ -30,7 +30,7 @@ export class OtpController {
   ])
   @Swagger(
     "Send OTP",
-    "Send OTP to Email or Mobile"
+    "Send OTP to Email"
   )
   public async sendOtp(
     request: Request,
@@ -46,110 +46,60 @@ export class OtpController {
 
     try {
 
-      const {
-        email,
-        mobile
-      } = request.body;
-
-      let registrationId: number | null =
-        null;
+      const { email } = request.body;
 
       const registerRepository =
-        queryRunner.manager.getRepository(
-          Register
-        );
+        queryRunner.manager.getRepository(Register);
 
       const otpRepository =
-        queryRunner.manager.getRepository(
-          OtpVerification
-        );
+        queryRunner.manager.getRepository(OtpVerification);
 
-      if (!email && !mobile) {
-
-        await queryRunner.rollbackTransaction();
-
-        return response.status(400).json({
-          success: false,
-          message:
-            "Email or Mobile is required",
+      const existingUser =
+        await registerRepository.findOne({
+          where: { email },
         });
+
+      let registrationId: number;
+
+      if (existingUser) {
+
+        registrationId = existingUser.id;
+
+      } else {
+
+        const user = registerRepository.create({
+          email,
+          status: StatusType.ACTIVE,
+        });
+
+        await registerRepository.save(user);
+
+        registrationId = user.id;
       }
 
-      if (email) {
+      const otp = this.generateOTP();
 
-        const existingUser =
-          await registerRepository.findOne({
-            where: { email },
-          });
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-        if (existingUser) {
+      await otpRepository.delete({ email });
 
-          registrationId =
-            existingUser.id;
-
-        } else {
-
-          const user =
-            registerRepository.create({
-              email,
-              status: StatusType.ACTIVE,
-            });
-
-          await registerRepository.save(
-            user
-          );
-
-          registrationId = user.id;
-        }
-      }
-
-      const otp =
-        this.generateOTP();
-
-      const expiresAt =
-        new Date(
-          Date.now() + 60 * 1000
-        );
-
-      await otpRepository.delete({
+      const otpData = otpRepository.create({
+        registration: { id: registrationId },
         email,
+        otp,
+        expires_at: expiresAt,
+        is_used: 0,
       });
 
-      const otpData =
-        otpRepository.create({
-          registration: { id: registrationId!, },
-          email,
-          mobile,
-          otp,
-          expires_at:
-            expiresAt,
-          is_used: 0,
-        });
+      await otpRepository.save(otpData);
 
-      await otpRepository.save(
-        otpData
-      );
-
-      if (email) {
-        await sendSmsOtp(
-          email,
-          otp
-        );
-      }
-
-      if (mobile) {
-        await sendSmsOtp(
-          mobile,
-          otp
-        );
-      }
+      await EmailService.sendOtp(email, otp);
 
       await queryRunner.commitTransaction();
 
       return response.status(200).json({
         success: true,
-        message:
-          "OTP sent successfully",
+        message: "OTP sent successfully",
       });
 
     } catch (error) {
@@ -171,7 +121,7 @@ export class OtpController {
   ])
   @Swagger(
     "Verify OTP",
-    "Verify Email/Mobile OTP"
+    "Verify Email OTP"
   )
   public async verifyOtp(
     request: Request,
@@ -181,93 +131,55 @@ export class OtpController {
 
     try {
 
-      const {
-        email,
-        mobile,
-        otp,
-      } = request.body;
+      const { email, otp } = request.body;
 
       const otpRepository =
-        dataSource.getRepository(
-          OtpVerification
-        );
+        dataSource.getRepository(OtpVerification);
 
       const otpRecord =
         await otpRepository
           .createQueryBuilder("otp")
-          .where(
-            "(otp.email = :email OR otp.mobile = :mobile)",
-            {
-              email,
-              mobile,
-            }
-          )
-          .andWhere(
-            "otp.otp = :otp",
-            { otp }
-          )
-          .andWhere(
-            "otp.is_used = :used",
-            { used: 0 }
-          )
-          .orderBy(
-            "otp.id",
-            "DESC"
-          )
+          .where("otp.email = :email", { email })
+          .andWhere("otp.otp = :otp", { otp })
+          .andWhere("otp.is_used = :used", { used: 0 })
+          .orderBy("otp.id", "DESC")
           .getOne();
 
       if (!otpRecord) {
 
         return response.status(400).json({
           success: false,
-          message:
-            "Invalid OTP",
+          message: "Invalid OTP",
         });
       }
 
-      if (
-        new Date(
-          otpRecord.expires_at
-        ) < new Date()
-      ) {
+      if (new Date(otpRecord.expires_at) < new Date()) {
 
         return response.status(400).json({
           success: false,
-          message:
-            "OTP expired",
+          message: "OTP expired",
         });
       }
 
       otpRecord.is_used = 1;
 
-      await otpRepository.save(
-        otpRecord
-      );
+      await otpRepository.save(otpRecord);
 
       const registerRepository =
         dataSource.getRepository(Register);
 
       const user = await registerRepository.findOne({
-        where: otpRecord.email
-          ? { email: otpRecord.email }
-          : { mobilenumber: otpRecord.mobile },
+        where: { email: otpRecord.email },
       });
 
-      const token =
-        jwt.sign(
-          {
-            id: user?.id,
-            email: otpRecord.email, 
-            mobile: otpRecord.mobile,
-            mobilenumber: user?.mobilenumber,
-            // usertype: user?.usertype,
-          },
-          process.env
-            .JWT_SECRET as string,
-          {
-            expiresIn: "24h",
-          }
-        );
+      const token = jwt.sign(
+        {
+          id: user?.id,
+          email: otpRecord.email,
+        },
+        process.env.JWT_SECRET as string,
+        { expiresIn: "24h" }
+      );
 
       return response.status(200).json({
         success: true,
@@ -280,7 +192,6 @@ export class OtpController {
               email: user.email,
               mobilenumber: user.mobilenumber,
               image: user.image,
-              // usertype: user.usertype,
             }
           : null,
       });

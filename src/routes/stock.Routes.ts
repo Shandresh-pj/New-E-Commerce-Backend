@@ -1,5 +1,9 @@
 import { Router } from "express";
 import { stockController } from "../controllers";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { auditMiddleware } from "../middleware/audit.Middleware";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
@@ -9,27 +13,16 @@ const router = Router();
  *   post:
  *     summary: Update Product Stock
  *     tags: [Stock]
- *     description: Add or Remove stock from product inventory
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               product_id:
- *                 type: integer
- *               quantity:
- *                 type: integer
- *               action:
- *                 type: string
- *                 example: ADD
- *     responses:
- *       200:
- *         description: Stock updated successfully
+ *     security:
+ *       - bearerAuth: []
  */
 router.post(
   "/stock/update",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+  }),
+  auditMiddleware("STOCK"),
   stockController.updateStock.bind(stockController)
 );
 
@@ -39,14 +32,16 @@ router.post(
  *   get:
  *     summary: Get all stock logs
  *     tags: [Stock]
- *     responses:
- *       200:
- *         description: Stock logs fetched successfully
+ *     security:
+ *       - bearerAuth: []
  */
 router.get(
   "/stock/logs",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+  }),
   stockController.logs.bind(stockController)
 );
-
 
 export default router;

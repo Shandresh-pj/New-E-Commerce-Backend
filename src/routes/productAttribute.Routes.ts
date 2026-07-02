@@ -2,6 +2,9 @@ import {
   productAttributeController,
   productAttributeValueController,
 } from "../controllers";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { UserType } from "../utils/Role-Access";
 
 const express = require("express");
 const router = express.Router();
@@ -47,6 +50,8 @@ router.get(
  */
 router.post(
   "/ProductAttribute/Add",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
   productAttributeController.create.bind(productAttributeController)
 );
 
@@ -59,6 +64,8 @@ router.post(
  */
 router.post(
   "/ProductAttribute/Update/:Id",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
   productAttributeController.update.bind(productAttributeController)
 );
 
@@ -71,6 +78,8 @@ router.post(
  */
 router.delete(
   "/ProductAttribute/:Id",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   productAttributeController.deleteItem.bind(productAttributeController)
 );
 
@@ -109,6 +118,8 @@ router.get(
  */
 router.post(
   "/ProductAttributeValue/Add",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
   productAttributeValueController.create.bind(productAttributeValueController)
 );
 
@@ -121,6 +132,8 @@ router.post(
  */
 router.post(
   "/ProductAttributeValue/Update/:Id",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
   productAttributeValueController.update.bind(productAttributeValueController)
 );
 
@@ -133,6 +146,8 @@ router.post(
  */
 router.delete(
   "/ProductAttributeValue/:Id",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   productAttributeValueController.deleteItem.bind(productAttributeValueController)
 );
 

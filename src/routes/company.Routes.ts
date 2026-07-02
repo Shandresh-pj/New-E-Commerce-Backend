@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { companyController } from "../controllers";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
 import { auditMiddleware } from "../middleware/audit.Middleware";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
@@ -43,7 +45,9 @@ const router = Router();
  */
 router.post(
   "/companies",
-  authenticateMiddleware, auditMiddleware("COMPANY"),
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
+  auditMiddleware("COMPANY"),
   companyController.create.bind(companyController)
 );
 
@@ -96,7 +100,9 @@ router.post(
  */
 router.put(
   "/companies/:id",
-  authenticateMiddleware, auditMiddleware("COMPANY"),
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
+  auditMiddleware("COMPANY"),
   companyController.update.bind(companyController)
 );
 
@@ -112,6 +118,7 @@ router.put(
 router.get(
   "/companies",
   authenticateMiddleware,
+  authorize(),
   companyController.getAll.bind(companyController)
 );
 
@@ -126,6 +133,7 @@ router.get(
 router.get(
   "/companies/:id",
   authenticateMiddleware,
+  authorize(),
   companyController.getOne.bind(companyController)
 );
 
@@ -172,7 +180,9 @@ router.get(
  */
 router.delete(
   "/companies/:id",
-  authenticateMiddleware, auditMiddleware("COMPANY"),
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
+  auditMiddleware("COMPANY"),
   companyController.delete.bind(companyController)
 );
 

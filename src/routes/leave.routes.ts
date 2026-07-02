@@ -1,5 +1,8 @@
 import { Router } from "express";
 import { leaveController } from "../controllers";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
@@ -9,12 +12,18 @@ const router = Router();
  *   post:
  *     summary: Apply Leave
  *     tags: [Leave]
- *     responses:
- *       200:
- *         description: Leave applied
+ *     security:
+ *       - bearerAuth: []
  */
 router.post(
   "/leave/apply",
+  authenticateMiddleware,
+  authorize({
+    roles: [
+      UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER,
+      UserType.SHOPKEEPER, UserType.DELIVERY_BOY, UserType.EMPLOYEE,
+    ],
+  }),
   leaveController.apply.bind(leaveController)
 );
 
@@ -24,12 +33,15 @@ router.post(
  *   get:
  *     summary: Get Leave Requests
  *     tags: [Leave]
- *     responses:
- *       200:
- *         description: Leave list
+ *     security:
+ *       - bearerAuth: []
  */
 router.get(
   "/leave",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER],
+  }),
   leaveController.getAll.bind(leaveController)
 );
 
@@ -39,18 +51,16 @@ router.get(
  *   put:
  *     summary: Approve Leave
  *     tags: [Leave]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Leave approved
+ *     security:
+ *       - bearerAuth: []
  */
 router.put(
   "/leave/approve/:id",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER],
+    requireApproval: true,
+  }),
   leaveController.approve.bind(leaveController)
 );
 

@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { employeeController } from "../controllers";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
 import { auditMiddleware } from "../middleware/audit.Middleware";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
@@ -33,9 +35,9 @@ const router = Router();
  */
 router.get(
   "/employees",
-  employeeController.getAll.bind(
-    employeeController
-  )
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
+  employeeController.getAll.bind(employeeController)
 );
 
 
@@ -64,9 +66,9 @@ router.get(
  */
 router.get(
   "/employees/:id",
-  employeeController.getOne.bind(
-    employeeController
-  )
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
+  employeeController.getOne.bind(employeeController)
 );
 
 
@@ -133,7 +135,9 @@ router.get(
  */
 router.post(
   "/employees",
-  authenticateMiddleware, auditMiddleware("EMPLOYEE"),
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
+  auditMiddleware("EMPLOYEE"),
   employeeController.create.bind(employeeController)
 );
 
@@ -177,7 +181,9 @@ router.post(
  */
 router.put(
   "/employees/:id",
-  authenticateMiddleware, auditMiddleware("EMPLOYEE"),
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
+  auditMiddleware("EMPLOYEE"),
   employeeController.update.bind(employeeController)
 );
 
@@ -206,7 +212,9 @@ router.put(
  */
 router.delete(
   "/employees/:id",
-  authenticateMiddleware, auditMiddleware("EMPLOYEE"),
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  auditMiddleware("EMPLOYEE"),
   employeeController.delete.bind(employeeController)
 );
 

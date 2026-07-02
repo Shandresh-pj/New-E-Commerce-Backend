@@ -1,5 +1,9 @@
 import { Router } from "express";
 import { BranchStockController } from "../controllers/BranchStock.Controller";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { auditMiddleware } from "../middleware/audit.Middleware";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 const controller = new BranchStockController();
@@ -10,8 +14,18 @@ const controller = new BranchStockController();
  *   post:
  *     summary: Update branch stock
  *     tags: [Branch Stock]
+ *     security:
+ *       - bearerAuth: []
  */
-router.post("/branch-stock/update", controller.update.bind(controller));
+router.post(
+  "/branch-stock/update",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+  }),
+  auditMiddleware("BRANCH_STOCK"),
+  controller.update.bind(controller)
+);
 
 /**
  * @swagger
@@ -19,7 +33,16 @@ router.post("/branch-stock/update", controller.update.bind(controller));
  *   get:
  *     summary: Get branch stock list
  *     tags: [Branch Stock]
+ *     security:
+ *       - bearerAuth: []
  */
-router.get("/branch-stock", controller.getAll.bind(controller));
+router.get(
+  "/branch-stock",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+  }),
+  controller.getAll.bind(controller)
+);
 
 export default router;

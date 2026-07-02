@@ -1,5 +1,9 @@
 import { Router } from "express";
 import { paymentController } from "../controllers";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { auditMiddleware } from "../middleware/audit.Middleware";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
@@ -9,29 +13,16 @@ const router = Router();
  *   post:
  *     summary: Create Payment
  *     tags: [Payments]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               order_id:
- *                 type: integer
- *               amount:
- *                 type: number
- *               method:
- *                 type: string
- *                 example: CASH
- *               status:
- *                 type: string
- *                 example: SUCCESS
- *     responses:
- *       200:
- *         description: Payment created successfully
+ *     security:
+ *       - bearerAuth: []
  */
 router.post(
   "/payments/create",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+  }),
+  auditMiddleware("PAYMENT"),
   paymentController.create.bind(paymentController)
 );
 
@@ -41,12 +32,15 @@ router.post(
  *   get:
  *     summary: Get All Payments
  *     tags: [Payments]
- *     responses:
- *       200:
- *         description: Payment list fetched successfully
+ *     security:
+ *       - bearerAuth: []
  */
 router.get(
   "/payments",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER],
+  }),
   paymentController.getAll.bind(paymentController)
 );
 

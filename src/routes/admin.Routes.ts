@@ -1,6 +1,9 @@
 import { Router } from "express";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { auditMiddleware } from "../middleware/audit.Middleware";
 import { adminController, authController } from "../controllers";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
@@ -35,6 +38,7 @@ const router = Router();
 router.get(
   "/auth/user-access/:userId",
   authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
   adminController.getUserAccess.bind(adminController)
 );
 
@@ -76,6 +80,7 @@ router.get(
 router.post(
   "/auth/assign-role",
   authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
   adminController.assignRole.bind(adminController)
 );
 
@@ -150,6 +155,9 @@ router.post(
  */
 router.delete(
   "/auth/removeUserAccess",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
+  auditMiddleware("ADMIN"),
   adminController.removeUserAccess.bind(adminController)
 );
 

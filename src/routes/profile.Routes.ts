@@ -1,6 +1,8 @@
 import { authController, profileController } from "../controllers";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
 import { uploadImage } from "../utils/upload";
+import { UserType } from "../utils/Role-Access";
 
 import { Router } from "express";
 const router = Router();
@@ -48,6 +50,8 @@ const router = Router();
  */
 router.get(
   "/profile/all",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   profileController.getAll.bind(profileController)
 );
 
@@ -68,7 +72,9 @@ router.get(
  *           type: integer
  */
 router.get(
-  "/profile/:id",authenticateMiddleware,
+  "/profile/:id",
+  authenticateMiddleware,
+  authorize(),
   profileController.getById.bind(profileController)
 );
 
@@ -114,8 +120,10 @@ router.get(
  *                 format: binary
  */
 router.post(
-  "/profile/add",authenticateMiddleware,
-  uploadImage.upload.single("image"),uploadImage.compressor,
+  "/profile/add",
+  authenticateMiddleware,
+  authorize(),
+  uploadImage.upload.single("image"), uploadImage.compressor,
   profileController.create.bind(profileController)
 );
 
@@ -153,8 +161,10 @@ router.post(
  *                 format: binary
  */
 router.put(
-  "/profile/:id",authenticateMiddleware,
-  uploadImage.upload.single("image"),uploadImage.compressor,
+  "/profile/:id",
+  authenticateMiddleware,
+  authorize(),
+  uploadImage.upload.single("image"), uploadImage.compressor,
   profileController.update.bind(profileController)
 );
 
@@ -173,7 +183,9 @@ router.put(
  *           type: integer
  */
 router.delete(
-  "/profile/:id",authenticateMiddleware,
+  "/profile/:id",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   profileController.delete.bind(profileController)
 );
 

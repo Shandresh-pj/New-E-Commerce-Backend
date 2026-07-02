@@ -1,5 +1,9 @@
 import { Router } from "express";
 import { deliveryTrackingController } from "../controllers";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { auditMiddleware } from "../middleware/audit.Middleware";
+import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
@@ -9,15 +13,16 @@ const router = Router();
  *   post:
  *     summary: Start Delivery
  *     tags: [Delivery Tracking]
- *     responses:
- *       200:
- *         description: Delivery started successfully
+ *     security:
+ *       - bearerAuth: []
  */
 router.post(
   "/delivery-tracking/start",
-  deliveryTrackingController.startDelivery.bind(
-    deliveryTrackingController
-  )
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.DELIVERY_BOY],
+  }),
+  deliveryTrackingController.startDelivery.bind(deliveryTrackingController)
 );
 
 /**
@@ -26,15 +31,16 @@ router.post(
  *   post:
  *     summary: Update Live Location
  *     tags: [Delivery Tracking]
- *     responses:
- *       200:
- *         description: Location updated successfully
+ *     security:
+ *       - bearerAuth: []
  */
 router.post(
   "/delivery-tracking/location",
-  deliveryTrackingController.updateLocation.bind(
-    deliveryTrackingController
-  )
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.DELIVERY_BOY, UserType.BRANCH_MANAGER, UserType.ADMIN, UserType.SUPER_ADMIN],
+  }),
+  deliveryTrackingController.updateLocation.bind(deliveryTrackingController)
 );
 
 /**
@@ -43,21 +49,14 @@ router.post(
  *   get:
  *     summary: Track Order
  *     tags: [Delivery Tracking]
- *     parameters:
- *       - in: path
- *         name: order_id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Tracking fetched successfully
+ *     security:
+ *       - bearerAuth: []
  */
 router.get(
   "/delivery-tracking/order/:order_id",
-  deliveryTrackingController.getTracking.bind(
-    deliveryTrackingController
-  )
+  authenticateMiddleware,
+  authorize(),
+  deliveryTrackingController.getTracking.bind(deliveryTrackingController)
 );
 
 /**
@@ -66,15 +65,16 @@ router.get(
  *   get:
  *     summary: Get All Tracking
  *     tags: [Delivery Tracking]
- *     responses:
- *       200:
- *         description: Tracking list fetched successfully
+ *     security:
+ *       - bearerAuth: []
  */
 router.get(
   "/delivery-tracking",
-  deliveryTrackingController.getAll.bind(
-    deliveryTrackingController
-  )
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER],
+  }),
+  deliveryTrackingController.getAll.bind(deliveryTrackingController)
 );
 
 /**
@@ -83,21 +83,16 @@ router.get(
  *   post:
  *     summary: Mark Delivered
  *     tags: [Delivery Tracking]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Order marked as delivered
+ *     security:
+ *       - bearerAuth: []
  */
 router.post(
   "/delivery-tracking/delivered/:id",
-  deliveryTrackingController.delivered.bind(
-    deliveryTrackingController
-  )
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.DELIVERY_BOY, UserType.BRANCH_MANAGER, UserType.ADMIN, UserType.SUPER_ADMIN],
+  }),
+  deliveryTrackingController.delivered.bind(deliveryTrackingController)
 );
 
 /**
@@ -106,21 +101,18 @@ router.post(
  *   delete:
  *     summary: Delete Tracking
  *     tags: [Delivery Tracking]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Tracking deleted successfully
+ *     security:
+ *       - bearerAuth: []
  */
 router.delete(
   "/delivery-tracking/:id",
-  deliveryTrackingController.deleteTracking.bind(
-    deliveryTrackingController
-  )
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
+    denyDelete: [UserType.DELIVERY_BOY],
+  }),
+  auditMiddleware("DELIVERY"),
+  deliveryTrackingController.deleteTracking.bind(deliveryTrackingController)
 );
 
 export default router;

@@ -1,11 +1,10 @@
 import { statusController } from "../controllers";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { authorize } from "../middleware/authorize";
+import { UserType } from "../utils/Role-Access";
 
 const express = require("express");
 const router = express.Router();
-
-/**
- * Mounted under /api => /api/Status/All, /api/Status/Add, /api/Status/:Id
- */
 
 /**
  * @swagger
@@ -13,9 +12,13 @@ const router = express.Router();
  *   get:
  *     summary: List statuses (dropdown source)
  *     tags: [Status]
+ *     security:
+ *       - bearerAuth: []
  */
 router.get(
   "/Status/All",
+  authenticateMiddleware,
+  authorize(),
   statusController.index.bind(statusController)
 );
 
@@ -25,9 +28,13 @@ router.get(
  *   post:
  *     summary: Create a status
  *     tags: [Status]
+ *     security:
+ *       - bearerAuth: []
  */
 router.post(
   "/Status/Add",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   statusController.create.bind(statusController)
 );
 
@@ -37,9 +44,13 @@ router.post(
  *   post:
  *     summary: Update a status
  *     tags: [Status]
+ *     security:
+ *       - bearerAuth: []
  */
 router.post(
   "/Status/Update/:Id",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   statusController.update.bind(statusController)
 );
 
@@ -49,9 +60,13 @@ router.post(
  *   delete:
  *     summary: Delete a status
  *     tags: [Status]
+ *     security:
+ *       - bearerAuth: []
  */
 router.delete(
   "/Status/:Id",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   statusController.deleteItem.bind(statusController)
 );
 

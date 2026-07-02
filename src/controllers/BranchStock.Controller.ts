@@ -12,6 +12,7 @@ import { UpdateBranchStockDto } from "../dto/branchStock.dto";
 import validate from "../middleware/validate";
 import { BranchStockService } from "../services/branchStock.service";
 import { BranchStock } from "../entities/branch_stock";
+import { TenantService } from "../middleware/tenantFilter.middleware";
 
 @Controller("/branch-stock")
 export class BranchStockController {
@@ -19,7 +20,7 @@ export class BranchStockController {
   @Post("/update")
   @Middleware([validate(UpdateBranchStockDto)])
   @Swagger("Update Branch Stock", "Add or Remove stock per branch")
-  async update(req: Request, res: Response, next: NextFunction) {
+  async update(req: any, res: Response, next: NextFunction) {
 
     const qr = dataSource.createQueryRunner();
     await qr.connect();
@@ -30,7 +31,7 @@ export class BranchStockController {
       const result = await BranchStockService.updateStock({
         manager: qr.manager,
         ...req.body,
-        user_id: 1, // replace with auth user
+        user_id: req.user.userId,
       });
 
       await qr.commitTransaction();
@@ -51,11 +52,14 @@ export class BranchStockController {
 
   @Get("/")
   @Swagger("Get Branch Stocks", "List all branch stock data")
-  async getAll(req: Request, res: Response) {
+  async getAll(req: any, res: Response) {
 
     const repo = dataSource.getRepository(BranchStock);
 
+    const where = TenantService.scopeWhere(req.user);
+
     const data = await repo.find({
+      where,
       relations: { product: true },
       order: { id: "DESC" },
     });

@@ -33,4 +33,31 @@ export class TenantService {
 
     return qb;
   }
+
+  static scopeWhere(user: any, baseWhere: any = {}): any {
+
+    if (user.isSuperAdmin || user.userType === UserType.SUPER_ADMIN) {
+      return baseWhere;
+    }
+
+    switch (user.userType) {
+
+      case UserType.ADMIN:
+        return { ...baseWhere, company_id: user.companyId };
+
+      case UserType.BRANCH:
+      case UserType.BRANCH_MANAGER:
+      case UserType.SHOPKEEPER:
+        return { ...baseWhere, company_id: user.companyId, branch_id: user.branchId };
+
+      case UserType.DELIVERY_BOY:
+        return { ...baseWhere, assigned_to: user.userId };
+
+      case UserType.CUSTOMER:
+        return { ...baseWhere, user_id: user.userId };
+
+      default:
+        return baseWhere;
+    }
+  }
 }
