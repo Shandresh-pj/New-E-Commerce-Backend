@@ -316,7 +316,6 @@ public async create(req: any, res: Response, next: NextFunction) {
       relations: {
         user: true,
         items: true,
-        order: true
       },
     });
 

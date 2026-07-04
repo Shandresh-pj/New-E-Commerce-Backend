@@ -34,9 +34,10 @@ export const initializeSocket = (server: any) => {
   io.on("connection", (socket: any) => {
 
     const user = socket.user;
+    const userId = user.userId ?? user.user_id;
 
     // USER ROOM
-    socket.join(`user_${user.user_id}`);
+    socket.join(`user_${userId}`);
 
     // COMPANY ROOM
     if (user.company_id) {
@@ -50,8 +51,8 @@ export const initializeSocket = (server: any) => {
 
     // ================= LIVE PERMISSION UPDATE =================
     socket.on("update-permissions", (data: any) => {
-
-      io.to(`user_${data.user_id}`).emit(
+      const targetUserId = data.userId ?? data.user_id;
+      io.to(`user_${targetUserId}`).emit(
         "permissions-updated",
         data.permissions
       );
@@ -59,8 +60,8 @@ export const initializeSocket = (server: any) => {
 
     // ================= FORCE LOGOUT =================
     socket.on("force-logout", (data: any) => {
-
-      io.to(`user_${data.user_id}`).emit(
+      const targetUserId = data.userId ?? data.user_id;
+      io.to(`user_${targetUserId}`).emit(
         "logout",
         { reason: "Access revoked" }
       );

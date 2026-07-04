@@ -40,7 +40,7 @@ router.get(
   "/branch-stock",
   authenticateMiddleware,
   authorize({
-    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER, UserType.EMPLOYEE],
   }),
   controller.getAll.bind(controller)
 );

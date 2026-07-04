@@ -39,7 +39,7 @@ router.get(
   "/stock/logs",
   authenticateMiddleware,
   authorize({
-    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER, UserType.EMPLOYEE],
   }),
   stockController.logs.bind(stockController)
 );

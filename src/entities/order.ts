@@ -20,18 +20,12 @@ export class Order {
   @Column()
   user_id!: number;
 
-  // @ManyToOne(() => Register, user => user.orders, {
-  //   onDelete: "CASCADE"
-  // })
+  @ManyToOne(() => Register, { onDelete: "NO ACTION" })
   @JoinColumn({ name: "user_id" })
   user!: Register;
 
-@ManyToOne(() => Order, order => order.product_id)
-@JoinColumn({ name: "product_id" })
-order!: Order;
-
-@Column()
-product_id!: number;
+  @Column({ nullable: true })
+  product_id!: number;
 
   @Column()
   status!: string; // PENDING, CONFIRMED, FAILED

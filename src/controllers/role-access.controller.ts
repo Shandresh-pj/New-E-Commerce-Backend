@@ -10,7 +10,7 @@ import {
 import { dataSource } from "../server";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
 import { RolePermission } from "../entities/role-access";
-import { StatusType } from "../utils/Role-Access";
+import { StatusType, UserType } from "../utils/Role-Access";
 import { approveGuard } from "../middleware/approve.middleware";
 import { IsNull, Not } from "typeorm";
 
@@ -304,6 +304,13 @@ export class RoleAccessController {
     if (level === "branch")   { where.user_id    = IsNull(); }
     if (level === "employee" && !user_id) { where.user_id = Not(IsNull()); }
 
+    // Tenant scoping: non-SA users only see records for their own company
+    const u = req.user;
+    if (!u.isSuperAdmin && u.userType !== UserType.SUPER_ADMIN) {
+      if (u.companyId) where.company_id = u.companyId;
+      if (u.branchId)  where.branch_id  = u.branchId;
+    }
+
     const data = await dataSource.getRepository(RolePermission).find({
       where,
       relations: {
@@ -367,6 +374,19 @@ export class RoleAccessController {
         success: false,
         message: "Not found"
       });
+    }
+
+    // Non-SA users may only delete records scoped to their own company/branch
+    const u = req.user;
+    if (!u.isSuperAdmin && u.userType !== UserType.SUPER_ADMIN) {
+      const companyMismatch = record.company_id != null && record.company_id !== u.companyId;
+      const branchMismatch  = record.branch_id  != null && record.branch_id  !== u.branchId;
+      if (companyMismatch || branchMismatch) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied"
+        });
+      }
     }
 
     await repo.remove(record);
