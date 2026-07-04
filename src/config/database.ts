@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
 import dotenv from "dotenv";
+import path from "path";
 
 dotenv.config();
 
@@ -14,13 +15,13 @@ const dataSource = new DataSource({
   database: process.env.DB_DATABASE,
 
   // ⚡ IMPORTANT (DEV ONLY)
-  synchronize: process.env.NODE_ENV === "development",
+  synchronize: process.env.NODE_ENV !== "production",
 
   // 🔥 LOGGING (safe mode)
-  logging: process.env.NODE_ENV === "development",
+  logging: process.env.NODE_ENV !== "production",
 
   // ⚡ ENTITIES
-  entities: ["src/entities/**/*.ts"],
+  entities: [path.join(__dirname, "../entities/**/*.{ts,js}")],
 
   // 🚀 MYSQL CONNECTION POOL (REAL PERFORMANCE BOOST)
   extra: {

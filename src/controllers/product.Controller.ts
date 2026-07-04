@@ -32,8 +32,11 @@ import {
   ProductVariantDto,
   ProductAttributeValueLinkDto,
   ScanProductDto,
+  ProductApprovalStatus,
 } from "../dto";
 import { Put } from "../decorators/put";
+import { io } from "../socket/socket";
+import { Notification } from "../entities/notification";
 
 const PRODUCT_RELATIONS = {
   creator: true,
@@ -425,6 +428,9 @@ export class ProductController {
         product_type,
         stock_in_hand,
         status,
+        approval_status,
+        low_stock_threshold,
+        critical_stock_threshold,
       } = body;
 
       const { image, video, images } = extractUploadedFiles(req);
@@ -440,6 +446,9 @@ export class ProductController {
         product_type,
         stock_in_hand,
         status,
+        approval_status: approval_status ?? ProductApprovalStatus.DRAFT,
+        low_stock_threshold: low_stock_threshold !== undefined ? Number(low_stock_threshold) : 5,
+        critical_stock_threshold: critical_stock_threshold !== undefined ? Number(critical_stock_threshold) : 2,
         // Fall back to the first gallery photo as the cover when no
         // dedicated cover file was uploaded separately.
         image: image ?? images?.[0],
@@ -503,14 +512,35 @@ export class ProductController {
 
       await qr.commitTransaction();
 
+      const createdProductData = {
+        ...sanitizeProduct(product),
+        variants: savedVariants,
+        attribute_values: savedAttributeValues,
+      };
+
+      // Emit realtime socket event
+      io.emit("product-created", createdProductData);
+
+      // Create and emit notification if it requires approval
+      if (product.approval_status === ProductApprovalStatus.PENDING) {
+        try {
+          const notificationRepo = dataSource.getRepository(Notification);
+          const notification = notificationRepo.create({
+            message: `New product "${product.name}" requires approval.`,
+            type: "APPROVAL_REQUEST",
+            product_id: product.id,
+          });
+          await notificationRepo.save(notification);
+          io.emit("new-notification", notification);
+        } catch (notifErr) {
+          console.error("Failed to create notification on product create:", notifErr);
+        }
+      }
+
       return res.status(201).json({
         success: true,
         message: "Product created",
-        data: {
-          ...sanitizeProduct(product),
-          variants: savedVariants,
-          attribute_values: savedAttributeValues,
-        },
+        data: createdProductData,
       });
 
     } catch (err) {
@@ -758,6 +788,9 @@ export class ProductController {
       product.product_type = body.product_type ?? product.product_type;
       product.stock_in_hand = body.stock_in_hand ?? product.stock_in_hand;
       product.status = body.status ?? product.status;
+      product.approval_status = body.approval_status ?? product.approval_status;
+      product.low_stock_threshold = body.low_stock_threshold !== undefined ? Number(body.low_stock_threshold) : product.low_stock_threshold;
+      product.critical_stock_threshold = body.critical_stock_threshold !== undefined ? Number(body.critical_stock_threshold) : product.critical_stock_threshold;
 
       const { image, video, images } = extractUploadedFiles(req);
       const existingImagesProvided = req.body.existing_images !== undefined;
@@ -884,6 +917,25 @@ export class ProductController {
         responseData.attribute_values = savedAttributeValues;
       }
 
+      // Emit realtime socket event
+      io.emit("product-updated", responseData);
+
+      // Create and emit notification if it requires approval
+      if (product.approval_status === ProductApprovalStatus.PENDING) {
+        try {
+          const notificationRepo = dataSource.getRepository(Notification);
+          const notification = notificationRepo.create({
+            message: `Product "${product.name}" was modified and requires approval.`,
+            type: "APPROVAL_REQUEST",
+            product_id: product.id,
+          });
+          await notificationRepo.save(notification);
+          io.emit("new-notification", notification);
+        } catch (notifErr) {
+          console.error("Failed to create notification on product update:", notifErr);
+        }
+      }
+
       return res.json({
         success: true,
         message: "Updated successfully",
@@ -928,9 +980,85 @@ export class ProductController {
 
       await qr.commitTransaction();
 
+      io.emit("product-deleted", { id: productId });
+
       return res.json({
         success: true,
         message: "Deleted",
+      });
+    } catch (err) {
+      await qr.rollbackTransaction();
+      next(err);
+    } finally {
+      await qr.release();
+    }
+  }
+
+  // ================= APPROVE PRODUCT =================
+  async approveProduct(req: any, res: Response, next: NextFunction) {
+    const qr = dataSource.createQueryRunner();
+    await qr.connect();
+    await qr.startTransaction();
+
+    try {
+      const productId = Number(req.params.id);
+      const { action, rejection_reason } = req.body; // action: 'APPROVE' | 'REJECT' | 'PUBLISH'
+
+      const repo = qr.manager.getRepository(Product);
+      const product = await repo.findOneBy({ id: productId });
+
+      if (!product) {
+        throw new ApiError(404, "Product not found");
+      }
+
+      const user = req.user;
+      const userName = user.email || user.username || `User ${user.userId}`;
+
+      if (action === "APPROVE") {
+        product.approval_status = ProductApprovalStatus.APPROVED;
+        product.approved_by = userName;
+        product.approved_at = new Date();
+      } else if (action === "REJECT") {
+        product.approval_status = ProductApprovalStatus.REJECTED;
+        product.rejected_by = userName;
+        product.rejected_at = new Date();
+        product.rejection_reason = rejection_reason || "No reason provided";
+      } else if (action === "PUBLISH") {
+        product.approval_status = ProductApprovalStatus.PUBLISHED;
+      } else {
+        throw new ApiError(400, "Invalid approval action");
+      }
+
+      await repo.save(product);
+      await qr.commitTransaction();
+
+      const responseData = sanitizeProduct(product);
+      // Emit events
+      io.emit("product-updated", responseData);
+      io.emit("product-approval-update", {
+        product_id: product.id,
+        approval_status: product.approval_status,
+        message: `Product "${product.name}" is now ${product.approval_status}`,
+      });
+
+      // Notification
+      try {
+        const notificationRepo = dataSource.getRepository(Notification);
+        const notification = notificationRepo.create({
+          message: `Product "${product.name}" approval state changed to: ${product.approval_status}.`,
+          type: product.approval_status === "Published" ? "PUBLISHED" : "STOCK_UPDATE",
+          product_id: product.id,
+        });
+        await notificationRepo.save(notification);
+        io.emit("new-notification", notification);
+      } catch (nErr) {
+        console.error("Failed to save approval notification:", nErr);
+      }
+
+      return res.json({
+        success: true,
+        message: `Product state changed to ${product.approval_status} successfully`,
+        data: responseData,
       });
     } catch (err) {
       await qr.rollbackTransaction();

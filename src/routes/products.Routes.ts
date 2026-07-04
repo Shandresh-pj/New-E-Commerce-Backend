@@ -315,4 +315,14 @@ router.delete(
  */
 router.get("/barcode", productController.scan.bind(productController));
 
+router.put(
+  "/products/:id/approve",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
+  }),
+  auditMiddleware("PRODUCT_APPROVAL"),
+  productController.approveProduct.bind(productController)
+);
+
 export default router;

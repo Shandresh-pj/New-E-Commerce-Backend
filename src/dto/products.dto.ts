@@ -21,6 +21,14 @@ export enum ProductStatus {
   INACTIVE = "inactive",
 }
 
+export enum ProductApprovalStatus {
+  DRAFT = "Draft",
+  PENDING = "Pending Approval",
+  APPROVED = "Approved",
+  PUBLISHED = "Published",
+  REJECTED = "Rejected",
+}
+
 export class ProductVariantDto {
   @IsOptional()
   @IsNumber()

@@ -2,42 +2,34 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from "typeorm";
-
 import { Product } from "./products";
 
-@Entity("stock_logs")
-export class StockLog {
+@Entity("branch_transfers")
+export class BranchTransfer {
 
   @PrimaryGeneratedColumn()
   id!: number;
 
- @ManyToOne(() => Product, product => product.stockLogs, {
-  onDelete: "CASCADE",
-})
-@JoinColumn({ name: "product_id" })
-product!: Product;
-
-@Column()
-product_id!: number;
+  @Column()
+  from_branch!: string;
 
   @Column()
-  old_stock!: number;
+  to_branch!: string;
 
   @Column()
-  added_stock!: number;
+  product_id!: number;
 
-  @Column()
-  new_stock!: number;
+  @ManyToOne(() => Product, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "product_id" })
+  product!: Product;
 
-  @Column()
-  action!: string; // ADD / REMOVE
-
-  @Column()
-  created_by!: number;
+  @Column({ type: "int" })
+  quantity!: number;
 
   @Column({ default: "Pending Approval" })
   status!: string; // 'Pending Approval' | 'Approved' | 'Rejected' | 'Published'
@@ -45,19 +37,18 @@ product_id!: number;
   @Column({ type: "text", nullable: true })
   rejection_reason!: string;
 
+  @Column()
+  created_by!: number;
+
   @Column({ nullable: true })
   approved_by!: number;
 
   @Column({ type: "timestamp", nullable: true })
   approved_at!: Date;
 
-  @Column({ nullable: true })
-  rejected_by!: number;
-
-  @Column({ type: "timestamp", nullable: true })
-  rejected_at!: Date;
-
   @CreateDateColumn()
   created_at!: Date;
-}
 
+  @UpdateDateColumn()
+  updated_at!: Date;
+}

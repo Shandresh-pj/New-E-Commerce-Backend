@@ -42,4 +42,25 @@ router.delete(
   alertController.deleteAlert.bind(alertController)
 );
 
+router.get(
+  "/notifications",
+  authenticateMiddleware,
+  authorize(),
+  alertController.getNotifications.bind(alertController)
+);
+
+router.put(
+  "/notifications/:id/read",
+  authenticateMiddleware,
+  authorize(),
+  alertController.markRead.bind(alertController)
+);
+
+router.put(
+  "/notifications/read-all",
+  authenticateMiddleware,
+  authorize(),
+  alertController.markAllRead.bind(alertController)
+);
+
 export default router;

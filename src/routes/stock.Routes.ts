@@ -44,4 +44,14 @@ router.get(
   stockController.logs.bind(stockController)
 );
 
+router.put(
+  "/stock/logs/:id/approve",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
+  }),
+  auditMiddleware("STOCK_APPROVAL"),
+  stockController.approveStock.bind(stockController)
+);
+
 export default router;

@@ -45,4 +45,33 @@ router.get(
   controller.getAll.bind(controller)
 );
 
+router.post(
+  "/branch-stock/transfer",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+  }),
+  auditMiddleware("BRANCH_STOCK_TRANSFER_REQUEST"),
+  controller.requestTransfer.bind(controller)
+);
+
+router.get(
+  "/branch-stock/transfers",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+  }),
+  controller.getTransfers.bind(controller)
+);
+
+router.put(
+  "/branch-stock/transfers/:id/approve",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
+  }),
+  auditMiddleware("BRANCH_STOCK_TRANSFER_APPROVAL"),
+  controller.approveTransfer.bind(controller)
+);
+
 export default router;
