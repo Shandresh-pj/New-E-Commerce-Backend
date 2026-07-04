@@ -40,6 +40,7 @@ router.get(
     roles: [
       UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH,
       UserType.BRANCH_MANAGER, UserType.SHOPKEEPER, UserType.CUSTOMER,
+      UserType.EMPLOYEE,
     ],
   }),
   orderController.getAll.bind(orderController)

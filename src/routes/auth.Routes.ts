@@ -309,6 +309,13 @@ router.delete(
   authController.deleteUser.bind(authController)
 );
 
+router.put(
+  "/auth/admin-set-password/:userId",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
+  authController.adminSetPassword.bind(authController)
+);
+
 
 
  /**
