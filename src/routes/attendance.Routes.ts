@@ -37,7 +37,7 @@ router.post(
  *       - bearerAuth: []
  */
 router.post(
-  "/attendance/checkout",
+  "/attendance/checkout/:id",
   authenticateMiddleware,
   authorize({
     roles: [

@@ -133,15 +133,20 @@ export class MenuController {
   // =====================================================
   // UPDATE MENU
   // =====================================================
-  @Put("/:id")
-  @Middleware([authenticateMiddleware])
-  async update(req: any, res: any) {
+@Put("/:id")
+@Middleware([authenticateMiddleware])
+async update(req: any, res: any) {
+
+  try {
 
     const id = Number(req.params.id);
+    const { name, path, icon } = req.body;
 
     const repo = dataSource.getRepository(Menu);
 
-    const menu = await repo.findOne({ where: { id } });
+    const menu = await repo.findOne({
+      where: { id }
+    });
 
     if (!menu) {
       return res.status(404).json({
@@ -150,16 +155,46 @@ export class MenuController {
       });
     }
 
-    repo.merge(menu, req.body);
+    // Prevent duplicate menu name
+    if (name && name !== menu.name) {
+
+      const exists = await repo.findOne({
+        where: { name }
+      });
+
+      if (exists) {
+        return res.status(409).json({
+          success: false,
+          message: "Menu name already exists"
+        });
+      }
+    }
+
+    repo.merge(menu, {
+      name,
+      path,
+      icon
+    });
 
     await repo.save(menu);
 
-    return res.json({
+    return res.status(200).json({
       success: true,
-      message: "Menu updated",
+      message: "Menu updated successfully",
       data: menu
     });
+
+  } catch (err: any) {
+
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
+
   }
+}
+
+
 
   // =====================================================
   // DELETE MENU

@@ -37,6 +37,7 @@ export class PayrollController {
     const {
       employee_id,
       month,
+      year,
     } = req.body;
 
     const employeeRepo =
@@ -134,6 +135,7 @@ export class PayrollController {
         company_id:
           employee.company_id,
         month,
+        year: Number(year || new Date().getFullYear()),
         basic_salary:
           employee.salary,
         present_days:

@@ -1,4 +1,3 @@
-
 import nodemailer from "nodemailer";
 import crypto from "crypto";
 import dotenv from "dotenv";
@@ -6,11 +5,9 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export function generateTempPassword() {
-
     return crypto
         .randomBytes(10)
         .toString("hex");
-
 }
 
 export class EmailService {
@@ -21,10 +18,8 @@ export class EmailService {
         service:"gmail",
 
         auth:{
-
             user:process.env.EMAIL_USER,
             pass:process.env.EMAIL_PASS
-
         }
 
     });
@@ -37,14 +32,14 @@ export class EmailService {
             await this.transporter.verify();
 
             console.log(
-                "Email server connected"
+                "✅ Email server connected"
             );
 
         }
         catch(error){
 
             console.log(
-                "Email configuration error:",
+                "❌ Email configuration error:",
                 error
             );
 
@@ -53,185 +48,640 @@ export class EmailService {
     }
 
 
+    private static getTemplate(
+
+        title:string,
+        subtitle:string,
+        content:string,
+        gradient:string
+
+    ){
+
+return `
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="UTF-8"/>
+
+<meta
+name="viewport"
+content="width=device-width,initial-scale=1.0"
+/>
+
+<style>
+
+*{
+
+margin:0;
+padding:0;
+box-sizing:border-box;
+
+}
+
+body{
+
+background:#f4f7fc;
+font-family:
+Arial,
+Helvetica,
+sans-serif;
+
+padding:20px;
+
+}
+
+.wrapper{
+
+width:100%;
+
+}
+
+.container{
+
+max-width:680px;
+margin:auto;
+
+background:white;
+
+border-radius:24px;
+
+overflow:hidden;
+
+box-shadow:
+0 15px 40px
+rgba(0,0,0,.08);
+
+}
+
+.hero{
+
+padding:60px 30px;
+
+background:${gradient};
+
+color:white;
+
+text-align:center;
+
+}
+
+.hero h1{
+
+font-size:34px;
+margin-bottom:15px;
+
+}
+
+.hero p{
+
+font-size:16px;
+
+opacity:.9;
+
+line-height:1.6;
+
+}
+
+.content{
+
+padding:40px;
+
+color:#444;
+
+line-height:1.8;
+
+}
+
+.card{
+
+background:
+linear-gradient(
+145deg,
+#f8fafc,
+#edf2f7
+);
+
+padding:30px;
+
+border-radius:18px;
+
+margin:25px 0;
+
+text-align:center;
+
+}
+
+.code{
+
+font-size:30px;
+font-weight:bold;
+
+letter-spacing:5px;
+
+color:#5B67F1;
+
+margin-top:10px;
+
+word-break:break-word;
+
+}
+
+.button{
+
+display:inline-block;
+
+padding:15px 35px;
+
+background:
+linear-gradient(
+90deg,
+#5B67F1,
+#8B5CF6
+);
+
+color:white!important;
+
+font-weight:bold;
+
+text-decoration:none;
+
+border-radius:12px;
+
+margin-top:25px;
+
+}
+
+.footer{
+
+padding:25px;
+
+background:#fafafa;
+
+text-align:center;
+
+font-size:13px;
+
+color:#777;
+
+}
+
+.footer a{
+
+text-decoration:none;
+
+color:#5B67F1;
+
+margin:0 10px;
+
+}
+
+@media screen and (max-width:600px){
+
+.hero{
+
+padding:40px 20px;
+
+}
+
+.hero h1{
+
+font-size:28px;
+
+}
+
+.content{
+
+padding:25px;
+
+}
+
+.card{
+
+padding:20px;
+
+}
+
+.code{
+
+font-size:24px;
+
+}
+
+.button{
+
+display:block;
+
+width:100%;
+
+}
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="wrapper">
+
+<div class="container">
+
+<div class="hero">
+
+<h1>
+
+${title}
+
+</h1>
+
+<p>
+
+${subtitle}
+
+</p>
+
+</div>
+
+<div class="content">
+
+${content}
+
+</div>
+
+<div class="footer">
+
+<p>
+
+© ${new Date().getFullYear()}
+Your Company
+
+</p>
+
+<br/>
+
+<a href="#">
+Website
+</a>
+
+<a href="#">
+LinkedIn
+</a>
+
+<a href="#">
+Support
+</a>
+
+<br/><br/>
+
+<p>
+
+This email was generated automatically.
+Please do not reply.
+
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+</body>
+
+</html>
+
+`;
+
+}
+
+
+
+    // =======================================
+    // Welcome Email
+    // =======================================
+
     static async sendTemporaryPassword(
+
         email:string,
         password:string,
         name:string
+
     ){
 
         try{
 
-            await this.transporter.sendMail({
+            const html=
 
-                from:process.env.EMAIL_USER,
-                to:email,
+            this.getTemplate(
 
-                subject:
-                "Account Created Successfully",
+                "Welcome Aboard 🚀",
 
-                html:`
-                <div style="font-family:Arial">
+                "Your account has been created successfully",
 
-                    <h2>
-                        Welcome ${name}
-                    </h2>
+`
 
-                    <p>
-                        Your account has been created
-                    </p>
+<h2>
 
-                    <p>
-                        Temporary Password:
-                    </p>
+Hello ${name},
 
-                    <h3>
-                        ${password}
-                    </h3>
+</h2>
 
-                    <p>
-                        Password change is mandatory
-                        on first login
-                    </p>
+<br/>
 
-                </div>
-                `
-            });
+<p>
 
-        }
-        catch(error){
+We're excited to have you
+join our platform.
 
-            console.log(
-                "sendTemporaryPassword error:",
-                error
-            );
+Your account setup
+has been completed.
 
-            throw error;
+</p>
 
-        }
+<div class="card">
 
-    }
+<p>
 
+Temporary Password
 
+</p>
 
-    static async sendOtp(
-        email:string,
-        otp:string
-    ){
+<div class="code">
 
-        try{
+${password}
 
-            await this.transporter.sendMail({
+</div>
 
-                from:process.env.EMAIL_USER,
+</div>
 
-                to:email,
+<p>
 
-                subject:
-                "OTP Verification",
+For security reasons,
+you'll be required
+to update your password
+during your first login.
 
-                html:`
+</p>
 
-                <h2>Email Verification</h2>
+<center>
 
-                <h1>${otp}</h1>
+<a
+href="${process.env.APP_URL}"
+class="button"
+>
 
-                <p>
-                    OTP expires in
-                    5 minutes
-                </p>
+Login Now
 
-                `
+</a>
 
-            });
+</center>
 
-        }
-        catch(error){
+`,
 
-            console.log(
-                "sendOtp error:",
-                error
-            );
+`linear-gradient(
+135deg,
+#4F46E5,
+#7C3AED
+)`
 
-            throw error;
-
-        }
-
-    }
+);
 
 
+await this.transporter.sendMail({
 
-    static async sendCompanyAdminCredentials(
-        email:string,
-        password:string,
-        token:string
-    ){
+from:process.env.EMAIL_USER,
 
-        try{
+to:email,
 
-            const verifyUrl=
-            `${process.env.APP_URL}/companies/verify/${token}`;
+subject:
+"🎉 Welcome to Our Platform",
 
-            await this.transporter.sendMail({
+html
 
-                from:process.env.EMAIL_USER,
+});
 
-                to:email,
+}
+catch(error){
 
-                subject:
-                "Company Admin Account Created",
+console.log(
+"sendTemporaryPassword error:",
+error
+);
 
-                html:`
+throw error;
 
-                <div style="font-family:Arial">
+}
 
-                    <h2>
-                        Company Admin Account
-                    </h2>
+}
 
-                    <p>
-                        Your company account has been created
-                    </p>
 
-                    <p>
-                        Temporary Password:
-                    </p>
 
-                    <h3>
-                        ${password}
-                    </h3>
+    // =======================================
+    // OTP Email
+    // =======================================
 
-                    <p>
-                        Verify your email:
-                    </p>
+static async sendOtp(
 
-                    <a href="${verifyUrl}">
-                        Verify Email
-                    </a>
+email:string,
+otp:string
 
-                    <br/><br/>
+){
 
-                    <p>
-                        Password change is mandatory
-                        after first login
-                    </p>
+try{
 
-                </div>
+const html=
 
-                `
-            });
+this.getTemplate(
 
-        }
-        catch(error){
+"Email Verification 🔐",
 
-            console.log(
-                "sendCompanyAdminCredentials error:",
-                error
-            );
+"Secure access verification",
 
-            throw error;
+`
 
-        }
+<p>
 
-    }
+Use the OTP below
+to continue.
+
+</p>
+
+<div class="card">
+
+<div class="code">
+
+${otp}
+
+</div>
+
+</div>
+
+<p>
+
+This OTP expires
+in 5 minutes.
+
+</p>
+
+<p>
+
+If you didn't request this,
+please ignore this email.
+
+</p>
+
+`,
+
+`linear-gradient(
+135deg,
+#0EA5E9,
+#3B82F6
+)`
+
+);
+
+await this.transporter.sendMail({
+
+from:process.env.EMAIL_USER,
+
+to:email,
+
+subject:
+"🔑 OTP Verification",
+
+html
+
+});
+
+}
+catch(error){
+
+console.log(
+"sendOtp error:",
+error
+);
+
+throw error;
+
+}
+
+}
+
+
+
+    // =======================================
+    // Company Admin Email
+    // =======================================
+
+static async sendCompanyAdminCredentials(
+
+email:string,
+password:string,
+token:string
+
+){
+
+try{
+
+const verifyUrl=
+`${process.env.APP_URL}/companies/verify/${token}`;
+
+const html=
+
+this.getTemplate(
+
+"Company Admin Setup 🏢",
+
+"Your administrator workspace is ready",
+
+`
+
+<p>
+
+Congratulations!
+
+Your administrator account
+has been created successfully.
+
+</p>
+
+<div class="card">
+
+<p>
+
+Temporary Password
+
+</p>
+
+<div class="code">
+
+${password}
+
+</div>
+
+</div>
+
+<center>
+
+<a
+href="${verifyUrl}"
+class="button"
+>
+
+Verify Email
+
+</a>
+
+</center>
+
+<br/>
+
+<p>
+
+Password reset is mandatory
+after your first login.
+
+</p>
+
+`,
+
+`linear-gradient(
+135deg,
+#059669,
+#10B981
+)`
+
+);
+
+await this.transporter.sendMail({
+
+from:process.env.EMAIL_USER,
+
+to:email,
+
+subject:
+"🏢 Company Admin Account Created",
+
+html
+
+});
+
+}
+catch(error){
+
+console.log(
+"sendCompanyAdminCredentials error:",
+error
+);
+
+throw error;
+
+}
+
+}
 
 }
