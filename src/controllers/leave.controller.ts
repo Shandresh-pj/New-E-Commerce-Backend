@@ -76,6 +76,33 @@ export class LeaveController {
   }
 
   // ==========================================
+  // REJECT LEAVE
+  // ==========================================
+  @Put("/reject/:id")
+  async reject(
+    req: Request,
+    res: Response
+  ) {
+
+    const repo =
+      dataSource.getRepository(
+        LeaveRequest
+      );
+
+    await repo.update(
+      req.params.id,
+      {
+        status: "REJECTED",
+      }
+    );
+
+    return res.json({
+      success: true,
+      message: "Leave request rejected",
+    });
+  }
+
+  // ==========================================
   // GET LEAVES
   // ==========================================
   @Get("/")

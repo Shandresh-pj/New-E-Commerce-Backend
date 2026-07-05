@@ -7,6 +7,7 @@ import app from "./app";
 import { initializeSocket } from "./socket/socket";
 import { seedRoles } from "./utils/seeds/role.seed";
 import dataSource from "./config/database";
+import { startAttendanceCron } from "./utils/attendance.cron";
 
 async function initDatabase() {
   await dataSource.initialize();
@@ -30,6 +31,9 @@ async function startServer() {
       console.log("🚀 Server Started");
       console.log(`http://localhost:${port}`);
       console.log(`Swagger: http://localhost:${port}/pjsv`);
+
+      // Start attendance background cron jobs
+      startAttendanceCron();
     });
 
   } catch (err) {

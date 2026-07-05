@@ -1,223 +1,118 @@
-import {
-  Request,
-  Response,
-} from "express";
-
-import {
-  Controller,
-  Get,
-  Post,
-  Swagger,
-} from "../decorators";
-
+import { Request, Response } from "express";
+import { Controller, Get, Post, Swagger } from "../decorators";
 import { dataSource } from "../server";
-
-import { Employee } from "../entities/employee.entity";
-import { Attendance } from "../entities/attendance.entity";
-import { LeaveRequest } from "../entities/leave.entity";
-import { Salary } from "../entities/salary";
+import { PayrollService } from "../services/payroll.service";
+import { Salary, PayrollStatus } from "../entities/salary";
 import { TenantService } from "../middleware/tenantFilter.middleware";
+
+const payrollService = new PayrollService();
 
 @Controller("/payroll")
 export class PayrollController {
 
-  // ==========================================
-  // GENERATE MONTHLY PAYROLL
-  // ==========================================
+  // ── Generate Monthly Payroll ──────────────────────────────────────────
   @Post("/generate")
-  @Swagger(
-    "Generate Payroll",
-    "Generate salary from attendance"
-  )
-  async generate(
-    req: Request,
-    res: Response
-  ) {
+  @Swagger("Generate Payroll", "Auto-generate payroll from attendance, breaks, leaves, and OT data")
+  async generate(req: any, res: Response) {
+    const { employee_id, month, year } = req.body;
 
-    const {
-      employee_id,
-      month,
-      year,
-    } = req.body;
-
-    const employeeRepo =
-      dataSource.getRepository(Employee);
-
-    const attendanceRepo =
-      dataSource.getRepository(Attendance);
-
-    const leaveRepo =
-      dataSource.getRepository(LeaveRequest);
-
-    const salaryRepo =
-      dataSource.getRepository(Salary);
-
-    const employee =
-      await employeeRepo.findOne({
-        where: {
-          id: employee_id,
-        },
-      });
-
-    if (!employee) {
-      throw new Error(
-        "Employee not found"
-      );
+    if (!employee_id || !month || !year) {
+      return res.status(400).json({ success: false, message: "employee_id, month, year are required" });
     }
 
-    // ==========================
-    // ATTENDANCE
-    // ==========================
+    const payroll = await payrollService.generateMonthlyPayroll({
+      employee_id:  Number(employee_id),
+      month,
+      year:         Number(year),
+      generated_by: req.user.userId,
+    });
 
-    const attendance =
-      await attendanceRepo.find({
-        where: {
-          employee_id,
-        },
-      });
+    return res.status(201).json({ success: true, message: "Payroll generated", data: payroll });
+  }
 
-    const presentDays =
-      attendance.length;
+  // ── Approve Payroll ───────────────────────────────────────────────────
+  @Post("/approve/:id")
+  @Swagger("Approve Payroll", "Approve a draft payroll record")
+  async approve(req: any, res: Response) {
+    const payroll = await payrollService.approvePayroll(Number(req.params.id), req.user.userId);
+    return res.json({ success: true, message: "Payroll approved", data: payroll });
+  }
 
-    const overtimeMinutes =
-      attendance.reduce(
-        (sum, row) =>
-          sum +
-          row.overtime_minutes,
-        0
-      );
+  // ── Mark as Paid ──────────────────────────────────────────────────────
+  @Post("/mark-paid/:id")
+  @Swagger("Mark Payroll Paid", "Mark an approved payroll as paid with payment details")
+  async markPaid(req: any, res: Response) {
+    const { payment_method, payment_reference } = req.body;
+    if (!payment_method || !payment_reference) {
+      return res.status(400).json({ success: false, message: "payment_method and payment_reference are required" });
+    }
 
-    // ==========================
-    // LEAVES
-    // ==========================
+    const payroll = await payrollService.markPaid(Number(req.params.id), { payment_method, payment_reference });
+    return res.json({ success: true, message: "Payroll marked as paid", data: payroll });
+  }
 
-    const leaves =
-      await leaveRepo.find({
-        where: {
-          employee_id,
-          status: "APPROVED",
-        },
-      });
+  // ── Monthly Summary ───────────────────────────────────────────────────
+  @Get("/summary")
+  @Swagger("Payroll Summary", "Monthly salary summary for company/branch")
+  async summary(req: any, res: Response) {
+    const { month, year, branch_id } = req.query;
 
-    const leaveDays =
-      leaves.length;
+    if (!month || !year) {
+      return res.status(400).json({ success: false, message: "month and year are required" });
+    }
 
-    // ==========================
-    // SALARY CALCULATION
-    // ==========================
-
-    const daysInMonth = 30;
-
-    const perDaySalary =
-      Number(employee.salary) /
-      daysInMonth;
-
-    const attendanceSalary =
-      presentDays *
-      perDaySalary;
-
-    const overtimeSalary =
-      (
-        overtimeMinutes / 60
-      ) *
-      (
-        Number(employee.salary) /
-        240
-      );
-
-    const finalSalary =
-      attendanceSalary +
-      overtimeSalary;
-
-    const payroll =
-      salaryRepo.create({
-        employee_id,
-        company_id:
-          employee.company_id,
-        month,
-        year: Number(year || new Date().getFullYear()),
-        basic_salary:
-          employee.salary,
-        present_days:
-          presentDays,
-        leave_days:
-          leaveDays,
-        overtime_minutes:
-          overtimeMinutes,
-        final_salary:
-          finalSalary,
-      });
-
-    await salaryRepo.save(
-      payroll
+    const data = await payrollService.getMonthlySummary(
+      req.user.companyId,
+      month as string,
+      Number(year),
+      branch_id ? Number(branch_id) : undefined,
     );
 
-    return res.json({
-      success: true,
-      message:
-        "Payroll generated",
-      data: payroll,
-    });
+    return res.json({ success: true, data });
   }
 
-  // ==========================================
-  // PAYROLL LIST
-  // ==========================================
+  // ── Payslip Data ──────────────────────────────────────────────────────
+  @Get("/slip/:id")
+  @Swagger("Payslip", "Get detailed payslip data for an employee's payroll")
+  async payslip(req: any, res: Response) {
+    const data = await payrollService.getPayslip(Number(req.params.id), req.user.companyId);
+    return res.json({ success: true, data });
+  }
+
+  // ── List All Payroll Records ──────────────────────────────────────────
   @Get("/")
-  @Swagger(
-    "Payroll List",
-    "Get all payroll records"
-  )
-  async getAll(
-    req: any,
-    res: Response
-  ) {
+  @Swagger("Payroll List", "Get all payroll records with optional filters")
+  async getAll(req: any, res: Response) {
+    const repo  = dataSource.getRepository(Salary);
+    const where: any = TenantService.scopeWhere(req.user);
 
-    const where = TenantService.scopeWhere(req.user);
+    if (req.query.status)      where.status      = req.query.status;
+    if (req.query.month)       where.month        = req.query.month;
+    if (req.query.year)        where.year         = Number(req.query.year);
+    if (req.query.employee_id) where.employee_id  = Number(req.query.employee_id);
 
-    const payroll =
-      await dataSource
-        .getRepository(Salary)
-        .find({
-          where,
-          order: {
-            id: "DESC",
-          },
-        });
+    const page  = Number(req.query.page ?? 1);
+    const limit = Number(req.query.limit ?? 50);
 
-    return res.json({
-      success: true,
-      data: payroll,
+    const [records, total] = await repo.findAndCount({
+      where,
+      order: { id: "DESC" },
+      skip:  (page - 1) * limit,
+      take:  limit,
     });
+
+    return res.json({ success: true, data: records, total, page, limit });
   }
 
-  // ==========================================
-  // SINGLE PAYROLL
-  // ==========================================
+  // ── Single Payroll ────────────────────────────────────────────────────
   @Get("/:id")
-  @Swagger(
-    "Payroll Details",
-    "Get payroll by id"
-  )
-  async getOne(
-    req: any,
-    res: Response
-  ) {
-
-    const where = TenantService.scopeWhere(req.user, {
-      id: Number(req.params.id),
+  @Swagger("Payroll Detail", "Get single payroll record by ID")
+  async getOne(req: any, res: Response) {
+    const repo    = dataSource.getRepository(Salary);
+    const payroll = await repo.findOne({
+      where: TenantService.scopeWhere(req.user, { id: Number(req.params.id) }),
     });
-
-    const payroll =
-      await dataSource
-        .getRepository(Salary)
-        .findOne({
-          where,
-        });
-
-    return res.json({
-      success: true,
-      data: payroll,
-    });
+    if (!payroll) return res.status(404).json({ success: false, message: "Payroll not found" });
+    return res.json({ success: true, data: payroll });
   }
 }

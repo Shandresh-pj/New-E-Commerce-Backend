@@ -26,6 +26,10 @@ import { DeliveryTrackingController } from "./tracking.Controller";
 import { MenuController } from "./menu.Controller";
 import { ProfileController } from "./profile.Controller";
 import { AuditController } from "./auditLogs.Controller";
+import { ShiftController } from "./shift.controller";
+import { BreakPolicyController } from "./break-policy.controller";
+import { BiometricController } from "./biometric.controller";
+import { WorkforceDashboardController } from "./workforce-dashboard.controller";
 
 export const authController = new AuthController();
 
@@ -82,3 +86,9 @@ export const menuController = new MenuController();
 export const auditLogsController = new AuditController();
 
 export const profileController = new ProfileController();
+
+// ── Enterprise Workforce Management ──────────────────────────────────────
+export const shiftController              = new ShiftController();
+export const breakPolicyController        = new BreakPolicyController();
+export const biometricController          = new BiometricController();
+export const workforceDashboardController = new WorkforceDashboardController();
