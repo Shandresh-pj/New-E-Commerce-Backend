@@ -238,7 +238,9 @@ public async create(req: any, res: Response, next: NextFunction) {
     const fullOrder = await orderRepo.findOne({
       where: { id: order.id },
       relations: {
-        items: true,
+        items: {
+          product: true
+        },
       },
     });
 
@@ -409,17 +411,40 @@ async verify(req: Request, res: Response) {
 
 async download(req: Request, res: Response) {
 
-  const order = await dataSource.getRepository(Order).findOneBy({
-    id: Number(req.params.id),
+  const order = await dataSource.getRepository(Order).findOne({
+    where: { id: Number(req.params.id) },
+    relations: {
+      items: {
+        product: true
+      }
+    }
   });
 
   if (!order) {
     return res.status(404).json({ message: "Not found" });
   }
 
-  const file = `uploads/invoices/${order.invoice_no}.pdf`;
+  const company = await dataSource.getRepository(Register).findOne({
+    where: { id: order.company_id }
+  });
 
-  return res.download(file);
+  if (!company) {
+    return res.status(404).json({ message: "Company not found" });
+  }
+
+  const options = {
+    theme: req.query.theme || 'aurora',
+    title: req.query.title || 'TAX INVOICE',
+    gst: req.query.gst || (company as any).gst_number || 'N/A',
+    notes: req.query.notes || 'Thank you for your business!',
+    branch: req.query.branch || 'Main Branch',
+    taxRate: req.query.taxRate ? Number(req.query.taxRate) : 18,
+    currency: req.query.currency || '₹',
+  };
+
+  const filePath = await generateInvoicePDF(order, company, options);
+
+  return res.download(filePath);
 }
   
 }

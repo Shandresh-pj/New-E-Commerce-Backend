@@ -9,6 +9,7 @@ import {
 } from "typeorm";
 
 import { Register } from "./register";
+import { Product } from "./products";
 import { PaymentMethod, PaymentStatus } from "../dto/order.dto";
 
 @Entity("orders_1")
@@ -105,6 +106,10 @@ export class OrderItem {
 
   @Column()
   product_id!: number;
+
+  @ManyToOne(() => Product, { onDelete: "NO ACTION" })
+  @JoinColumn({ name: "product_id" })
+  product!: Product;
 
   @Column("decimal", { precision: 10, scale: 2 })
   price!: number;
