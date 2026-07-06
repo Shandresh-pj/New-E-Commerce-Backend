@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { Global } from "../../global";
+import { Global } from "../global";
 
 const PREFIX = "refresh_token";
 const TTL    = 7 * 24 * 60 * 60; // 7 days in seconds

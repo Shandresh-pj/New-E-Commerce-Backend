@@ -1,4 +1,6 @@
-import { Global } from "../../global";
+// import { Global } from "../global";
+
+import { Global } from "../global";
 
 export const cache = (keyPrefix: string, ttl = 60) => {
   return async (req: any, res: any, next: any) => {
