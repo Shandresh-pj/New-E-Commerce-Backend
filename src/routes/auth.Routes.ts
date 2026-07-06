@@ -316,6 +316,31 @@ router.put(
   authController.adminSetPassword.bind(authController)
 );
 
+/**
+ * @swagger
+ * /auth/me/permissions:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: Get my current roles/permissions/menus
+ *     description: >
+ *       Recomputes roles/permissions/menus from the DB for the logged-in user.
+ *       Call this after a "permissions-updated" socket event to refresh access
+ *       without requiring a new login.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current access data
+ *       404:
+ *         description: User not found
+ */
+router.get(
+  "/auth/me/permissions",
+  authenticateMiddleware,
+  authController.getMyPermissions.bind(authController)
+);
+
 
 
  /**

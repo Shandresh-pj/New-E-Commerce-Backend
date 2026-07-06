@@ -10,9 +10,37 @@ import {
 import { dataSource } from "../server";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
 import { RolePermission } from "../entities/role-access";
+import { UserRole } from "../entities/user";
 import { StatusType, UserType } from "../utils/Role-Access";
 import { approveGuard } from "../middleware/approve.middleware";
 import { IsNull, Not } from "typeorm";
+import { emitToUser } from "../socket/socket";
+
+// Pushes a "permissions-updated" signal (no payload data — the client
+// re-fetches via GET /auth/me/permissions) to every user affected by a
+// role-access change: the single targeted user for an employee-level row,
+// or everyone holding that role at that company/branch scope otherwise.
+async function notifyAffectedUsers(record: Pick<RolePermission, "role_id" | "company_id" | "branch_id" | "user_id">) {
+  try {
+    if (record.user_id) {
+      emitToUser(record.user_id, "permissions-updated", { reason: "role-access-changed" });
+      return;
+    }
+
+    const where: any = { role_id: record.role_id };
+    if (record.company_id != null) where.company_id = record.company_id;
+    if (record.branch_id != null) where.branch_id = record.branch_id;
+
+    const affected = await dataSource.getRepository(UserRole).find({ where });
+    const userIds = new Set(affected.map(ur => ur.user_id));
+
+    for (const uid of userIds) {
+      emitToUser(uid, "permissions-updated", { reason: "role-access-changed" });
+    }
+  } catch (e) {
+    console.error("Failed to notify affected users of permission change:", e);
+  }
+}
 
 // Normalizes the scope columns so "", 0 and undefined all become null,
 // and enforces the hierarchy: branch needs a company, employee needs a branch.
@@ -98,6 +126,8 @@ export class RoleAccessController {
     } as Partial<RolePermission>);
 
     await repo.save(data);
+
+    await notifyAffectedUsers(data);
 
     return res.status(201).json({
       success: true,
@@ -219,6 +249,13 @@ export class RoleAccessController {
 
       }
 
+      const previousScope = {
+        role_id: record.role_id,
+        company_id: record.company_id,
+        branch_id: record.branch_id,
+        user_id: record.user_id,
+      };
+
       record.role_id =
         role_id;
 
@@ -246,6 +283,11 @@ export class RoleAccessController {
       );
 
       await queryRunner.commitTransaction();
+
+      // Notify both the old and new scope in case the update moved the
+      // grant to a different role/company/branch/user.
+      await notifyAffectedUsers(previousScope);
+      await notifyAffectedUsers(record);
 
       return res.json({
 
@@ -391,6 +433,8 @@ export class RoleAccessController {
 
     await repo.remove(record);
 
+    await notifyAffectedUsers(record);
+
     return res.json({
       success: true,
       message: "Deleted successfully"
@@ -426,6 +470,8 @@ Object.values(StatusType).includes(status)
 : StatusType.ACTIVE;
 
 await repo.save(record);
+
+await notifyAffectedUsers(record);
 
 return res.json({
 success:true,

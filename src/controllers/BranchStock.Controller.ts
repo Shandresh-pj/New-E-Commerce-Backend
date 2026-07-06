@@ -117,6 +117,8 @@ export class BranchStockController {
 
       await transferRepo.save(transfer);
 
+      const companyRoom = `company_${fromStock.company_id}`;
+
       // Create notification for Admins
       try {
         const notificationRepo = dataSource.getRepository(Notification);
@@ -128,13 +130,13 @@ export class BranchStockController {
           quantity,
         });
 
-        io.emit("new-notification", notification);
+        io.to(companyRoom).emit("new-notification", notification);
       } catch (nErr) {
         console.error("Failed to save transfer notification:", nErr);
       }
 
       // Emit transfer update event
-      io.emit("branch-transfer-update", {
+      io.to(companyRoom).emit("branch-transfer-update", {
         transfer_id: transfer.id,
         from_branch,
         to_branch,
@@ -198,13 +200,15 @@ export class BranchStockController {
       const user = req.user;
       const userId = user?.userId || user?.id || 1;
 
-      if (action === "APPROVE") {
-        const branchStockRepo = qr.manager.getRepository(BranchStock);
+      const branchStockRepo = qr.manager.getRepository(BranchStock);
+      const refStock = await branchStockRepo.findOne({
+        where: { branch_name: transfer.from_branch, product_id: transfer.product_id },
+      });
+      const companyId = refStock?.company_id;
 
+      if (action === "APPROVE") {
         // Deduct from source branch
-        let fromStock = await branchStockRepo.findOne({
-          where: { branch_name: transfer.from_branch, product_id: transfer.product_id },
-        });
+        let fromStock = refStock;
 
         if (!fromStock || fromStock.stock < transfer.quantity) {
           throw new Error(`Insufficient stock in source branch "${transfer.from_branch}"`);
@@ -237,7 +241,7 @@ export class BranchStockController {
         transfer.approved_at = new Date();
 
         // Emit real-time updates for both branches
-        io.emit("branch-stock-update", {
+        io.to(`company_${fromStock.company_id}`).emit("branch-stock-update", {
           company_id: fromStock.company_id,
           branch_name: transfer.from_branch,
           product_id: transfer.product_id,
@@ -246,7 +250,7 @@ export class BranchStockController {
           action: "REMOVE",
         });
 
-        io.emit("branch-stock-update", {
+        io.to(`company_${fromStock.company_id}`).emit("branch-stock-update", {
           company_id: fromStock.company_id,
           branch_name: transfer.to_branch,
           product_id: transfer.product_id,
@@ -258,7 +262,7 @@ export class BranchStockController {
         // Trigger low stock checks on source branch
         const threshold = 5;
         if (fromStock.stock <= threshold) {
-          io.emit("low-stock-alert", {
+          io.to(`company_${fromStock.company_id}`).emit("low-stock-alert", {
             company_id: fromStock.company_id,
             branch_name: transfer.from_branch,
             product_id: transfer.product_id,
@@ -275,7 +279,7 @@ export class BranchStockController {
               branch_name: transfer.from_branch,
               quantity: fromStock.stock,
             });
-            io.emit("new-notification", notification);
+            io.to(`company_${fromStock.company_id}`).emit("new-notification", notification);
           } catch (e) {
             console.error("Failed to save branch low stock alert notification:", e);
           }
@@ -290,8 +294,13 @@ export class BranchStockController {
       await transferRepo.save(transfer);
       await qr.commitTransaction();
 
+      const emitScoped = (event: string, payload: any) => {
+        if (companyId) io.to(`company_${companyId}`).emit(event, payload);
+        else io.emit(event, payload);
+      };
+
       // Emit transfer update event
-      io.emit("branch-transfer-update", {
+      emitScoped("branch-transfer-update", {
         transfer_id: transfer.id,
         from_branch: transfer.from_branch,
         to_branch: transfer.to_branch,
@@ -309,7 +318,7 @@ export class BranchStockController {
           product_id: transfer.product_id,
           quantity: transfer.quantity,
         });
-        io.emit("new-notification", notification);
+        emitScoped("new-notification", notification);
       } catch (nErr) {
         console.error("Failed to save transfer approval notification:", nErr);
       }

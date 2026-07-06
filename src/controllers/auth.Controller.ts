@@ -30,13 +30,13 @@ import { generateToken } from "../utils/jwt";
 import { User, UserRole } from "../entities/user";
 import { RolePermission } from "../entities/role-access";
 import { EmailService, generateTempPassword } from "../utils/sendEmailOtp";
-import { StatusType, UserType } from "../utils/Role-Access";
-import { In, IsNull } from "typeorm";
+import { UserType } from "../utils/Role-Access";
 import { Menu, Permission } from "../entities/menu";
 import { Role } from "../entities/roles";
 import { Company } from "../entities/company";
 import { Branch } from "../entities/branch";
 import { TenantService } from "../middleware/tenantFilter.middleware";
+import { PermissionService } from "../services/permission.service";
 
 const buildUploadedFileUrl = (
   file?: Express.Multer.File
@@ -373,11 +373,6 @@ dataSource.getRepository(
 UserRole
 );
 
-const rolePermissionRepo=
-dataSource.getRepository(
-RolePermission
-);
-
 
 // =====================================
 // FIND USER
@@ -494,196 +489,12 @@ message:
 
 
 // =====================================
-// SUPER ADMIN
-// =====================================
-
-let permissions:any[]=[];
-let menus:any[]=[];
-
-if(user.isSuperAdmin){
-
-permissions=[
-"FULL_ACCESS"
-];
-
-menus=[
-"ALL"
-];
-
-}
-
-else{
-
-// =====================================
 // LOAD PERMISSIONS (SCOPE-AWARE)
 // =====================================
+// Shared with GET /auth/me/permissions and the role-access socket refresh
+// so this resolution logic only lives in one place.
 
-// A grant applies to this user when its scope matches one of the
-// user's role assignments: global rows, rows for the user's company,
-// rows for the user's branch, or rows targeted directly at the user.
-const scopeConditions:any[]=[];
-
-for(const ur of userRoles){
-
-const roleId=ur.role.id;
-
-const companyId=
-ur.company?.id ?? ur.company_id ?? null;
-
-const branchId=
-ur.branch?.id ?? ur.branch_id ?? null;
-
-scopeConditions.push({
-role_id:roleId,
-company_id:IsNull(),
-branch_id:IsNull(),
-user_id:IsNull()
-});
-
-if(companyId){
-
-scopeConditions.push({
-role_id:roleId,
-company_id:companyId,
-branch_id:IsNull(),
-user_id:IsNull()
-});
-
-if(branchId){
-
-scopeConditions.push({
-role_id:roleId,
-company_id:companyId,
-branch_id:branchId,
-user_id:IsNull()
-});
-
-}
-
-}
-
-}
-
-// employee-level rows aimed at this user, whatever the role
-scopeConditions.push({
-user_id:user.id
-});
-
-// Pending stays usable so rows created before the approve flow
-// keep working; Inactive/Suspended are shut off.
-const usableStatus=
-In([StatusType.ACTIVE,StatusType.PENDING]);
-
-const matched=
-await rolePermissionRepo.find({
-
-where:
-scopeConditions.map(c=>({
-...c,
-status:usableStatus
-})),
-
-relations:{
-
-permission:{
-
-menu:true
-
-}
-
-}
-
-});
-
-
-// =====================================
-// MOST SPECIFIC SCOPE WINS PER PERMISSION
-// employee > branch > admin > global
-// =====================================
-
-const specificity=
-(rp:any)=>
-rp.user_id   ? 4 :
-rp.branch_id ? 3 :
-rp.company_id? 2 : 1;
-
-const byPermission=
-new Map<number,any>();
-
-for(const rp of matched){
-
-const existing=
-byPermission.get(rp.permission_id);
-
-if(
-!existing ||
-specificity(rp)>specificity(existing)
-){
-
-byPermission.set(rp.permission_id,rp);
-
-}
-
-}
-
-const rolePermissions=
-Array.from(byPermission.values());
-
-
-permissions=
-rolePermissions.map(
-
-(rp:any)=>({
-id:      rp.permission.id,
-action:  rp.permission.action,
-canApprove: rp.canApprove,
-menu: {
-  id:   rp.permission.menu.id,
-  name: rp.permission.menu.name,
-  path: rp.permission.menu.path,
-}
-})
-
-);
-
-
-menus=
-rolePermissions.map(
-
-(rp:any)=>({
-
-id:
-rp.permission.menu.id,
-
-name:
-rp.permission.menu.name,
-
-path:
-rp.permission.menu.path
-
-})
-
-);
-
-
-// remove duplicate menus
-
-menus=
-menus.filter(
-
-(menu,index,self)=>
-
-index===
-
-self.findIndex(
-
-m=>m.id===menu.id
-
-)
-
-);
-
-}
+const { permissions, menus } = await PermissionService.resolveAccess(user, userRoles);
 
 
 // =====================================
@@ -777,6 +588,10 @@ password:userPassword,
 // RESPONSE
 // =====================================
 
+// permissions/menus are intentionally left out of this response —
+// they stay signed inside the JWT for backend authorization, and the
+// frontend fetches them fresh via GET /auth/me/permissions so a
+// role-access change can be picked up without a new login.
 return res.status(200)
 .json({
 
@@ -808,11 +623,7 @@ r.branch
 
 })
 
-),
-
-permissions,
-
-menus
+)
 
 });
 
@@ -1775,6 +1586,27 @@ return res.status(200).json({
     user.mustChangePassword = false;
     await userRepo.save(user);
     return res.json({ success: true, message: "Password updated" });
+  }
+
+  // =====================================================
+  // MY ACCESS (LIVE ROLES/PERMISSIONS/MENUS)
+  // =====================================================
+  // Recomputes roles/permissions/menus straight from the DB for the
+  // currently logged-in user. Called on demand by the frontend after a
+  // "permissions-updated" socket signal, so a role-access change made by
+  // an admin takes effect immediately without the user logging in again.
+  @Get("/me/permissions")
+  @Middleware([authenticateMiddleware])
+  public async getMyPermissions(req: any, res: any) {
+    try {
+      const data = await PermissionService.getUserAccess(req.user.userId);
+      return res.status(200).json({
+        success: true,
+        ...data,
+      });
+    } catch (error: any) {
+      return res.status(404).json({ success: false, message: error.message });
+    }
   }
 }
 

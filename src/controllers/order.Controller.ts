@@ -432,14 +432,17 @@ async download(req: Request, res: Response) {
     return res.status(404).json({ message: "Company not found" });
   }
 
+  const toStr = (v: unknown): string | undefined =>
+    typeof v === "string" ? v : undefined;
+
   const options = {
-    theme: req.query.theme || 'aurora',
-    title: req.query.title || 'TAX INVOICE',
-    gst: req.query.gst || (company as any).gst_number || 'N/A',
-    notes: req.query.notes || 'Thank you for your business!',
-    branch: req.query.branch || 'Main Branch',
-    taxRate: req.query.taxRate ? Number(req.query.taxRate) : 18,
-    currency: req.query.currency || '₹',
+    theme: toStr(req.query.theme) || 'aurora',
+    title: toStr(req.query.title) || 'TAX INVOICE',
+    gst: toStr(req.query.gst) || (company as any).gst_number || 'N/A',
+    notes: toStr(req.query.notes) || 'Thank you for your business!',
+    branch: toStr(req.query.branch) || 'Main Branch',
+    taxRate: toStr(req.query.taxRate) ? Number(req.query.taxRate) : 18,
+    currency: toStr(req.query.currency) || '₹',
   };
 
   const filePath = await generateInvoicePDF(order, company, options);
