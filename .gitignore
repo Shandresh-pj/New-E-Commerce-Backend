@@ -3,8 +3,7 @@ build
 log
 .DS_Store
 uploads
-package-lock.json
-package.json
+.env
 CLAUDE.md
 dist
 .claude/

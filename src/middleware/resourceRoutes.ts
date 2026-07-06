@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { Global } from "../../global";
+import { Global } from "../global";
 // import Global from "../global";
 
 const publicResourceRouteCheck = (
