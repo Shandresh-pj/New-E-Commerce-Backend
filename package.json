@@ -2,13 +2,17 @@
   "name": "e-business",
   "version": "1.0.0",
   "description": "",
-  "main": "./src/server.ts",
+
+  "main": "dist/server.js",
   "scripts": {
     "clean": "rimraf dist",
     "start": "ts-node src/server.ts",
     "dev": "nodemon src/server.ts",
     "build": "tsc",
     "prod": "node dist/server.js"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "keywords": [],
   "author": "",
