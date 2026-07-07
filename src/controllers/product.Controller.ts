@@ -34,6 +34,7 @@ import {
   ProductVariantDto,
   ProductAttributeValueLinkDto,
   ScanProductDto,
+  ProductApprovalStatus,
 } from "../dto";
 import { Put } from "../decorators/put";
 import { io } from "../socket/socket";
@@ -522,6 +523,7 @@ export class ProductController {
         product_type,
         stock_in_hand,
         status: status || "active",
+        approval_status: ProductApprovalStatus.PUBLISHED,
         low_stock_threshold: low_stock_threshold !== undefined ? Number(low_stock_threshold) : 5,
         critical_stock_threshold: critical_stock_threshold !== undefined ? Number(critical_stock_threshold) : 2,
         image: image ?? images?.[0],
@@ -740,7 +742,12 @@ export class ProductController {
       }
 
       if (req.query.status) {
-        qb.andWhere("product.status = :status", { status: req.query.status });
+        const statusVal = req.query.status as string;
+        if (Object.values(ProductApprovalStatus).includes(statusVal as any)) {
+          qb.andWhere("product.approval_status = :approval_status", { approval_status: statusVal });
+        } else {
+          qb.andWhere("product.status = :status", { status: statusVal });
+        }
       }
 
       if (req.query.product_type) {
@@ -1234,5 +1241,62 @@ export class ProductController {
     }
   }
 
+  // ================= APPROVE PRODUCT =================
+  async approveProduct(req: any, res: Response, next: NextFunction) {
+    try {
+      const productId = Number(req.params.id);
+      const { action, comment } = req.body;
+      const user = req.user;
+
+      if (action === "PUBLISH") {
+        const productRepo = dataSource.getRepository(Product);
+        const product = await productRepo.findOneBy({ id: productId });
+        if (!product) {
+          return res.status(404).json({ success: false, message: "Product not found" });
+        }
+        product.approval_status = ProductApprovalStatus.PUBLISHED;
+        await productRepo.save(product);
+
+        const approvalRepo = dataSource.getRepository(ProductApproval);
+        const approval = await approvalRepo.findOne({
+          where: { product_id: productId }
+        });
+        if (approval) {
+          const audit = {
+            action: "PUBLISH",
+            user: user.email || user.username || `User ${user.userId}`,
+            timestamp: new Date(),
+            ip: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.ip,
+            device: req.headers["user-agent"] as string,
+            comment: comment || "Product published",
+          };
+          approval.audit_history = approval.audit_history ? [...approval.audit_history, audit] : [audit];
+          await approvalRepo.save(approval);
+        }
+
+        return res.json({ success: true, message: "Product published successfully", data: product });
+      }
+
+      const approvalRepo = dataSource.getRepository(ProductApproval);
+      const pendingApproval = await approvalRepo.findOne({
+        where: { product_id: productId, status: ApprovalStatus.PENDING }
+      });
+
+      if (!pendingApproval) {
+        return res.status(404).json({ success: false, message: "Pending approval request not found for this product" });
+      }
+
+      if (req.body.rejection_reason && !req.body.comment) {
+        req.body.comment = req.body.rejection_reason;
+      }
+
+      req.params.id = String(pendingApproval.id);
+
+      const { ApprovalsController } = require("./approvals.Controller");
+      const approvalsControllerInstance = new ApprovalsController();
+      return approvalsControllerInstance.takeAction(req, res, next);
+    } catch (err) {
+      next(err);
+    }
   }
 }

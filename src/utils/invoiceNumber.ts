@@ -1,21 +1,28 @@
 import { DataSource, EntityManager } from "typeorm";
 // import { InvoiceSetting } from "../entities/invoice_settings.entity";
 import { Order } from "../entities/order";
-import { InvoiceSetting } from "../entities/invoice.entity";
+import { InvoiceSettings } from "../entities/invoiceSettings";
+
+export const getUniqueLetterNumberCode = (sequence: number): string => {
+  const uniqueLetter = String.fromCharCode(65 + (sequence % 26)); 
+  const uniqueNum = sequence % 10;
+  return `${uniqueLetter}${uniqueNum}`;
+};
+
+export const generateInvoiceNumber = async (company_id: number, manager: EntityManager): Promise<string> => {
+  return safelyGenerateAndLockInvoice(manager, company_id);
+};
 
 /**
  * Formats the invoice string. 
  * Enforces Letter + Number requirement (e.g., A1, B2)
  */
-export const formatInvoiceString = (setting: InvoiceSetting, sequence: number, date: Date = new Date()): string => {
+export const formatInvoiceString = (setting: InvoiceSettings, sequence: number, date: Date = new Date()): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const seqStr = String(sequence).padStart(setting.sequence_length, '0');
   
-  // Generate deterministic Letter+Number (e.g. Seq 1 = B1, Seq 2 = C2)
-  const uniqueLetter = String.fromCharCode(65 + (sequence % 26)); 
-  const uniqueNum = sequence % 10;
-  const uniqueCode = `${uniqueLetter}${uniqueNum}`;
+  const uniqueCode = getUniqueLetterNumberCode(sequence);
   
   // Result: INV-ABC-B1-2026-07-0001
   return `${setting.prefix}${setting.separator}${setting.company_code}${setting.separator}${uniqueCode}${setting.separator}${year}${setting.separator}${month}${setting.separator}${seqStr}`;
@@ -25,11 +32,11 @@ export const formatInvoiceString = (setting: InvoiceSetting, sequence: number, d
  * Generates 5 valid, unused invoice suggestions in real-time.
  */
 export const getAvailableSuggestions = async (manager: EntityManager, company_id: number): Promise<string[]> => {
-  let setting = await manager.getRepository(InvoiceSetting).findOne({ where: { company_id } });
+  let setting = await manager.getRepository(InvoiceSettings).findOne({ where: { company_id } });
   
   // Auto-create default settings if they don't exist
   if (!setting) {
-    setting = manager.getRepository(InvoiceSetting).create({ company_id });
+    setting = manager.getRepository(InvoiceSettings).create({ company_id });
     await manager.save(setting);
   }
 
@@ -55,7 +62,7 @@ export const getAvailableSuggestions = async (manager: EntityManager, company_id
  * Layer 4 & 5 Protection: Transactional lock + Auto-retry loop
  */
 export const safelyGenerateAndLockInvoice = async (manager: EntityManager, company_id: number, requested_invoice?: string): Promise<string> => {
-  const settingRepo = manager.getRepository(InvoiceSetting);
+  const settingRepo = manager.getRepository(InvoiceSettings);
   const orderRepo = manager.getRepository(Order);
 
   // Pessimistic Write Lock: Prevents concurrent requests from reading the same sequence

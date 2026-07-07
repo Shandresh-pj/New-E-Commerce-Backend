@@ -283,4 +283,11 @@ router.get(
   orderController.getInvoicePdf.bind(orderController)
 );
 
+router.get(
+  "/orders/invoice/:id",
+  authenticateMiddleware,
+  authorize(),
+  orderController.getInvoicePdf.bind(orderController)
+);
+
 export default router;

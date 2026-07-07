@@ -9,7 +9,6 @@ import {
 } from "typeorm";
 
 @Entity("invoice_settings")
-@Index(["company_id"])
 export class InvoiceSettings extends BaseEntity {
   @PrimaryGeneratedColumn()
   id!: number;

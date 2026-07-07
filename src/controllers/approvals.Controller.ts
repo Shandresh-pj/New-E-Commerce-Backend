@@ -11,6 +11,7 @@ import { UserType } from "../utils/Role-Access";
 import { io } from "../socket/socket";
 import { Notification } from "../entities/notification";
 import { AuditLog } from "../entities/auditLogs";
+import { ProductApprovalStatus } from "../dto";
 
 export class ApprovalsController {
 
@@ -349,6 +350,7 @@ export class ApprovalsController {
         product_type,
         stock_in_hand,
         status: status || "active",
+        approval_status: ProductApprovalStatus.APPROVED,
         low_stock_threshold: low_stock_threshold !== undefined ? Number(low_stock_threshold) : 5,
         critical_stock_threshold: critical_stock_threshold !== undefined ? Number(critical_stock_threshold) : 2,
         image,
@@ -429,6 +431,7 @@ export class ApprovalsController {
       if (video) product.video = video;
       if (images) product.images = images;
       if (image) product.image = image;
+      product.approval_status = ProductApprovalStatus.APPROVED;
 
       await productRepo.save(product);
 

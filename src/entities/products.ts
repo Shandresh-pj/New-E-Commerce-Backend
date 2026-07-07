@@ -18,7 +18,7 @@ import { LowStockAlert } from "./lowstock";
 import { Category } from "./category";
 import { ProductAttributeValueProduct } from "./productAttribute";
 import { ProductVariant } from "./productVariant";
-import { ProductType, ProductStatus } from "../dto/products.dto";
+import { ProductType, ProductStatus, ProductApprovalStatus } from "../dto/products.dto";
 import { Register } from "./register";
 
 @Entity("products_table_1")
@@ -114,6 +114,13 @@ orderItems!: OrderItem[];
     default: ProductStatus.ACTIVE,
   })
   status!: ProductStatus;
+
+  @Column({
+    type: "enum",
+    enum: ProductApprovalStatus,
+    default: ProductApprovalStatus.PUBLISHED,
+  })
+  approval_status!: ProductApprovalStatus;
 
   @Column({ type: "int", default: 5 })
   low_stock_threshold!: number;
