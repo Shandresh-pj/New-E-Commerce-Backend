@@ -5,7 +5,8 @@ import {
   CreateDateColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn
+  JoinColumn,
+  Unique
 } from "typeorm";
 
 import { Register } from "./register";
@@ -13,6 +14,7 @@ import { Product } from "./products";
 import { PaymentMethod, PaymentStatus } from "../dto/order.dto";
 
 @Entity("orders_1")
+@Unique("UQ_COMPANY_INVOICE", ["company_id", "invoice_no"])
 export class Order {
 
   @PrimaryGeneratedColumn()
