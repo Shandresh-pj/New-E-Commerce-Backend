@@ -95,6 +95,7 @@ export class PermissionService {
         id: rp.permission.menu.id,
         name: rp.permission.menu.name,
         path: rp.permission.menu.path,
+        icon: rp.permission.menu.icon,
       },
     }));
 
@@ -102,6 +103,7 @@ export class PermissionService {
       id: rp.permission.menu.id,
       name: rp.permission.menu.name,
       path: rp.permission.menu.path,
+      icon: rp.permission.menu.icon,
     }));
 
     // remove duplicate menus

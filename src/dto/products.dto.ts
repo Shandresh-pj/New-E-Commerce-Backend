@@ -120,6 +120,16 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => ProductAttributeValueLinkDto)
   attribute_values?: ProductAttributeValueLinkDto[];
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  low_stock_threshold?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  critical_stock_threshold?: number;
 }
 
 export class UpdateProductDto {
@@ -181,6 +191,16 @@ export class UpdateProductDto {
   // product.Controller.ts's parseExistingImages.
   @IsOptional()
   existing_images?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  low_stock_threshold?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  critical_stock_threshold?: number;
 }
 
 export class ScanProductDto {

@@ -37,7 +37,15 @@ app.use(
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 200
+    max: 2000,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req, res) => {
+      res.status(429).json({
+        success: false,
+        message: "Too many requests. Please try again in a few minutes.",
+      });
+    },
   })
 );
 

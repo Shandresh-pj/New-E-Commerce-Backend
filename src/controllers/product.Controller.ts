@@ -371,6 +371,8 @@ export class ProductController {
           "stock",
           "stock_in_hand",
           "registration_id",
+          "low_stock_threshold",
+          "critical_stock_threshold",
         ])
       );
 
@@ -867,6 +869,8 @@ export class ProductController {
           "stock",
           "stock_in_hand",
           "registration_id",
+          "low_stock_threshold",
+          "critical_stock_threshold",
         ])
       );
 
