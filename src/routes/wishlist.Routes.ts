@@ -4,6 +4,7 @@ import { dataSource } from "../server";
 import { Wishlist } from "../entities/wishlist";
 import { Product } from "../entities/products";
 import { ApiError } from "../exceptions/ApiError";
+import { ProductStatus } from "../dto/products.dto";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
 
 interface AuthRequest extends Request {
@@ -85,7 +86,7 @@ router.post(
         .getRepository(Product)
         .findOne({ where: { id: productId } });
 
-      if (!product) {
+      if (!product || product.status !== ProductStatus.ACTIVE) {
         throw new ApiError(404, "Product not found");
       }
 

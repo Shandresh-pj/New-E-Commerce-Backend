@@ -14,6 +14,7 @@ import {
 import { dataSource } from "../server";
 
 import { Cart, Product } from "../entities/products";
+import { ProductStatus } from "../dto/products.dto";
 
 @Controller("/cart")
 export class CartController {
@@ -22,13 +23,13 @@ export class CartController {
   // =========================
   @Post("/add")
   @Swagger("Add To Cart", "Add product to cart")
-  async add(req: any, res: any) {
+  async addToCart(req: any, res: Response) {
+
+    const userId = req.user.userId;
+    const { product_id, quantity } = req.body;
 
     const cartRepo = dataSource.getRepository(Cart);
     const productRepo = dataSource.getRepository(Product);
-
-    const { product_id, quantity } = req.body;
-    const userId = req.user.userId;
 
     const product = await productRepo.findOne({
       where: { id: product_id }
@@ -38,6 +39,13 @@ export class CartController {
       return res.status(404).json({
         success: false,
         message: "Product not found"
+      });
+    }
+
+    if (product.status !== ProductStatus.ACTIVE) {
+      return res.status(403).json({
+        success: false,
+        message: "This product is not active and cannot be added to the cart."
       });
     }
 

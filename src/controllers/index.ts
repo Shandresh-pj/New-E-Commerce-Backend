@@ -30,6 +30,9 @@ import { ShiftController } from "./shift.controller";
 import { BreakPolicyController } from "./break-policy.controller";
 import { BiometricController } from "./biometric.controller";
 import { WorkforceDashboardController } from "./workforce-dashboard.controller";
+import { InvoiceController } from "./invoice.Controller";
+import { ApprovalsController } from "./approvals.Controller";
+import { AiController } from "./ai.Controller";
 
 export const authController = new AuthController();
 
@@ -92,3 +95,12 @@ export const shiftController              = new ShiftController();
 export const breakPolicyController        = new BreakPolicyController();
 export const biometricController          = new BiometricController();
 export const workforceDashboardController = new WorkforceDashboardController();
+
+// ── Invoice Management ───────────────────────────────────────────────────
+export const invoiceController            = new InvoiceController();
+
+// ── Approvals Management ─────────────────────────────────────────────────
+export const approvalsController          = new ApprovalsController();
+
+// ── Gemini AI Management ──────────────────────────────────────────────────
+export const aiController                 = new AiController();

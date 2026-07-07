@@ -33,6 +33,7 @@ import validate from "../middleware/validate";
 import { CreateOrderDto } from "../dto/order.dto";
 import { Register } from "../entities/register";
 import { TenantService } from "../middleware/tenantFilter.middleware";
+import { ProductStatus } from "../dto/products.dto";
 
 
 import { generateInvoiceNumber } from "../utils/invoiceNumber";
@@ -197,6 +198,10 @@ public async create(req: any, res: Response, next: NextFunction) {
 
       if (!product) {
         throw new Error(`Product ${item.product_id} not found`);
+      }
+
+      if (product.status !== ProductStatus.ACTIVE) {
+        throw new Error(`Product "${product.name}" is not active`);
       }
 
       if (product.stock < item.quantity) {
