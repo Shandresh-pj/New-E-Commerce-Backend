@@ -111,6 +111,7 @@ loadRoutes(path.join(__dirname, "routes"));
 /* ================= HEALTH CHECK ================= */
 
 app.get("/health", (req, res) => {
+  // Trigger nodemon reload for route discovery
   res.json({
     status: "UP",
     time: new Date()

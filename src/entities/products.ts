@@ -18,7 +18,7 @@ import { LowStockAlert } from "./lowstock";
 import { Category } from "./category";
 import { ProductAttributeValueProduct } from "./productAttribute";
 import { ProductVariant } from "./productVariant";
-import { ProductType, ProductStatus, ProductApprovalStatus } from "../dto/products.dto";
+import { ProductType, ProductStatus } from "../dto/products.dto";
 import { Register } from "./register";
 
 @Entity("products_table_1")
@@ -114,28 +114,6 @@ orderItems!: OrderItem[];
     default: ProductStatus.ACTIVE,
   })
   status!: ProductStatus;
-
-  @Column({
-    type: "enum",
-    enum: ProductApprovalStatus,
-    default: ProductApprovalStatus.DRAFT,
-  })
-  approval_status!: ProductApprovalStatus;
-
-  @Column({ nullable: true })
-  approved_by!: string;
-
-  @Column({ type: "timestamp", nullable: true })
-  approved_at!: Date;
-
-  @Column({ nullable: true })
-  rejected_by!: string;
-
-  @Column({ type: "timestamp", nullable: true })
-  rejected_at!: Date;
-
-  @Column({ type: "text", nullable: true })
-  rejection_reason!: string;
 
   @Column({ type: "int", default: 5 })
   low_stock_threshold!: number;

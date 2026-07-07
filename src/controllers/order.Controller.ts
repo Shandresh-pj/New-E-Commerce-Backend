@@ -33,6 +33,7 @@ import validate from "../middleware/validate";
 import { CreateOrderDto } from "../dto/order.dto";
 import { Register } from "../entities/register";
 import { TenantService } from "../middleware/tenantFilter.middleware";
+import { ProductStatus } from "../dto/products.dto";
 
 // import { generateInvoicePDF } from "../utils/invoice";
 import { generateQR } from "../utils/qr";

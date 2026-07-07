@@ -5,6 +5,7 @@ import {
 } from "express";
 import { plainToInstance } from "class-transformer";
 import { validate as classValidate } from "class-validator";
+import jwt from "jsonwebtoken";
 
 import {
   Controller,
@@ -15,9 +16,10 @@ import {
   Swagger,
 } from "../decorators";
 
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { uploadAny } from "../utils/upload";
 import { Product } from "../entities/products";
+import { ProductApproval, ApprovalStatus, ApprovalActionType } from "../entities/productApproval";
 import { ProductVariant } from "../entities/productVariant";
 import {
   ProductAttribute,
@@ -32,11 +34,11 @@ import {
   ProductVariantDto,
   ProductAttributeValueLinkDto,
   ScanProductDto,
-  ProductApprovalStatus,
 } from "../dto";
 import { Put } from "../decorators/put";
 import { io } from "../socket/socket";
 import { Notification } from "../entities/notification";
+import { UserType } from "../utils/Role-Access";
 
 const PRODUCT_RELATIONS = {
   creator: true,
@@ -416,7 +418,6 @@ export class ProductController {
           throw new ApiError(400, "Invalid attribute value references", refErrors);
         }
       }
-
       const repo = qr.manager.getRepository(Product);
 
       const {
@@ -430,13 +431,86 @@ export class ProductController {
         product_type,
         stock_in_hand,
         status,
-        approval_status,
         low_stock_threshold,
         critical_stock_threshold,
       } = body;
 
       const { image, video, images } = extractUploadedFiles(req);
 
+      const user = (req as any).user;
+      const isAdmin = user?.isSuperAdmin || user?.userType === UserType.SUPER_ADMIN || user?.userType === UserType.ADMIN;
+
+      if (!isAdmin) {
+        // Create a pending ProductApproval request instead of writing to products table
+        const approvalRepo = qr.manager.getRepository(ProductApproval);
+
+        const newValues = {
+          name,
+          description,
+          price,
+          stock,
+          barcode,
+          category,
+          registration_id: registration_id || user.userId,
+          product_type,
+          stock_in_hand,
+          status: status || "active",
+          low_stock_threshold: low_stock_threshold !== undefined ? Number(low_stock_threshold) : 5,
+          critical_stock_threshold: critical_stock_threshold !== undefined ? Number(critical_stock_threshold) : 2,
+          image: image ?? images?.[0],
+          images: images ?? [],
+          video,
+          variants: variantsInput,
+          attribute_values: attributeValuesInput
+        };
+
+        const audit = {
+          action: "CREATE",
+          user: user.email || user.username || `User ${user.userId}`,
+          timestamp: new Date(),
+          ip: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.ip,
+          device: req.headers["user-agent"] as string,
+          comment: "Initial creation submission",
+        };
+
+        const approvalRequest = approvalRepo.create({
+          branch_id: user.branchId || null,
+          company_id: user.companyId || null,
+          requested_by: user.email || user.username || `User ${user.userId}`,
+          requested_by_id: user.userId,
+          requested_date: new Date(),
+          status: ApprovalStatus.PENDING,
+          action_type: ApprovalActionType.CREATE,
+          new_values: newValues,
+          audit_history: [audit]
+        });
+
+        await approvalRepo.save(approvalRequest);
+        await qr.commitTransaction();
+
+        // Emit realtime notifications
+        try {
+          const notificationRepo = dataSource.getRepository(Notification);
+          const notification = notificationRepo.create({
+            message: `New product "${name}" requires approval.`,
+            type: "APPROVAL_REQUEST",
+          });
+          await notificationRepo.save(notification);
+          io.emit("new-notification", notification);
+        } catch (notifErr) {
+          console.error("Failed to create notification on product create:", notifErr);
+        }
+
+        io.emit("approval-created", approvalRequest);
+
+        return res.status(201).json({
+          success: true,
+          message: "Product creation request submitted for approval",
+          data: approvalRequest,
+        });
+      }
+
+      // If Admin, proceed with direct creation
       const product = repo.create({
         name,
         description,
@@ -444,15 +518,12 @@ export class ProductController {
         stock,
         barcode,
         category,
-        registration_id,
+        registration_id: registration_id || user.userId,
         product_type,
         stock_in_hand,
-        status,
-        approval_status: approval_status ?? ProductApprovalStatus.DRAFT,
+        status: status || "active",
         low_stock_threshold: low_stock_threshold !== undefined ? Number(low_stock_threshold) : 5,
         critical_stock_threshold: critical_stock_threshold !== undefined ? Number(critical_stock_threshold) : 2,
-        // Fall back to the first gallery photo as the cover when no
-        // dedicated cover file was uploaded separately.
         image: image ?? images?.[0],
         images: images ?? [],
         video,
@@ -523,21 +594,7 @@ export class ProductController {
       // Emit realtime socket event
       io.emit("product-created", createdProductData);
 
-      // Create and emit notification if it requires approval
-      if (product.approval_status === ProductApprovalStatus.PENDING) {
-        try {
-          const notificationRepo = dataSource.getRepository(Notification);
-          const notification = notificationRepo.create({
-            message: `New product "${product.name}" requires approval.`,
-            type: "APPROVAL_REQUEST",
-            product_id: product.id,
-          });
-          await notificationRepo.save(notification);
-          io.emit("new-notification", notification);
-        } catch (notifErr) {
-          console.error("Failed to create notification on product create:", notifErr);
-        }
-      }
+
 
       return res.status(201).json({
         success: true,
@@ -594,6 +651,35 @@ export class ProductController {
         });
       }
 
+      let showAll = false;
+      const auth = req.headers.authorization;
+      if (auth && auth.startsWith("Bearer ")) {
+        try {
+          const token = auth.split(" ")[1];
+          const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+          const userType = decoded.userType;
+          if (
+            decoded.isSuperAdmin === true ||
+            userType === UserType.SUPER_ADMIN ||
+            userType === UserType.ADMIN ||
+            userType === UserType.BRANCH_MANAGER ||
+            userType === UserType.SHOPKEEPER ||
+            userType === UserType.BRANCH ||
+            userType === UserType.EMPLOYEE
+          ) {
+            showAll = true;
+          }
+        } catch (e) {}
+      }
+
+      if (!showAll && product.status !== "active") {
+        return res.status(404).json({
+          success: false,
+          verified: false,
+          message: "Product not found or inactive",
+        });
+      }
+
       return res.json({
         success: true,
         verified: true,
@@ -625,6 +711,33 @@ export class ProductController {
         .leftJoinAndSelect("attributeValueLinks.ProductAttributeValue", "linkValue")
         .leftJoinAndSelect("linkValue.ProductAttribute", "linkValueAttr")
         .orderBy("product.id", "DESC");
+
+      let showAll = false;
+      const auth = req.headers.authorization;
+      if (auth && auth.startsWith("Bearer ")) {
+        try {
+          const token = auth.split(" ")[1];
+          const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+          const userType = decoded.userType;
+          if (
+            decoded.isSuperAdmin === true ||
+            userType === UserType.SUPER_ADMIN ||
+            userType === UserType.ADMIN ||
+            userType === UserType.BRANCH_MANAGER ||
+            userType === UserType.SHOPKEEPER ||
+            userType === UserType.BRANCH ||
+            userType === UserType.EMPLOYEE
+          ) {
+            showAll = true;
+          }
+        } catch (e) {}
+      }
+
+      if (!showAll) {
+        qb.andWhere("product.status = :status", {
+          status: "active",
+        });
+      }
 
       if (req.query.status) {
         qb.andWhere("product.status = :status", { status: req.query.status });
@@ -676,6 +789,31 @@ export class ProductController {
       });
 
       if (!data) {
+        throw new ApiError(404, "Product not found");
+      }
+
+      let showAll = false;
+      const auth = req.headers.authorization;
+      if (auth && auth.startsWith("Bearer ")) {
+        try {
+          const token = auth.split(" ")[1];
+          const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+          const userType = decoded.userType;
+          if (
+            decoded.isSuperAdmin === true ||
+            userType === UserType.SUPER_ADMIN ||
+            userType === UserType.ADMIN ||
+            userType === UserType.BRANCH_MANAGER ||
+            userType === UserType.SHOPKEEPER ||
+            userType === UserType.BRANCH ||
+            userType === UserType.EMPLOYEE
+          ) {
+            showAll = true;
+          }
+        } catch (e) {}
+      }
+
+      if (!showAll && data.status !== "active") {
         throw new ApiError(404, "Product not found");
       }
 
@@ -782,6 +920,124 @@ export class ProductController {
         }
       }
 
+      const user = (req as any).user;
+      const isAdmin = user?.isSuperAdmin || user?.userType === UserType.SUPER_ADMIN || user?.userType === UserType.ADMIN;
+
+      if (!isAdmin) {
+        // Find existing variants & attributes
+        const variantRepo = qr.manager.getRepository(ProductVariant);
+        const linkRepo = qr.manager.getRepository(ProductAttributeValueProduct);
+
+        const currentVariants = await variantRepo.find({ where: { ProductId: product.id } });
+        const currentAttributes = await linkRepo.find({ where: { ProductId: product.id } });
+
+        const previousValues = {
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          barcode: product.barcode,
+          stock: product.stock,
+          category: product.category,
+          product_type: product.product_type,
+          stock_in_hand: product.stock_in_hand,
+          status: product.status,
+          low_stock_threshold: product.low_stock_threshold,
+          critical_stock_threshold: product.critical_stock_threshold,
+          image: product.image,
+          images: product.images,
+          video: product.video,
+          variants: currentVariants,
+          attribute_values: currentAttributes
+        };
+
+        const { image, video, images } = extractUploadedFiles(req);
+        const existingImagesProvided = req.body.existing_images !== undefined;
+
+        let finalImages = product.images || [];
+        if (images || existingImagesProvided) {
+          const base = existingImagesProvided
+            ? parseExistingImages(req.body.existing_images)
+            : (product.images || []);
+          finalImages = [...base, ...(images || [])];
+        }
+
+        let finalImage = product.image;
+        if (image) {
+          finalImage = image;
+        } else if (images || existingImagesProvided) {
+          finalImage = finalImages && finalImages.length > 0 ? finalImages[0] : (null as any);
+        }
+
+        const newValues = {
+          name: body.name ?? product.name,
+          description: body.description ?? product.description,
+          price: body.price !== undefined ? Number(body.price) : product.price,
+          barcode: body.barcode ?? product.barcode,
+          stock: body.stock !== undefined ? Number(body.stock) : product.stock,
+          category: body.category ?? product.category,
+          product_type: body.product_type ?? product.product_type,
+          stock_in_hand: body.stock_in_hand !== undefined ? Number(body.stock_in_hand) : product.stock_in_hand,
+          status: body.status ?? product.status,
+          low_stock_threshold: body.low_stock_threshold !== undefined ? Number(body.low_stock_threshold) : product.low_stock_threshold,
+          critical_stock_threshold: body.critical_stock_threshold !== undefined ? Number(body.critical_stock_threshold) : product.critical_stock_threshold,
+          image: finalImage,
+          images: finalImages,
+          video: video ?? product.video,
+          variants: hasVariantsField ? variantsInput : currentVariants,
+          attribute_values: hasAttributeValuesField ? attributeValuesInput : currentAttributes
+        };
+
+        const audit = {
+          action: "UPDATE",
+          user: user.email || user.username || `User ${user.userId}`,
+          timestamp: new Date(),
+          ip: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.ip,
+          device: req.headers["user-agent"] as string,
+          comment: "Product edit submission",
+        };
+
+        const approvalRepo = qr.manager.getRepository(ProductApproval);
+        const approvalRequest = approvalRepo.create({
+          product_id: product.id,
+          branch_id: user.branchId || null,
+          company_id: user.companyId || null,
+          requested_by: user.email || user.username || `User ${user.userId}`,
+          requested_by_id: user.userId,
+          requested_date: new Date(),
+          status: ApprovalStatus.PENDING,
+          action_type: ApprovalActionType.UPDATE,
+          previous_values: previousValues,
+          new_values: newValues,
+          audit_history: [audit]
+        });
+
+        await approvalRepo.save(approvalRequest);
+        await qr.commitTransaction();
+
+        // Emit realtime notifications
+        try {
+          const notificationRepo = dataSource.getRepository(Notification);
+          const notification = notificationRepo.create({
+            message: `Product "${product.name}" was modified and requires approval.`,
+            type: "APPROVAL_REQUEST",
+            product_id: product.id,
+          });
+          await notificationRepo.save(notification);
+          io.emit("new-notification", notification);
+        } catch (notifErr) {
+          console.error("Failed to create notification on product update:", notifErr);
+        }
+
+        io.emit("approval-created", approvalRequest);
+
+        return res.json({
+          success: true,
+          message: "Product update request submitted for approval",
+          data: approvalRequest,
+        });
+      }
+
+      // If Admin, proceed with direct update
       product.name = body.name ?? product.name;
       product.description = body.description ?? product.description;
       product.price = body.price ?? product.price;
@@ -792,7 +1048,7 @@ export class ProductController {
       product.product_type = body.product_type ?? product.product_type;
       product.stock_in_hand = body.stock_in_hand ?? product.stock_in_hand;
       product.status = body.status ?? product.status;
-      product.approval_status = body.approval_status ?? product.approval_status;
+
       product.low_stock_threshold = body.low_stock_threshold !== undefined ? Number(body.low_stock_threshold) : product.low_stock_threshold;
       product.critical_stock_threshold = body.critical_stock_threshold !== undefined ? Number(body.critical_stock_threshold) : product.critical_stock_threshold;
 
@@ -812,9 +1068,6 @@ export class ProductController {
       if (image) {
         product.image = image;
       } else if (images || existingImagesProvided) {
-        // Keep the cover in sync with the gallery when no dedicated cover
-        // file was uploaded separately — including clearing it once the
-        // gallery is emptied out, instead of leaving a stale cover image.
         product.image = product.images && product.images.length > 0
           ? product.images[0]
           : null as unknown as string;
@@ -921,24 +1174,7 @@ export class ProductController {
         responseData.attribute_values = savedAttributeValues;
       }
 
-      // Emit realtime socket event
       io.emit("product-updated", responseData);
-
-      // Create and emit notification if it requires approval
-      if (product.approval_status === ProductApprovalStatus.PENDING) {
-        try {
-          const notificationRepo = dataSource.getRepository(Notification);
-          const notification = notificationRepo.create({
-            message: `Product "${product.name}" was modified and requires approval.`,
-            type: "APPROVAL_REQUEST",
-            product_id: product.id,
-          });
-          await notificationRepo.save(notification);
-          io.emit("new-notification", notification);
-        } catch (notifErr) {
-          console.error("Failed to create notification on product update:", notifErr);
-        }
-      }
 
       return res.json({
         success: true,
@@ -998,77 +1234,5 @@ export class ProductController {
     }
   }
 
-  // ================= APPROVE PRODUCT =================
-  async approveProduct(req: any, res: Response, next: NextFunction) {
-    const qr = dataSource.createQueryRunner();
-    await qr.connect();
-    await qr.startTransaction();
-
-    try {
-      const productId = Number(req.params.id);
-      const { action, rejection_reason } = req.body; // action: 'APPROVE' | 'REJECT' | 'PUBLISH'
-
-      const repo = qr.manager.getRepository(Product);
-      const product = await repo.findOneBy({ id: productId });
-
-      if (!product) {
-        throw new ApiError(404, "Product not found");
-      }
-
-      const user = req.user;
-      const userName = user.email || user.username || `User ${user.userId}`;
-
-      if (action === "APPROVE") {
-        product.approval_status = ProductApprovalStatus.APPROVED;
-        product.approved_by = userName;
-        product.approved_at = new Date();
-      } else if (action === "REJECT") {
-        product.approval_status = ProductApprovalStatus.REJECTED;
-        product.rejected_by = userName;
-        product.rejected_at = new Date();
-        product.rejection_reason = rejection_reason || "No reason provided";
-      } else if (action === "PUBLISH") {
-        product.approval_status = ProductApprovalStatus.PUBLISHED;
-      } else {
-        throw new ApiError(400, "Invalid approval action");
-      }
-
-      await repo.save(product);
-      await qr.commitTransaction();
-
-      const responseData = sanitizeProduct(product);
-      // Emit events
-      io.emit("product-updated", responseData);
-      io.emit("product-approval-update", {
-        product_id: product.id,
-        approval_status: product.approval_status,
-        message: `Product "${product.name}" is now ${product.approval_status}`,
-      });
-
-      // Notification
-      try {
-        const notificationRepo = dataSource.getRepository(Notification);
-        const notification = notificationRepo.create({
-          message: `Product "${product.name}" approval state changed to: ${product.approval_status}.`,
-          type: product.approval_status === "Published" ? "PUBLISHED" : "STOCK_UPDATE",
-          product_id: product.id,
-        });
-        await notificationRepo.save(notification);
-        io.emit("new-notification", notification);
-      } catch (nErr) {
-        console.error("Failed to save approval notification:", nErr);
-      }
-
-      return res.json({
-        success: true,
-        message: `Product state changed to ${product.approval_status} successfully`,
-        data: responseData,
-      });
-    } catch (err) {
-      await qr.rollbackTransaction();
-      next(err);
-    } finally {
-      await qr.release();
-    }
   }
 }
