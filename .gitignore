@@ -7,3 +7,5 @@ uploads
 CLAUDE.md
 dist
 .claude/
+package.json
+package-lock.json
