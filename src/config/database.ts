@@ -12,6 +12,10 @@ let dbConfig: DataSourceOptions;
 if (isProduction) {
   const dbUrl = process.env.DATABASE_URL || process.env.PRODUCTION_DB_URL;
 
+  if (!dbUrl && !process.env.PRODUCTION_DB_HOST && !process.env.DB_HOST) {
+    console.error("❌ ERROR: Production database connection details (DATABASE_URL or PRODUCTION_DB_URL) are not set in the environment variables!");
+  }
+
   if (dbUrl) {
     dbConfig = {
       type: "postgres",
