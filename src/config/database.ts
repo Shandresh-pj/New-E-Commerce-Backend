@@ -20,7 +20,7 @@ if (isProduction) {
     dbConfig = {
       type: "postgres",
       url: dbUrl,
-      synchronize: false,
+      synchronize: process.env.DB_SYNC === "true",
       logging: false,
       entities: [path.join(__dirname, "../entities/**/*.{ts,js}")],
       ssl: {
@@ -35,7 +35,7 @@ if (isProduction) {
       username: process.env.PRODUCTION_DB_USERNAME || process.env.DB_USERNAME,
       password: process.env.PRODUCTION_DB_PASSWORD || process.env.DB_PASSWORD,
       database: process.env.PRODUCTION_DB_DATABASE || process.env.DB_DATABASE,
-      synchronize: false,
+      synchronize: process.env.DB_SYNC === "true",
       logging: false,
       entities: [path.join(__dirname, "../entities/**/*.{ts,js}")],
       ssl: {
