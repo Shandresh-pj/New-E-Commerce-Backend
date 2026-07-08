@@ -1,33 +1,78 @@
 import "reflect-metadata";
-import { DataSource } from "typeorm";
+import { DataSource, DataSourceOptions } from "typeorm";
 import dotenv from "dotenv";
 import path from "path";
 
 dotenv.config();
 
-const dataSource = new DataSource({
-  type: "mysql",
+const isProduction = process.env.NODE_ENV === "production";
 
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT || 3306),
-  username: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE,
+let dbConfig: DataSourceOptions;
 
-  // ⚡ IMPORTANT (DEV ONLY)
-  synchronize: process.env.NODE_ENV !== "production",
+if (isProduction) {
+  const dbUrl = process.env.DATABASE_URL || process.env.PRODUCTION_DB_URL;
 
-  // 🔥 LOGGING (safe mode)
-  logging: process.env.NODE_ENV !== "production",
-
-  // ⚡ ENTITIES
-  entities: [path.join(__dirname, "../entities/**/*.{ts,js}")],
-
-  // 🚀 MYSQL CONNECTION POOL (REAL PERFORMANCE BOOST)
-  extra: {
-    connectionLimit: 20,
-    charset: "utf8mb4_unicode_ci"
+  if (dbUrl) {
+    dbConfig = {
+      type: "postgres",
+      url: dbUrl,
+      synchronize: false,
+      logging: false,
+      entities: [path.join(__dirname, "../entities/**/*.{ts,js}")],
+      ssl: {
+        rejectUnauthorized: false,
+      },
+    };
+  } else {
+    dbConfig = {
+      type: "postgres",
+      host: process.env.PRODUCTION_DB_HOST || process.env.DB_HOST,
+      port: Number(process.env.PRODUCTION_DB_PORT || process.env.DB_PORT || 5432),
+      username: process.env.PRODUCTION_DB_USERNAME || process.env.DB_USERNAME,
+      password: process.env.PRODUCTION_DB_PASSWORD || process.env.DB_PASSWORD,
+      database: process.env.PRODUCTION_DB_DATABASE || process.env.DB_DATABASE,
+      synchronize: false,
+      logging: false,
+      entities: [path.join(__dirname, "../entities/**/*.{ts,js}")],
+      ssl: {
+        rejectUnauthorized: false,
+      },
+    };
   }
-});
+} else {
+  const dbType = (process.env.DB_TYPE || "mysql") as "mysql" | "postgres";
+
+  if (dbType === "postgres") {
+    dbConfig = {
+      type: "postgres",
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT || 5432),
+      username: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_DATABASE,
+      synchronize: process.env.DB_SYNC === "true",
+      logging: true,
+      entities: [path.join(__dirname, "../entities/**/*.{ts,js}")],
+    };
+  } else {
+    dbConfig = {
+      type: "mysql",
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT || 3306),
+      username: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_DATABASE,
+      synchronize: process.env.DB_SYNC === "true",
+      logging: true,
+      entities: [path.join(__dirname, "../entities/**/*.{ts,js}")],
+      extra: {
+        connectionLimit: 20,
+        charset: "utf8mb4_unicode_ci",
+      },
+    };
+  }
+}
+
+const dataSource = new DataSource(dbConfig);
 
 export default dataSource;

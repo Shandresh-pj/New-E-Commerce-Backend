@@ -2,7 +2,6 @@
   "name": "e-business",
   "version": "1.0.0",
   "description": "",
-
   "main": "dist/server.js",
   "scripts": {
     "clean": "rimraf dist",
@@ -73,6 +72,6 @@
     "nodemon": "^3.1.14",
     "rimraf": "^6.1.3",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "typescript": "^5.9.2"
   }
 }

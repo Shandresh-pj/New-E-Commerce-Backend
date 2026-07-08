@@ -67,7 +67,7 @@ export class User {
   @Column({ type: "varchar", length: 255, nullable: true })
 verificationToken: string | null;
   
-@Column({ type: "datetime", nullable: true })
+@Column({ type: "timestamp", nullable: true })
 verificationTokenExpires: Date | null;
 
 @Column({ nullable: true })
