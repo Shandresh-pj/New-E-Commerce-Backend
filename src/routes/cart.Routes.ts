@@ -19,7 +19,7 @@ router.post(
   "/cart/add",
   authenticateMiddleware,
   authorize({ roles: [UserType.CUSTOMER, UserType.SUPER_ADMIN] }),
-  cartController.add.bind(cartController)
+  cartController.addToCart.bind(cartController)
 );
 
 /**

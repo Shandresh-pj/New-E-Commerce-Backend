@@ -1,25 +1,36 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "outDir": "./dist",
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+
     "rootDir": "./src",
+    "outDir": "./dist",
+
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "ignoreDeprecations": "6.0",
-    "emitDecoratorMetadata": true,
+
     "experimentalDecorators": true,
-    "removeComments": true,
-    "strictPropertyInitialization": false,
-    "skipLibCheck": true,
-    "sourceMap": true,
+    "emitDecoratorMetadata": true,
+
     "strict": true,
-    "allowJs": false
+    "strictPropertyInitialization": false,
+
+    "skipLibCheck": true,
+    "removeComments": true,
+    "sourceMap": false,
+
+    "allowJs": false,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
   },
   "include": [
-    "src/**/*.ts",
-    "server/**/*.ts",
-    "server/swagger/*.*"
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.spec.ts"
   ]
 }
