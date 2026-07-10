@@ -85,17 +85,19 @@ message:
 // REQUEST BODY
 // =====================================
 
-const{
-
-name,
-email,
-phone,
-address,
-role_id
-
-}=req.body;
+const {
+  name,
+  email,
+  phone,
+  address,
+  role_id,
+  razorpay_key_id,
+  razorpay_key_secret
+} = req.body;
 
 const gst_number = req.body.gst_number || null;
+
+
 
 
 // =====================================
@@ -262,18 +264,15 @@ companyAdmin
 // CREATE COMPANY
 // =====================================
 
-const company=
-companyRepo.create({
-
-name,
-email,
-phone,
-address,
-gst_number,
-
-owner_id:
-savedUser.id
-
+const company = companyRepo.create({
+  name,
+  email,
+  phone,
+  address,
+  gst_number,
+  razorpay_key_id,
+  razorpay_key_secret,
+  owner_id: savedUser.id
 });
 
 const savedCompany=
@@ -412,7 +411,9 @@ public async update(
       email,
       phone,
       address,
-      gst_number
+      gst_number,
+      razorpay_key_id,
+      razorpay_key_secret
     } = req.body;
 
     const companyRepo =
@@ -510,11 +511,19 @@ public async update(
     company.address =
       address ??
       company.address;
-
     company.gst_number =
       req.body.gst_number !== undefined
         ? (req.body.gst_number || null)
         : company.gst_number;
+
+    company.razorpay_key_id =
+      razorpay_key_id !== undefined
+        ? razorpay_key_id
+        : company.razorpay_key_id;
+
+    if (razorpay_key_secret !== undefined && razorpay_key_secret !== "••••••••••••••••") {
+      company.razorpay_key_secret = razorpay_key_secret;
+    }
 
     await companyRepo.save(
       company
@@ -623,193 +632,73 @@ let companies=[];
 
 // Super admin
 
-if(
-req.user.isSuperAdmin
-){
-
-companies=
-await repo.find({
-
-relations:{
-
-// branches:true,
-
-userRoles:{
-
-user:true,
-
-role:true,
-
-branch:true
-
-}
-
-},
-
-select:{
-
-id:true,
-name:true,
-email:true,
-phone:true,
-address:true,
-gst_number:true,
-
-branches:{
-
-id:true,
-name:true,
-location:true,
-email:true,
-phone:true
-
-},
-
-userRoles:{
-
-id:true,
-
-user:{
-
-id:true,
-name:true,
-email:true,
-mobilenumber:true,
-userType:true
-
-},
-
-role:{
-
-id:true,
-name:true
-
-},
-
-branch:{
-
-id:true,
-name:true
-
-}
-
-}
-
-},
-
-order:{
-id:"DESC"
-}
-
-});
-
-}
-
-
-// Company user
-
-else{
-
-if(!req.user.companyId){
-return res.status(400).json({
-success:false,
-message:"No company assigned to this account"
-});
-}
-
-companies=
-await repo.find({
-
-where:{
-
-id:
-req.user.companyId
-
-},
-
-relations:{
-
-branches:true,
-
-userRoles:{
-
-user:true,
-
-role:true,
-
-branch:true
-
-}
-
-},
-
-select:{
-
-id:true,
-name:true,
-email:true,
-phone:true,
-address:true,
-gst_number:true,
-
-branches:{
-
-id:true,
-name:true,
-location:true
-
-},
-
-userRoles:{
-
-id:true,
-
-user:{
-
-id:true,
-name:true,
-email:true
-
-},
-
-role:{
-
-id:true,
-name:true
-
-},
-
-branch:{
-
-id:true,
-name:true
-
-}
-
-}
-
-}
-
-});
-
-}
-
-
-return res.status(200)
-.json({
-
-success:true,
-
-count:
-companies.length,
-
-data:
-companies
-
-});
-
-}
-catch(error:any){
+    if(req.user.isSuperAdmin) {
+      companies = await repo.find({
+        relations: {
+          userRoles: {
+            user: true,
+            role: true,
+            branch: true
+          }
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          address: true,
+          gst_number: true,
+          razorpay_key_id: true,
+          razorpay_key_secret: true
+        },
+        order: {
+          id: "DESC"
+        }
+      });
+    } else {
+      if(!req.user.companyId) {
+        return res.status(400).json({
+          success: false,
+          message: "No company assigned to this account"
+        });
+      }
+      
+      companies = await repo.find({
+        where: { id: req.user.companyId },
+        relations: {
+          userRoles: {
+            user: true,
+            role: true,
+            branch: true
+          }
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          address: true,
+          gst_number: true,
+          razorpay_key_id: true,
+          razorpay_key_secret: true
+        },
+        order: {
+          id: "DESC"
+        }
+      });
+    }
+
+    const sanitizedCompanies = companies.map((c: any) => ({
+      ...c,
+      razorpay_key_secret: c.razorpay_key_secret ? "••••••••••••••••" : ""
+    }));
+
+    return res.status(200).json({
+      success: true,
+      count: sanitizedCompanies.length,
+      data: sanitizedCompanies
+    });
+} catch(error:any){
 
 console.log(
 error

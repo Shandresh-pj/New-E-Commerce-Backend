@@ -21,7 +21,8 @@ import {
 import { StatusController } from "./status.Controller";
 import { RoleAccessController } from "./role-access.controller";
 import { RoleController } from "./role.Controller";
-import { AlertController, PaymentController, StockController } from "./stock.Controller";
+import { AlertController, StockController } from "./stock.Controller";
+import { PaymentController } from "./payment.Controller";
 import { DeliveryTrackingController } from "./tracking.Controller";
 import { MenuController } from "./menu.Controller";
 import { ProfileController } from "./profile.Controller";

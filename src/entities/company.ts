@@ -27,6 +27,12 @@ export class Company {
   @Column({ unique: true, nullable: true })
   gst_number: string;
 
+  @Column({ nullable: true })
+  razorpay_key_id: string;
+
+  @Column({ nullable: true })
+  razorpay_key_secret: string;
+
    @OneToMany(
     ()=>Branch,
     branch=>branch.company

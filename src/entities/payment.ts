@@ -36,6 +36,22 @@ export class Payment {
   })
   gateway!: string;
 
+  @Column({
+    nullable: true,
+    default: "NONE" // NONE, PARTIAL, FULL
+  })
+  refund_status!: string;
+
+  @Column("json", {
+    nullable: true
+  })
+  payment_metadata!: any;
+
+  @Column({
+    default: 0
+  })
+  retry_count!: number;
+
   @CreateDateColumn()
   created_at!: Date;
 }

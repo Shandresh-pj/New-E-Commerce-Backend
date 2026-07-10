@@ -44,4 +44,22 @@ router.get(
   paymentController.getAll.bind(paymentController)
 );
 
+router.post(
+  "/payments/razorpay/create-order",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+  }),
+  paymentController.createRazorpayOrder.bind(paymentController)
+);
+
+router.post(
+  "/payments/razorpay/verify",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+  }),
+  paymentController.verifyRazorpayPayment.bind(paymentController)
+);
+
 export default router;

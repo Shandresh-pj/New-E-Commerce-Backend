@@ -16,7 +16,19 @@ import { Type } from "class-transformer";
  */
 export enum PaymentMethod {
   CASH = "CASH",
-  ONLINE = "ONLINE",
+  ONLINE = "ONLINE", // General Online (Legacy/Default)
+  STRIPE = "STRIPE",
+  PAYPAL = "PAYPAL",
+  RAZORPAY = "RAZORPAY",
+  UPI = "UPI",
+  WALLET = "WALLET",
+  EMI = "EMI",
+  PAY_LATER = "PAY_LATER",
+  BANK_TRANSFER = "BANK_TRANSFER",
+  CASH_ON_DELIVERY = "CASH_ON_DELIVERY",
+  PAY_ON_DELIVERY = "PAY_ON_DELIVERY",
+  GIFT_CARD = "GIFT_CARD",
+  PARTIAL = "PARTIAL",
 }
 
 /**

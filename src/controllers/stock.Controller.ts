@@ -16,19 +16,17 @@ import {
 import validate from "../middleware/validate";
 
 import { UpdateStockDto } from "../dto/stock.dto";
-
+import crypto from "crypto";
 import { Product } from "../entities/products";
 import { StockLog } from "../entities/stock";
-
 import { dataSource } from "../server";
-import { CreatePaymentDto } from "../dto/payment.dto";
-import { Payment } from "../entities/payment";
 import { StockService } from "../services/stock.service";
 import { LowStockAlert } from "../entities/lowstock";
 import { UserType } from "../utils/Role-Access";
 import { Notification } from "../entities/notification";
 import { io } from "../socket/socket";
-
+import { Company } from "../entities/company";
+import { Order } from "../entities/order";
 @Controller("/stock")
 export class StockController {
 
@@ -232,63 +230,6 @@ export class StockController {
       await qr.release();
     }
   }
-}
-
-@Controller("/payments")
-export class PaymentController {
-
-  @Post("/create")
-  @Middleware([
-    validate(CreatePaymentDto)
-  ])
-  @Swagger(
-    "Create Payment",
-    "Cash / Online Payment"
-  )
-  async create(
-    req: Request,
-    res: Response
-  ) {
-
-    const repo =
-      dataSource.getRepository(
-        Payment
-      );
-
-    const payment =
-      repo.create(req.body);
-
-    await repo.save(payment);
-
-    return res.json({
-      success: true,
-      data: payment
-    });
-  }
-
-  @Get("/")
-  async getAll(
-    req: Request,
-    res: Response
-  ) {
-
-    const data =
-      await dataSource
-        .getRepository(Payment)
-        .find({
-          order: {
-            id: "DESC"
-          }
-        });
-
-    return res.json({
-      success: true,
-      data
-    });
-  }
-
-
-
 }
 
 
