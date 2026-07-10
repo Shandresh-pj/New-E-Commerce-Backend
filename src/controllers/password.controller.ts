@@ -11,7 +11,7 @@ import {
 import validate from "../middleware/validate";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
 
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 
 import { User } from "../entities/user";
 import { PasswordReset } from "../entities/password-reset.entity";

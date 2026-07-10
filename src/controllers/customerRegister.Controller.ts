@@ -5,7 +5,7 @@ import {
   Post
 } from "../decorators";
 
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 
 
 import { OtpService } from "../services/otp.service";

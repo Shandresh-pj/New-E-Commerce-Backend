@@ -13,7 +13,7 @@ import {
   NextFunction,
 } from "express";
 
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { Coupon, CouponProduct } from "../entities/coupons";
 import validate from "../middleware/validate";
 import { CreateCouponDto } from "../dto/coupon.dto";

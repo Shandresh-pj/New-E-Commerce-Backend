@@ -18,7 +18,7 @@ import {
 
 import validate from "../middleware/validate";
 
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import jwt from "jsonwebtoken";
 
 import { Register } from "../entities/register";

@@ -2,7 +2,7 @@ import { IsNull, In } from "typeorm";
 import { RolePermission } from "../entities/role-access";
 import { User, UserRole } from "../entities/user";
 import { StatusType } from "../utils/Role-Access";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 
 export class PermissionService {
 

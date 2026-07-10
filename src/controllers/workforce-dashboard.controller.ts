@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Controller, Get, Post, Swagger } from "../decorators";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { AttendanceService } from "../services/attendance.service";
 import { NotificationService } from "../services/notification.service";
 import { Attendance, AttendanceStatus } from "../entities/attendance.entity";

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { IsNull } from "typeorm";
 import { Controller, Get, Post, Put, Delete, Swagger } from "../decorators";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { AttendanceService } from "../services/attendance.service";
 import { Attendance, AttendanceStatus, AttendanceSource, BreakType } from "../entities/attendance.entity";
 import { AttendanceBreakLog } from "../entities/attendance.entity";

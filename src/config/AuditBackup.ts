@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { dataSource } from "../server";
+import dataSource from "database";
 import { AuditLog, AuditLogBackup } from "../entities/auditLogs";
 import { LessThan, In } from "typeorm";
 

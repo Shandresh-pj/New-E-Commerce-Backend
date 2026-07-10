@@ -7,7 +7,7 @@ import {
   Middleware
 } from "../decorators";
 
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
 import { Menu, Permission, PermissionType } from "../entities/menu";
 

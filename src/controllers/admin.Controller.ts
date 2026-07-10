@@ -15,8 +15,7 @@ Middleware
 import authenticateMiddleware
 from "../middleware/authenticate.middleware";
 
-import { dataSource }
-from "../server";
+import dataSource from "../config/database";
 
 import { generateToken }
 from "../utils/jwt";

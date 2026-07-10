@@ -1,6 +1,6 @@
 import { Controller, Get, Delete, Middleware } from "../decorators";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { AuditLog } from "../entities/auditLogs";
 import { UserType } from "../utils/Role-Access";
 

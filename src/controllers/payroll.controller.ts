@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Controller, Get, Post, Swagger } from "../decorators";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { PayrollService } from "../services/payroll.service";
 import { Salary, PayrollStatus } from "../entities/salary";
 import { TenantService } from "../middleware/tenantFilter.middleware";

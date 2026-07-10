@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { JwtPayload } from "jsonwebtoken";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { Wishlist } from "../entities/wishlist";
 import { Product } from "../entities/products";
 import { ApiError } from "../exceptions/ApiError";

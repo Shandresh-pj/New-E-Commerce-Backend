@@ -1,5 +1,5 @@
 import { User } from "../entities/user";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { StatusType } from "../utils/Role-Access";
 
 export class UserStatusService{

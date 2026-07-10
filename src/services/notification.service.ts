@@ -1,4 +1,4 @@
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import {
   AttendanceNotification,
   NotificationType,

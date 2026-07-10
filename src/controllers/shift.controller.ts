@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Controller, Get, Post, Put, Delete, Swagger } from "../decorators";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { Shift, ShiftAssignment } from "../entities/shift.entity";
 import { Employee } from "../entities/employee.entity";
 import { TenantService } from "../middleware/tenantFilter.middleware";

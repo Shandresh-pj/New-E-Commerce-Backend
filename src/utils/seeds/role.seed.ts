@@ -1,7 +1,7 @@
 // seeds/role.seed.ts
 
 import { Role } from "../../entities/roles";
-import { dataSource } from "../../server";
+import dataSource from "../../config/database";
 import { UserType } from "../Role-Access";
 
 export async function seedRoles(){

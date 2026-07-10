@@ -19,7 +19,7 @@ import { UpdateStockDto } from "../dto/stock.dto";
 import crypto from "crypto";
 import { Product } from "../entities/products";
 import { StockLog } from "../entities/stock";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { StockService } from "../services/stock.service";
 import { LowStockAlert } from "../entities/lowstock";
 import { UserType } from "../utils/Role-Access";

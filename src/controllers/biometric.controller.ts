@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Controller, Get, Post, Put, Delete, Swagger } from "../decorators";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { BiometricService } from "../services/biometric.service";
 import { AttendanceService } from "../services/attendance.service";
 import { BiometricDevice, DeviceStatus } from "../entities/biometric_device.entity";

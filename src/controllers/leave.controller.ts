@@ -11,7 +11,7 @@ import {
 } from "../decorators";
 
 
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { Put } from "../decorators/put";
 import { LeaveRequest } from "../entities/leave.entity";
 import { TenantService } from "../middleware/tenantFilter.middleware";

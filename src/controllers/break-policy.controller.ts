@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Controller, Get, Post, Put, Delete, Swagger } from "../decorators";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { BreakPolicy } from "../entities/break_policy.entity";
 import { TenantService } from "../middleware/tenantFilter.middleware";
 

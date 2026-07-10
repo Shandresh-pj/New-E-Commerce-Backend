@@ -1,4 +1,4 @@
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { AuditLog } from "../entities/auditLogs";
 import { getDiff } from "../utils/getDiff";
 

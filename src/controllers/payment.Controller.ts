@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { Controller, Post, Get, Middleware, Swagger } from "../decorators";
 import validate from "../middleware/validate";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { Payment } from "../entities/payment";
 import { CreatePaymentDto } from "../dto/payment.dto";
 import { Order } from "../entities/order";

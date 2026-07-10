@@ -8,7 +8,7 @@ import {
   Swagger,
 } from "../decorators";
 import validate from "../middleware/validate";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { Register } from "../entities/register";
 import { SendOtpDto, VerifyOtpDto } from "../dto/otp.dto";
 import { OtpVerification } from "../entities/otp";

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { Invoice } from "../entities/invoice";
 import { InvoiceSettings } from "../entities/invoiceSettings";
 import { Register } from "../entities/register";

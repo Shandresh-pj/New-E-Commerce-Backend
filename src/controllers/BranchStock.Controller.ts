@@ -9,7 +9,7 @@ import {
 } from "../decorators";
 
 import { Request, Response, NextFunction } from "express";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { UpdateBranchStockDto } from "../dto/branchStock.dto";
 import validate from "../middleware/validate";
 import { BranchStockService } from "../services/branchStock.service";

@@ -11,7 +11,7 @@ import {
   Swagger,
 } from "../decorators";
 
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { DeliveryTracking } from "../entities/delivery.entity";
 import { TenantService } from "../middleware/tenantFilter.middleware";
 

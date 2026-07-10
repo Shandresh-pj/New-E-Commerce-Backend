@@ -1,4 +1,4 @@
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { Employee } from "../entities/employee.entity";
 import { Attendance, AttendanceStatus, DeductionType } from "../entities/attendance.entity";
 import { LeaveRequest } from "../entities/leave.entity";

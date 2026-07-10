@@ -15,7 +15,7 @@ import { NextFunction } from "express";
 
 import authenticateMiddleware from "../middleware/authenticate.middleware";
 
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 
 import { Company } from "../entities/company";
 import { User, UserRole } from "../entities/user";

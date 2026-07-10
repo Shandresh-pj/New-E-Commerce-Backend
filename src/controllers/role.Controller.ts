@@ -11,8 +11,7 @@ from "../middleware/authenticate.middleware";
 
 
 
-import { dataSource }
-from "../server";
+import dataSource from "../config/database";
 
 import { Role }
 from "../entities/roles";

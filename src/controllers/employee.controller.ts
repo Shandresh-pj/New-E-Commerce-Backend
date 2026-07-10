@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 
 import { Response } from "express";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { In } from "typeorm";
 
 import { User, UserRole } from "../entities/user";

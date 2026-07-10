@@ -16,8 +16,7 @@ from "../middleware/authenticate.middleware";
 import validate
 from "../middleware/validate";
 
-import { dataSource }
-from "../server";
+import dataSource from "../config/database";
 
 import { Branch }
 from "../entities/branch";

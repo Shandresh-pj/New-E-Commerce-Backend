@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import {
   BiometricDevice,
   BiometricAuthLog,

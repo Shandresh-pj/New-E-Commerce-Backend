@@ -4,7 +4,7 @@ import {
   NextFunction,
 } from "express";
 
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { Status } from "../entities/status.entity";
 
 export class StatusController {

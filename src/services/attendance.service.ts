@@ -1,6 +1,6 @@
 import moment from "moment";
 import { IsNull } from "typeorm";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import {
   Attendance,
   AttendanceBreakLog,

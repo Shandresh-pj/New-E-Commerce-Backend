@@ -1,4 +1,4 @@
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { Attendance, AttendanceStatus, AttendanceSource } from "../entities/attendance.entity";
 import { BiometricDevice } from "../entities/biometric_device.entity";
 import { Employee } from "../entities/employee.entity";

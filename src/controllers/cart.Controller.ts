@@ -11,7 +11,7 @@ import {
   Swagger,
 } from "../decorators";
 
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 
 import { Cart, Product } from "../entities/products";
 import { ProductStatus } from "../dto/products.dto";

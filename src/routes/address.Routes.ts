@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { JwtPayload } from "jsonwebtoken";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { UserAddress } from "../entities/userAddress";
 import { Register } from "../entities/register";
 import authenticateMiddleware from "../middleware/authenticate.middleware";

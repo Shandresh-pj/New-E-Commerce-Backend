@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { dataSource } from "../server";
+import dataSource from "../config/database";
 import { Contact, ContactStatus } from "../entities/contact.entity";
 import { User, UserRole } from "../entities/user";
 import { Company } from "../entities/company";
