@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import dataSource from "database";
+import dataSource from "./database";
 import { AuditLog, AuditLogBackup } from "../entities/auditLogs";
 import { LessThan, In } from "typeorm";
 
@@ -24,7 +24,7 @@ cron.schedule("0 2 * * *", async () => {
 
   // delete after backup
   await auditRepo.delete({
-    id: In(oldLogs.map(l => l.id))
+    id: In(oldLogs.map((l: any) => l.id))
   });
 
   console.log(`Archived ${oldLogs.length} audit logs`);
