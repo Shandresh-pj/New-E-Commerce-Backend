@@ -13,17 +13,13 @@ import { timezoneMiddleware } from "./middleware/timezone";
 import errorHandler from "./middleware/errorHandler";
 import logger from "./utils/logger";
 import { preventDuplicateCalls } from "./middleware/preventDuplicateCalls";
+import { writeFileSync } from "fs";
+import { resolve } from "path";
+import dataSource from "./config/database";
 
 const app = express();
 
-/* ================= PERFORMANCE ================= */
-
-app.use(compression());
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-
-/* ================= SECURITY ================= */
+/* ================= SECURITY & CORS ================= */
 
 app.disable("x-powered-by");
 
@@ -33,6 +29,13 @@ app.use(
     credentials: true
   })
 );
+
+/* ================= PERFORMANCE & PARSING ================= */
+
+app.use(compression());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 app.use(
   rateLimit({
@@ -110,12 +113,28 @@ loadRoutes(path.join(__dirname, "routes"));
 
 /* ================= HEALTH CHECK ================= */
 
-app.get("/health", (req, res) => {
-  // Trigger nodemon reload for route discovery
-  res.json({
-    status: "UP",
-    time: new Date()
-  });
+app.get("/health", async (req, res) => {
+  try {
+    const dbConnected = dataSource.isInitialized;
+    let dbTest = "SKIPPED";
+    if (dbConnected) {
+      await dataSource.query("SELECT 1");
+      dbTest = "SUCCESS";
+    }
+    res.json({
+      status: "UP",
+      database: dbConnected ? "CONNECTED" : "DISCONNECTED",
+      dbQuery: dbTest,
+      time: new Date()
+    });
+  } catch (err: any) {
+    res.json({
+      status: "UP",
+      database: "ERROR",
+      error: err.message,
+      time: new Date()
+    });
+  }
 });
 
 /* ================= ERROR HANDLER ================= */

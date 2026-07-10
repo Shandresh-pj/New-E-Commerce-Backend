@@ -12,9 +12,12 @@ const authenticateMiddleware = (req: any, res: any, next: any) => {
     }
 
     const token   = auth.split(" ")[1];
+    console.log("[Auth Middleware] Token received, verifying with JWT_SECRET...");
     const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+    console.log("[Auth Middleware] Token verified successfully. Decoded payload:", decoded);
 
     if (decoded.type === "refresh") {
+      console.log("[Auth Middleware] Rejected: Token is a refresh token");
       return res.status(401).json({ success: false, message: "Invalid token type" });
     }
 

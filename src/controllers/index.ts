@@ -33,6 +33,7 @@ import { WorkforceDashboardController } from "./workforce-dashboard.controller";
 import { InvoiceController } from "./invoice.Controller";
 import { ApprovalsController } from "./approvals.Controller";
 import { AiController } from "./ai.Controller";
+import { ContactController } from "./contact.Controller";
 
 export const authController = new AuthController();
 
@@ -103,4 +104,5 @@ export const invoiceController            = new InvoiceController();
 export const approvalsController          = new ApprovalsController();
 
 // ── Gemini AI Management ──────────────────────────────────────────────────
-export const aiController                 = new AiController();
+export const aiController                 = new AiController();
+export const contactController            = new ContactController();

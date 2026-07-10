@@ -10,7 +10,9 @@ import dataSource from "./config/database";
 import { startAttendanceCron } from "./utils/attendance.cron";
 
 async function initDatabase() {
-  await dataSource.initialize();
+  if (!dataSource.isInitialized) {
+    await dataSource.initialize();
+  }
   await seedRoles();
   console.log("✅ Database Connected");
 }
