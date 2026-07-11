@@ -423,4 +423,79 @@ export class EmailService {
             throw error;
         }
     }
-}
+
+    static async sendRegistrationVerification(
+        email: string,
+        ownerName: string,
+        verifyUrl: string
+    ) {
+        try {
+            const html = this.getTemplate(
+                "Verify Your Email Address ✉️",
+                "Registration setup validation",
+                `
+<h2 style="color: #ffffff; margin-top: 0; font-size: 20px;">Welcome, ${ownerName}!</h2>
+<p>Thank you for registering your business with SVK E-Com. Please verify your email address to continue configuring your workspace details.</p>
+
+<p>Click the button below to verify your email address and authorize your registration:</p>
+
+<center>
+  <a href="${verifyUrl}" class="button">Verify Email Address</a>
+</center>
+
+<div style="background: rgba(245, 158, 11, 0.08); border-left: 4px solid #f59e0b; border-radius: 12px; padding: 16px; margin: 24px 0; color: #e2e8f0; font-size: 14px; text-align: left;">
+  <strong>⏳ Token Expiry:</strong> This secure verification link is valid for exactly <strong>24 hours</strong>. If it expires, you will need to register again.
+</div>
+`,
+                `linear-gradient(135deg, #6366f1, #8b5cf6)`
+            );
+
+            await this.transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: "🔑 Verify your SVK E-Com registration",
+                html
+            });
+        } catch (error) {
+            console.log("sendRegistrationVerification error:", error);
+            throw error;
+        }
+    }
+
+    static async sendTrialApproval(
+        email: string,
+        ownerName: string,
+        preferredPlan: string,
+        setupUrl: string
+    ) {
+        try {
+            const html = this.getTemplate(
+                "Registration Approved! 🎉",
+                "Your account workspace is ready",
+                `
+<h2 style="color: #ffffff; margin-top: 0; font-size: 20px;">Workspace Active, ${ownerName}!</h2>
+<p>We are pleased to inform you that your request for plan "${preferredPlan}" has been approved. Please click the button below to initialize your password and start using the system.</p>
+
+<center>
+  <a href="${setupUrl}" class="button">Set Up Workspace Password</a>
+</center>
+
+<div style="background: rgba(16, 185, 129, 0.08); border-left: 4px solid #10b981; border-radius: 12px; padding: 16px; margin: 24px 0; color: #e2e8f0; font-size: 14px; text-align: left;">
+  <strong>💡 Getting Started:</strong> Use your registered email and the new password you create to log in to your custom administrative console.
+</div>
+`,
+                `linear-gradient(135deg, #10b981, #059669)`
+            );
+
+            await this.transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: "🔑 SVK E-Com Registration Approved - Setup Password",
+                html
+            });
+        } catch (error) {
+            console.log("sendTrialApproval error:", error);
+            throw error;
+        }
+    }
+}

@@ -178,36 +178,10 @@ export class ContactController {
       const appUrl = process.env.APP_URL || "http://localhost:4200";
       const verifyUrl = `${appUrl}/authentication/verify-email?token=${verifyToken}`;
       
-      const transporter = require("nodemailer").createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS
-        }
+      EmailService.sendRegistrationVerification(email, ownerName, verifyUrl).catch((mailErr) => {
+        console.error("Verification email sending failed:", mailErr);
       });
 
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #07070f; color: #f0f0ff; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-          <h2 style="color: #6366f1;">Verify Your Email Address</h2>
-          <p>Hi ${ownerName},</p>
-          <p>Thank you for registering your business with SVK E-Com. Please verify your email to continue your registration setup.</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${verifyUrl}" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Verify Email Address</a>
-          </div>
-          <p style="color: #9494b8; font-size: 13px;">This link will expire in 24 hours.</p>
-        </div>
-      `;
-
-      try {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: email,
-          subject: "🔑 Verify your SVK E-Com registration",
-          html: emailHtml
-        });
-      } catch (mailErr) {
-        console.error("Verification email sending failed:", mailErr);
-      }
 
       return res.status(201).json({
         success: true,
@@ -273,34 +247,11 @@ export class ContactController {
         // Send password setup link
         const appUrl = process.env.APP_URL || "http://localhost:4200";
         const setupUrl = `${appUrl}/authentication/setup-password?token=${contact.verificationToken}`;
-        const setupHtml = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #07070f; color: #f0f0ff; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-            <h2 style="color: #10b981;">Trial Approved! 🚀</h2>
-            <p>Hi ${contact.ownerName},</p>
-            <p>Your 14-day free trial request has been approved automatically. Please set up your account password to begin.</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${setupUrl}" style="background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Set Up Password</a>
-            </div>
-            <p style="color: #9494b8; font-size: 13px;">This link will expire in 24 hours.</p>
-          </div>
-        `;
-        const transporter = require("nodemailer").createTransport({
-          service: "gmail",
-          auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-          }
-        });
-        try {
-          await transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: contact.email,
-            subject: "🔑 Set up your SVK E-Com password",
-            html: setupHtml
-          });
-        } catch (mailErr) {
+        
+        EmailService.sendTrialApproval(contact.email, contact.ownerName, contact.preferredPlan, setupUrl).catch((mailErr) => {
           console.error("Password setup email sending failed:", mailErr);
-        }
+        });
+
 
         return res.json({
           success: true,
@@ -625,34 +576,11 @@ export class ContactController {
       // Send password setup email
       const appUrl = process.env.APP_URL || "http://localhost:4200";
       const setupUrl = `${appUrl}/authentication/setup-password?token=${contact.verificationToken}`;
-      const setupHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #07070f; color: #f0f0ff; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
-          <h2 style="color: #10b981;">Registration Approved! 🎉</h2>
-          <p>Hi ${contact.ownerName},</p>
-          <p>We are pleased to inform you that your request for plan "${contact.preferredPlan}" has been approved. Please click the button below to set up your account password and log in.</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${setupUrl}" style="background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold;">Set Up Password</a>
-          </div>
-          <p style="color: #9494b8; font-size: 13px;">This setup link will expire in 24 hours.</p>
-        </div>
-      `;
-      const transporter = require("nodemailer").createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS
-        }
-      });
-      try {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: contact.email,
-          subject: "🔑 SVK E-Com Registration Approved - Setup Password",
-          html: setupHtml
-        });
-      } catch (mailErr) {
+      
+      EmailService.sendTrialApproval(contact.email, contact.ownerName, contact.preferredPlan, setupUrl).catch((mailErr) => {
         console.error("Approval setup email failed:", mailErr);
-      }
+      });
+
 
       return res.json({ success: true, message: "Lead approved. Password setup email sent to customer." });
     } catch (error) {
