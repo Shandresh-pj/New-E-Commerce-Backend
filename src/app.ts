@@ -9,7 +9,7 @@ import rateLimit from "express-rate-limit";
 import swaggerUi from "swagger-ui-express";
 import helmet from "helmet";
 const hpp = require("hpp");
-const xssClean = require("xss-clean");
+import { xssSanitizer } from "./middleware/xssSanitizer";
 
 
 import { swaggerSpec } from "./config/swagger";
@@ -30,7 +30,8 @@ app.use(helmet({
   contentSecurityPolicy: false, // Swagger and custom frontends might load inline scripts/assets
 }));
 app.use(hpp());
-app.use(xssClean());
+app.use(xssSanitizer);
+
 
 
 app.use(

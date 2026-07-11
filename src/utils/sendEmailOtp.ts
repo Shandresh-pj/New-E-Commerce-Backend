@@ -283,332 +283,144 @@ export class EmailService {
 `;
     }
 
-
-
-
-
     // =======================================
     // Welcome Email
     // =======================================
 
     static async sendTemporaryPassword(
-
-        email:string,
-        password:string,
-        name:string
-
-    ){
-
-        try{
-
-            const html=
-
-            this.getTemplate(
-
+        email: string,
+        password: string,
+        name: string
+    ) {
+        try {
+            const html = this.getTemplate(
                 "Welcome Aboard 🚀",
-
                 "Your account has been created successfully",
+                `
+<h2 style="color: #ffffff; margin-top: 0; font-size: 20px;">Welcome to the SVK E-Com Workspace, ${name}!</h2>
+<p>We are thrilled to welcome you to our unified administration platform. Your corporate profile has been successfully provisioned by the system administrator.</p>
 
-`
-
-<h2>
-
-Hello ${name},
-
-</h2>
-
-<br/>
-
-<p>
-
-We're excited to have you
-join our platform.
-
-Your account setup
-has been completed.
-
-</p>
+<p>To access your dashboard and initialize your secure session, please use the temporary access credentials provided below:</p>
 
 <div class="card">
-
-<p>
-
-Temporary Password
-
-</p>
-
-<div class="code">
-
-${password}
-
+  <p>Temporary Access Password</p>
+  <div class="code">${password}</div>
 </div>
 
+<div style="background: rgba(245, 158, 11, 0.08); border-left: 4px solid #f59e0b; border-radius: 12px; padding: 16px; margin: 24px 0; color: #e2e8f0; font-size: 14px; text-align: left;">
+  <strong>⚠️ Mandatory Action Required:</strong> For security compliance, you will be prompted to reset this temporary password immediately upon your first login.
 </div>
 
-<p>
-
-For security reasons,
-you'll be required
-to update your password
-during your first login.
-
-</p>
+<p>Click the button below to verify your credentials and log in to your workspace:</p>
 
 <center>
-
-<a
-href="${process.env.APP_URL}"
-class="button"
->
-
-Login Now
-
-</a>
-
+  <a href="${process.env.APP_URL}" class="button">Access My Dashboard</a>
 </center>
-
 `,
+                `linear-gradient(135deg, #4F46E5, #7C3AED)`
+            );
 
-`linear-gradient(
-135deg,
-#4F46E5,
-#7C3AED
-)`
-
-);
-
-
-await this.transporter.sendMail({
-
-from:process.env.EMAIL_USER,
-
-to:email,
-
-subject:
-"🎉 Welcome to Our Platform",
-
-html
-
-});
-
-}
-catch(error){
-
-console.log(
-"sendTemporaryPassword error:",
-error
-);
-
-throw error;
-
-}
-
-}
-
-
+            await this.transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: "🎉 Welcome to Our Platform",
+                html
+            });
+        } catch (error) {
+            console.log("sendTemporaryPassword error:", error);
+            throw error;
+        }
+    }
 
     // =======================================
     // OTP Email
     // =======================================
 
-static async sendOtp(
-
-email:string,
-otp:string
-
-){
-
-try{
-
-const html=
-
-this.getTemplate(
-
-"Email Verification 🔐",
-
-"Secure access verification",
-
-`
-
-<p>
-
-Use the OTP below
-to continue.
-
-</p>
+    static async sendOtp(
+        email: string,
+        otp: string
+    ) {
+        try {
+            const html = this.getTemplate(
+                "Email Verification 🔐",
+                "Secure access verification",
+                `
+<h2 style="color: #ffffff; margin-top: 0; font-size: 20px;">One-Time Verification Request</h2>
+<p>We received a request to verify your email address. For your security, please use the following one-time passcode (OTP) to validate your action:</p>
 
 <div class="card">
-
-<div class="code">
-
-${otp}
-
+  <p>One-Time Passcode</p>
+  <div class="code">${otp}</div>
 </div>
 
+<div style="background: rgba(239, 68, 68, 0.08); border-left: 4px solid #ef4444; border-radius: 12px; padding: 16px; margin: 24px 0; color: #e2e8f0; font-size: 14px; text-align: left;">
+  <strong>⏳ Time-Sensitive Alert:</strong> This security passcode is valid for exactly <strong>5 minutes</strong>. If it expires, you will need to request a new validation code.
 </div>
 
-<p>
-
-This OTP expires
-in 5 minutes.
-
-</p>
-
-<p>
-
-If you didn't request this,
-please ignore this email.
-
-</p>
-
+<p>If you did not request this verification, please secure your account credentials immediately or contact support.</p>
 `,
+                `linear-gradient(135deg, #0EA5E9, #3B82F6)`
+            );
 
-`linear-gradient(
-135deg,
-#0EA5E9,
-#3B82F6
-)`
-
-);
-
-await this.transporter.sendMail({
-
-from:process.env.EMAIL_USER,
-
-to:email,
-
-subject:
-"🔑 OTP Verification",
-
-html
-
-});
-
-}
-catch(error){
-
-console.log(
-"sendOtp error:",
-error
-);
-
-throw error;
-
-}
-
-}
-
-
+            await this.transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: "🔑 OTP Verification",
+                html
+            });
+        } catch (error) {
+            console.log("sendOtp error:", error);
+            throw error;
+        }
+    }
 
     // =======================================
     // Company Admin Email
     // =======================================
 
-static async sendCompanyAdminCredentials(
+    static async sendCompanyAdminCredentials(
+        email: string,
+        password: string,
+        token: string
+    ) {
+        try {
+            const verifyUrl = `${process.env.APP_URL}/companies/verify/${token}`;
+            const html = this.getTemplate(
+                "Company Admin Setup 🏢",
+                "Your administrator workspace is ready",
+                `
+<h2 style="color: #ffffff; margin-top: 0; font-size: 20px;">Administrative Workspace Provisioned</h2>
+<p>Congratulations! Your corporate administrator workspace has been successfully initialized and is ready for use.</p>
 
-email:string,
-password:string,
-token:string
-
-){
-
-try{
-
-const verifyUrl=
-`${process.env.APP_URL}/companies/verify/${token}`;
-
-const html=
-
-this.getTemplate(
-
-"Company Admin Setup 🏢",
-
-"Your administrator workspace is ready",
-
-`
-
-<p>
-
-Congratulations!
-
-Your administrator account
-has been created successfully.
-
-</p>
+<p>Below are your secure setup credentials. Please click the button below to verify your email address and activate your administration account:</p>
 
 <div class="card">
-
-<p>
-
-Temporary Password
-
-</p>
-
-<div class="code">
-
-${password}
-
+  <p>Temporary Admin Password</p>
+  <div class="code">${password}</div>
 </div>
 
+<div style="background: rgba(16, 185, 129, 0.08); border-left: 4px solid #10b981; border-radius: 12px; padding: 16px; margin: 24px 0; color: #e2e8f0; font-size: 14px; text-align: left;">
+  <strong>💡 Getting Started:</strong> Once activated, you can begin configuring company branches, managing workforce permissions, and tracking real-time sales performance.
 </div>
 
 <center>
-
-<a
-href="${verifyUrl}"
-class="button"
->
-
-Verify Email
-
-</a>
-
+  <a href="${verifyUrl}" class="button">Activate Workspace & Verify Email</a>
 </center>
 
-<br/>
-
-<p>
-
-Password reset is mandatory
-after your first login.
-
-</p>
-
+<p style="margin-top: 24px;">Please note that you will be required to configure a new, strong password during your initial workspace access.</p>
 `,
+                `linear-gradient(135deg, #059669, #10B981)`
+            );
 
-`linear-gradient(
-135deg,
-#059669,
-#10B981
-)`
-
-);
-
-await this.transporter.sendMail({
-
-from:process.env.EMAIL_USER,
-
-to:email,
-
-subject:
-"🏢 Company Admin Account Created",
-
-html
-
-});
-
-}
-catch(error){
-
-console.log(
-"sendCompanyAdminCredentials error:",
-error
-);
-
-throw error;
-
-}
-
-}
-
+            await this.transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: "🏢 Company Admin Account Created",
+                html
+            });
+        } catch (error) {
+            console.log("sendCompanyAdminCredentials error:", error);
+            throw error;
+        }
+    }
 }
