@@ -13,6 +13,16 @@ async function initDatabase() {
   if (!dataSource.isInitialized) {
     await dataSource.initialize();
   }
+  
+  // Auto-sync if tables are missing
+  try {
+    await dataSource.query('SELECT 1 FROM "roles" LIMIT 1');
+  } catch (error) {
+    console.log("⚠️ Database tables missing. Forcing synchronization...");
+    await dataSource.synchronize(false);
+    console.log("✅ Database synchronized.");
+  }
+
   await seedRoles();
   console.log("✅ Database Connected");
 }
