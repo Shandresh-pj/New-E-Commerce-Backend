@@ -8,8 +8,9 @@ import compression from "compression";
 import rateLimit from "express-rate-limit";
 import swaggerUi from "swagger-ui-express";
 import helmet from "helmet";
-import hpp from "hpp";
+const hpp = require("hpp");
 const xssClean = require("xss-clean");
+
 
 import { swaggerSpec } from "./config/swagger";
 import { timezoneMiddleware } from "./middleware/timezone";
