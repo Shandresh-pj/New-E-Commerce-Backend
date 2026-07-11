@@ -19,8 +19,29 @@ import dataSource from "../config/database";
 
 import { Company } from "../entities/company";
 import { User, UserRole } from "../entities/user";
+import { In } from "typeorm";
+import { RolePermission } from "../entities/role-access";
+import { BranchStock } from "../entities/branch_stock";
+import { BiometricDevice, BiometricAuthLog } from "../entities/biometric_device.entity";
+import { AttendanceNotification } from "../entities/attendance_notification.entity";
+import { Attendance, AttendanceBreakLog } from "../entities/attendance.entity";
+import { Salary } from "../entities/salary";
+import { Leave } from "../entities/leave.entity";
+import { Shift, ShiftAssignment } from "../entities/shift.entity";
+import { BreakPolicy } from "../entities/break_policy.entity";
+import { BreakSetting } from "../entities/break-setting.entity";
+import { ProfitLoss } from "../entities/profit_loss.entity";
+import { ProductApproval } from "../entities/productApproval";
+import { InvoiceSettings } from "../entities/invoiceSettings";
+import { Invoice } from "../entities/invoice";
+import { DeliveryAssignment, DeliveryTracking } from "../entities/delivery.entity";
+import { Order } from "../entities/order";
+import { Employee } from "../entities/employee.entity";
+import { Register } from "../entities/register";
+import { UserAddress } from "../entities/userAddress";
 
 import { EmailService } from "../utils/sendEmailOtp";
+
 import { UserType } from "../utils/Role-Access";
 import { Role } from "../entities/roles";
 import { AuditLog } from "../entities/auditLogs";
@@ -855,46 +876,55 @@ message:
 
 }
 
-const companyId=
-Number(
-req.params.id
-);
+    const companyId = Number(req.params.id);
+    const companyRepo = queryRunner.manager.getRepository(Company);
+    const company = await companyRepo.findOne({ where: { id: companyId } });
 
-const companyRepo=
-queryRunner.manager.getRepository(
-Company
-);
+    if (!company) {
+      await queryRunner.rollbackTransaction();
+      return res.status(404).json({
+        success: false,
+        message: "Company not found"
+      });
+    }
 
-const company=
-await companyRepo.findOne({
+    // Clean up all dependent metrics, logs, transactions and profiles first
+    await queryRunner.manager.delete(UserRole, { company_id: companyId });
+    await queryRunner.manager.delete(RolePermission, { company_id: companyId });
+    await queryRunner.manager.delete(BranchStock, { company_id: companyId });
+    await queryRunner.manager.delete(BiometricAuthLog, { company_id: companyId });
+    await queryRunner.manager.delete(BiometricDevice, { company_id: companyId });
+    await queryRunner.manager.delete(AttendanceNotification, { company_id: companyId });
+    await queryRunner.manager.delete(AttendanceBreakLog, { company_id: companyId });
+    await queryRunner.manager.delete(Attendance, { company_id: companyId });
+    await queryRunner.manager.delete(Salary, { company_id: companyId });
+    await queryRunner.manager.delete(Leave, { company_id: companyId });
+    await queryRunner.manager.delete(ShiftAssignment, { company_id: companyId });
+    await queryRunner.manager.delete(Shift, { company_id: companyId });
+    await queryRunner.manager.delete(BreakPolicy, { company_id: companyId });
+    await queryRunner.manager.delete(BreakSetting, { company_id: companyId });
+    await queryRunner.manager.delete(ProfitLoss, { company_id: companyId });
+    await queryRunner.manager.delete(ProductApproval, { company_id: companyId });
+    await queryRunner.manager.delete(InvoiceSettings, { company_id: companyId });
+    await queryRunner.manager.delete(Invoice, { company_id: companyId });
+    await queryRunner.manager.delete(DeliveryAssignment, { company_id: companyId });
+    await queryRunner.manager.delete(DeliveryTracking, { company_id: companyId });
+    await queryRunner.manager.delete(Order, { company_id: companyId });
+    await queryRunner.manager.delete(Employee, { company_id: companyId });
 
-where:{
-id:companyId
-}
+    // Clean up customer addresses first to prevent Register constraints
+    const registers = await queryRunner.manager.find(Register, { where: { company_id: companyId } });
+    const registerIds = registers.map(r => r.id);
+    if (registerIds.length > 0) {
+      await queryRunner.manager.delete(UserAddress, { userId: In(registerIds) });
+    }
 
-});
+    await queryRunner.manager.delete(Register, { company_id: companyId });
+    await queryRunner.manager.delete(Branch, { company_id: companyId });
 
-if(!company){
+    await companyRepo.remove(company);
 
-await queryRunner.rollbackTransaction();
-
-return res.status(404)
-.json({
-
-success:false,
-message:
-"Company not found"
-
-});
-
-}
-
-
-await companyRepo.remove(
-company
-);
-
-await queryRunner.commitTransaction();
+    await queryRunner.commitTransaction();
 
 return res.status(200)
 .json({
