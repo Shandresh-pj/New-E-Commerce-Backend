@@ -9,7 +9,8 @@ cron.schedule("0 2 * * *", async () => {
   const backupRepo = dataSource.getRepository(AuditLogBackup);
 
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 7);
+  // cutoff.setDate(cutoff.getDate() - 7);
+  cutoff.setDate(cutoff.getDate() - 1);
 
   const oldLogs = await auditRepo.find({
     where: {
