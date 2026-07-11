@@ -8,6 +8,8 @@ import { initializeSocket } from "./socket/socket";
 import { seedRoles } from "./utils/seeds/role.seed";
 import dataSource from "./config/database";
 import { startAttendanceCron } from "./utils/attendance.cron";
+import { EmailService } from "./utils/sendEmailOtp";
+
 
 async function initDatabase() {
   if (!dataSource.isInitialized) {
@@ -30,6 +32,8 @@ async function initDatabase() {
 async function startServer() {
   try {
     await initDatabase();
+    await EmailService.verifyConnection();
+
 
     const port = Number(process.env.PORT || 3000);
     const host = process.env.HOST || "0.0.0.0";

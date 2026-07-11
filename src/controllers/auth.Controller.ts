@@ -29,7 +29,9 @@ import { generateToken } from "../utils/jwt";
 // import { permissionGuard } from "../middleware/permissionGuard.middleware";
 import { User, UserRole } from "../entities/user";
 import { RolePermission } from "../entities/role-access";
+import { PasswordReset } from "../entities/password-reset.entity";
 import { EmailService, generateTempPassword } from "../utils/sendEmailOtp";
+
 import { UserType } from "../utils/Role-Access";
 import { Menu, Permission } from "../entities/menu";
 import { Role } from "../entities/roles";
@@ -1543,25 +1545,39 @@ public async getUsers( req:any, res:any )
 @Delete("/:id") @Middleware([ authenticateMiddleware ]) 
 public async deleteUser( req:any, res:any ){ 
   try{ 
-  const userRepo= dataSource.getRepository( User ); 
-  const user= await userRepo.findOne({ where:{ id:Number( req.params.id )   
-  } 
-}); 
-if(!user){ return res.status(404).json({
-   success:false, 
-   message:"User not found" 
-  }); 
-} await userRepo.delete( req.params.id ); 
-return res.status(200).json({
-   success:true, 
-   message: "User removed successfully" 
-  }); } catch(error:any){
+    const userId = Number( req.params.id );
+    const userRepo = dataSource.getRepository( User ); 
+    const user = await userRepo.findOne({ where:{ id: userId } }); 
+    if(!user){ 
+      return res.status(404).json({
+        success:false, 
+        message:"User not found" 
+      }); 
+    } 
+
+    const userRoleRepo = dataSource.getRepository(UserRole);
+    const rolePermissionRepo = dataSource.getRepository(RolePermission);
+    const passwordResetRepo = dataSource.getRepository(PasswordReset);
+
+    // Clean up dependent child table entries first
+    await userRoleRepo.delete({ user_id: userId });
+    await rolePermissionRepo.delete({ user_id: userId });
+    await passwordResetRepo.delete({ user_id: userId });
+
+    await userRepo.delete( userId ); 
+    
+    return res.status(200).json({
+       success:true, 
+       message: "User removed successfully" 
+    }); 
+  } catch(error:any){
     return res.status(500).json({
       success:false,
       message:error.message
     });
   }
 }
+
 
   // =====================================================
   // ADMIN: FORCE-SET USER PASSWORD (SA only)

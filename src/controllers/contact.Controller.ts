@@ -25,6 +25,7 @@ export class ContactController {
       let duplicateEmail = false;
       let duplicateCompany = false;
       let duplicatePhone = false;
+      let existingDetails: any = null;
 
       if (email) {
         const contactExists = await contactRepo.findOne({
@@ -35,6 +36,12 @@ export class ContactController {
         });
         if (contactExists || userExists) {
           duplicateEmail = true;
+          existingDetails = {
+            type: userExists ? "User Account" : "Lead Registration",
+            name: userExists ? userExists.name : contactExists?.ownerName,
+            company: userExists ? "SVK E-Com" : contactExists?.companyName,
+            status: userExists ? (userExists.isActive ? "ACTIVE" : "INACTIVE") : contactExists?.status
+          };
         }
       }
 
@@ -47,6 +54,14 @@ export class ContactController {
         });
         if (contactExists || companyExists) {
           duplicateCompany = true;
+          if (!existingDetails) {
+            existingDetails = {
+              type: companyExists ? "Active Tenant" : "Lead Registration",
+              name: companyExists ? companyExists.name : contactExists?.ownerName,
+              company: companyExists ? companyExists.name : contactExists?.companyName,
+              status: companyExists ? "ACTIVE" : contactExists?.status
+            };
+          }
         }
       }
 
@@ -62,6 +77,14 @@ export class ContactController {
         });
         if (contactExists || userExists || companyExists) {
           duplicatePhone = true;
+          if (!existingDetails) {
+            existingDetails = {
+              type: userExists ? "User Account" : (companyExists ? "Active Tenant" : "Lead Registration"),
+              name: userExists ? userExists.name : (companyExists ? companyExists.name : contactExists?.ownerName),
+              company: userExists ? "SVK E-Com" : (companyExists ? companyExists.name : contactExists?.companyName),
+              status: userExists ? "ACTIVE" : (companyExists ? "ACTIVE" : contactExists?.status)
+            };
+          }
         }
       }
 
@@ -69,12 +92,14 @@ export class ContactController {
         success: true,
         duplicateEmail,
         duplicateCompany,
-        duplicatePhone
+        duplicatePhone,
+        existingDetails
       });
     } catch (error) {
       next(error);
     }
   }
+
 
   // ============================================
   // PUBLIC REGISTER (Create Lead/Contact)
