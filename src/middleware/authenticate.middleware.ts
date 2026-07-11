@@ -13,7 +13,8 @@ const authenticateMiddleware = (req: any, res: any, next: any) => {
 
     const token   = auth.split(" ")[1];
     console.log("[Auth Middleware] Token received, verifying with JWT_SECRET...");
-    const decoded: any = jwt.verify(token, process.env.JWT_SECRET!);
+    const jwtSecret = process.env.JWT_SECRET || "fallback_default_secret_key_12345";
+    const decoded: any = jwt.verify(token, jwtSecret);
     console.log("[Auth Middleware] Token verified successfully. Decoded payload:", decoded);
 
     if (decoded.type === "refresh") {

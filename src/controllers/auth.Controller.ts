@@ -275,21 +275,17 @@ user
 
 // Save role mapping
 
+// Save role mapping
+
 await roleRepo.save({
 
-user:{
-id:savedUser.id
-},
+user_id: savedUser.id,
 
-role:{
-id:role_id
-},
+role_id: role_id,
 
-company:
+company_id:
 company_id
-?{
-id:company_id
-}
+?company_id
 :undefined
 
 });
@@ -533,6 +529,7 @@ const { permissions, menus } = await PermissionService.resolveAccess(user, userR
 
 // );
 
+const jwtSecret = process.env.JWT_SECRET || "fallback_default_secret_key_12345";
 const token = jwt.sign({
 
 userId:user.id,
@@ -563,7 +560,7 @@ menus
 
 },
 
-process.env.JWT_SECRET!,
+jwtSecret,
 
 {
 
