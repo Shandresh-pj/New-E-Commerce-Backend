@@ -35,6 +35,8 @@ import { InvoiceController } from "./invoice.Controller";
 import { ApprovalsController } from "./approvals.Controller";
 import { AiController } from "./ai.Controller";
 import { ContactController } from "./contact.Controller";
+import { ProfitLossController } from "./profitLoss.controller";
+
 
 export const authController = new AuthController();
 
@@ -106,4 +108,6 @@ export const approvalsController          = new ApprovalsController();
 
 // ── Gemini AI Management ──────────────────────────────────────────────────
 export const aiController                 = new AiController();
-export const contactController            = new ContactController();
+export const contactController            = new ContactController();
+export const profitLossController          = new ProfitLossController();
+

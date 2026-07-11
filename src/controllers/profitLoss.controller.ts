@@ -1,13 +1,17 @@
 import { Request, Response } from "express";
+import { Controller, Get, Post, Delete, Swagger } from "../decorators";
 import dataSource from "../config/database";
 import { ProfitLoss } from "../entities/profit_loss.entity";
 import { Order } from "../entities/order";
 import { Salary } from "../entities/salary";
 
+@Controller("/profit-loss")
 export class ProfitLossController {
 
   // Create Manual Entry
-  static async create(req: Request, res: Response) {
+  @Post("/")
+  @Swagger("Create Manual P&L Entry", "Creates a manual Profit & Loss record")
+  async create(req: Request, res: Response) {
     try {
       const { company_id, branch_id, record_date, revenue, expenses, notes } = req.body;
 
@@ -42,7 +46,9 @@ export class ProfitLossController {
   }
 
   // Get All Entries
-  static async getAll(req: Request, res: Response) {
+  @Get("/")
+  @Swagger("List P&L Entries", "Get all Profit & Loss records for a company")
+  async getAll(req: Request, res: Response) {
     try {
       const { company_id } = req.query;
       const repo = dataSource.getRepository(ProfitLoss);
@@ -50,7 +56,7 @@ export class ProfitLossController {
       const query = repo.createQueryBuilder("pl");
       
       if (company_id) {
-        query.where("pl.company_id = :company_id", { company_id });
+        query.where("pl.company_id = :company_id", { company_id: Number(company_id) });
       }
 
       query.orderBy("pl.record_date", "DESC");
@@ -71,7 +77,9 @@ export class ProfitLossController {
   }
 
   // Delete Entry
-  static async delete(req: Request, res: Response) {
+  @Delete("/:id")
+  @Swagger("Delete P&L Record", "Delete a specific Profit & Loss entry by ID")
+  async delete(req: Request, res: Response) {
     try {
       const { id } = req.params;
       const repo = dataSource.getRepository(ProfitLoss);
@@ -92,7 +100,9 @@ export class ProfitLossController {
   }
 
   // Auto Calculate P&L for a given date range
-  static async autoCalculate(req: Request, res: Response) {
+  @Post("/auto-calculate")
+  @Swagger("Auto-Calculate P&L", "Automatically calculates P&L based on delivered orders and salaries")
+  async autoCalculate(req: Request, res: Response) {
     try {
       const { company_id, start_date, end_date } = req.body;
 

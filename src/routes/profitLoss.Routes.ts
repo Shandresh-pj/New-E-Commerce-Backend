@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { ProfitLossController } from "../controllers/profitLoss.controller";
+import { profitLossController } from "../controllers";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
 import { authorize } from "../middleware/authorize";
 import { UserType } from "../utils/Role-Access";
@@ -56,7 +56,7 @@ router.post(
   authorize({
     roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
   }),
-  ProfitLossController.create
+  profitLossController.create.bind(profitLossController)
 );
 
 /**
@@ -83,7 +83,7 @@ router.get(
   authorize({
     roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
   }),
-  ProfitLossController.getAll
+  profitLossController.getAll.bind(profitLossController)
 );
 
 /**
@@ -110,7 +110,7 @@ router.delete(
   authorize({
     roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
   }),
-  ProfitLossController.delete
+  profitLossController.delete.bind(profitLossController)
 );
 
 /**
@@ -150,7 +150,7 @@ router.post(
   authorize({
     roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
   }),
-  ProfitLossController.autoCalculate
+  profitLossController.autoCalculate.bind(profitLossController)
 );
 
 export default router;
