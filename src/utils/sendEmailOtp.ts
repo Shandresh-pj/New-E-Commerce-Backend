@@ -46,20 +46,15 @@ export class EmailService {
         }
 
     }
-
-
     private static getTemplate(
-
-        title:string,
-        subtitle:string,
-        content:string,
-        gradient:string
-
-    ){
-
-return `
+        title: string,
+        subtitle: string,
+        content: string,
+        gradient: string
+    ) {
+        return `
 <!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -67,125 +62,151 @@ return `
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>${title}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap');
+    
     body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
     table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
     img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
     table { border-collapse: collapse !important; }
-    body { height: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; font-family: 'Inter', Arial, sans-serif; background-color: #0b0f19; }
+    
+    body {
+      height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background-color: #060b17;
+      color: #94a3b8;
+    }
     
     .email-container {
       max-width: 600px;
       margin: 40px auto;
-      background: #151a28;
+      background: #0b1120;
       border-radius: 24px;
       overflow: hidden;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06);
       border: 1px solid rgba(255,255,255,0.08);
     }
     
     .hero-banner {
       background: ${gradient};
-      padding: 50px 30px;
+      padding: 48px 32px;
       text-align: center;
       position: relative;
     }
     
+    /* Elegant glass overlay */
     .hero-banner::after {
       content: "";
       position: absolute;
       bottom: 0; left: 0; right: 0;
-      height: 60px;
-      background: linear-gradient(to top, #151a28, transparent);
+      height: 70px;
+      background: linear-gradient(to top, #0b1120, transparent);
     }
 
     .hero-banner h1 {
       color: #ffffff;
-      font-size: 32px;
-      font-weight: 700;
-      margin: 0 0 10px 0;
-      letter-spacing: -0.5px;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      font-family: 'Outfit', sans-serif;
+      font-size: 30px;
+      font-weight: 800;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.02em;
+      text-shadow: 0 4px 12px rgba(0,0,0,0.25);
       position: relative;
       z-index: 2;
     }
     
     .hero-banner p {
-      color: rgba(255,255,255,0.9);
-      font-size: 18px;
+      color: rgba(255,255,255,0.92);
+      font-size: 16px;
       margin: 0;
-      font-weight: 300;
+      font-weight: 500;
+      letter-spacing: 0.01em;
       position: relative;
       z-index: 2;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
     
     .content-body {
-      padding: 40px;
+      padding: 40px 48px;
       color: #94a3b8;
-      font-size: 16px;
-      line-height: 1.6;
+      font-size: 15px;
+      line-height: 1.65;
     }
     
     .content-body h2 {
       color: #ffffff;
+      font-family: 'Outfit', sans-serif;
       font-size: 22px;
-      font-weight: 600;
+      font-weight: 700;
       margin-top: 0;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .content-body p {
+      margin: 0 0 16px 0;
     }
     
-    .info-card {
+    .card {
       background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 16px;
-      padding: 30px;
-      margin: 30px 0;
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 18px;
+      padding: 24px;
+      margin: 28px 0;
       text-align: center;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
     }
     
-    .info-card p {
-      margin: 0 0 15px 0;
-      color: #94a3b8;
-      font-size: 14px;
+    .card p {
+      margin: 0 0 10px 0;
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.08em;
     }
     
     .code {
-      font-size: 36px;
-      font-weight: 700;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+      font-size: 32px;
+      font-weight: 800;
       color: #ffffff;
-      letter-spacing: 6px;
+      letter-spacing: 4px;
       margin: 0;
-      text-shadow: 0 0 20px rgba(255,255,255,0.2);
+      text-shadow: 0 0 16px rgba(255,255,255,0.15);
     }
     
     .button {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       background: ${gradient};
       color: #ffffff !important;
-      font-size: 16px;
-      font-weight: 600;
+      font-size: 15px;
+      font-weight: 700;
       text-decoration: none;
-      padding: 16px 36px;
-      border-radius: 12px;
-      margin-top: 10px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-      transition: all 0.3s ease;
+      padding: 14px 32px;
+      border-radius: 500px;
+      margin: 20px 0 10px;
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      letter-spacing: 0.01em;
     }
     
     .email-footer {
-      background: #0d111d;
-      padding: 30px;
+      background: #070c17;
+      padding: 32px 48px;
       text-align: center;
-      border-top: 1px solid rgba(255,255,255,0.05);
+      border-top: 1px solid rgba(255,255,255,0.06);
     }
     
     .email-footer p {
       color: #64748b;
-      font-size: 13px;
-      margin: 0 0 10px 0;
-      line-height: 1.5;
+      font-size: 12px;
+      margin: 0 0 12px 0;
+      line-height: 1.6;
     }
     
     .social-links {
@@ -193,11 +214,12 @@ return `
     }
     
     .social-links a {
-      color: #94a3b8;
+      color: #4f46e5;
       text-decoration: none;
       margin: 0 12px;
-      font-size: 13px;
-      font-weight: 600;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
     }
     
     @media screen and (max-width: 600px) {
@@ -206,20 +228,21 @@ return `
         border-radius: 0 !important;
         border: none !important;
       }
-      .hero-banner { padding: 40px 20px !important; }
-      .content-body { padding: 30px 20px !important; }
-      .code { font-size: 28px !important; letter-spacing: 4px !important; }
-      .button { display: block !important; width: auto !important; margin: 20px 0 0 0 !important; }
+      .hero-banner { padding: 40px 24px !important; }
+      .content-body { padding: 32px 24px !important; }
+      .email-footer { padding: 28px 24px !important; }
+      .code { font-size: 26px !important; letter-spacing: 3px !important; }
+      .button { display: block !important; text-align: center !important; margin: 16px 0 0 0 !important; }
     }
   </style>
 </head>
 <body>
   <!-- Visually Hidden Preheader Text -->
-  <div style="display: none; font-size: 1px; color: #fefefe; line-height: 1px; font-family: 'Inter', Arial, sans-serif; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
+  <div style="display: none; font-size: 1px; color: #060b17; line-height: 1px; font-family: 'Plus Jakarta Sans', Arial, sans-serif; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden;">
     ${subtitle}
   </div>
 
-  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #0b0f19;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #060b17;">
     <tr>
       <td align="center" valign="top">
         <table border="0" cellpadding="0" cellspacing="0" width="100%" class="email-container">
@@ -241,14 +264,14 @@ return `
           <!-- Footer -->
           <tr>
             <td class="email-footer">
-              <p>&copy; ${new Date().getFullYear()} SVK Enterprise Systems. All Rights Reserved.</p>
+              <p>&copy; ${new Date().getFullYear()} SVK E-Com Command Center. All Rights Reserved.</p>
               <div class="social-links">
                 <a href="#">Dashboard</a>
                 <a href="#">Support</a>
                 <a href="#">Privacy Policy</a>
               </div>
               <br>
-              <p style="font-size: 11px; opacity: 0.7;">This is an automated operational email. Please do not reply directly to this address.</p>
+              <p style="font-size: 10px; opacity: 0.7;">This is an automated operational email. Please do not reply directly to this address.</p>
             </td>
           </tr>
         </table>
@@ -259,6 +282,8 @@ return `
 </html>
 `;
     }
+
+
 
 
 
