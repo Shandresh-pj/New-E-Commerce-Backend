@@ -34,6 +34,7 @@ import { UserAddress } from "./entities/userAddress";
 import { Wishlist } from "./entities/wishlist";
 import { PascalCaseNamingStrategy } from "./utils/pascalCase";
 import { InvoiceSettings } from "./entities/invoiceSettings";
+import { ProfitLoss } from "./entities/profit_loss.entity";
 
 
 config({
@@ -163,7 +164,8 @@ let localConfig: DataSourceOptions = {
     Wishlist,
     AuditLogBackup,
     AuditLog,
-    InvoiceSettings
+    InvoiceSettings,
+    ProfitLoss
   ],
 
   namingStrategy:
