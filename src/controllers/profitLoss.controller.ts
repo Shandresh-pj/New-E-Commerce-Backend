@@ -135,7 +135,7 @@ export class ProfitLossController {
         expenses: totalExpenses,
         net_profit: netProfit,
         entry_type: "AUTO",
-        notes: \`Auto calculated from \${start_date} to \${end_date}\`
+        notes: `Auto calculated from ${start_date} to ${end_date}`
       });
 
       await plRepo.save(entry);
