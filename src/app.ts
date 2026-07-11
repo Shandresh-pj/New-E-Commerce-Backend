@@ -7,6 +7,9 @@ import cors from "cors";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
 import swaggerUi from "swagger-ui-express";
+import helmet from "helmet";
+import hpp from "hpp";
+const xssClean = require("xss-clean");
 
 import { swaggerSpec } from "./config/swagger";
 import { timezoneMiddleware } from "./middleware/timezone";
@@ -22,6 +25,12 @@ const app = express();
 /* ================= SECURITY & CORS ================= */
 
 app.disable("x-powered-by");
+app.use(helmet({
+  contentSecurityPolicy: false, // Swagger and custom frontends might load inline scripts/assets
+}));
+app.use(hpp());
+app.use(xssClean());
+
 
 app.use(
   cors({
