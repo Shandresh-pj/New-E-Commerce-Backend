@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
-import { getRepository } from "typeorm";
+import dataSource from "../config/database";
 import { ProfitLoss } from "../entities/profit_loss.entity";
 import { Order } from "../entities/order";
 import { Salary } from "../entities/salary";
-import { StatusCodes } from "http-status-codes";
 
 export class ProfitLossController {
 
@@ -14,7 +13,7 @@ export class ProfitLossController {
 
       const net_profit = (revenue || 0) - (expenses || 0);
 
-      const repo = getRepository(ProfitLoss);
+      const repo = dataSource.getRepository(ProfitLoss);
       const entry = repo.create({
         company_id,
         branch_id,
@@ -28,14 +27,14 @@ export class ProfitLossController {
 
       await repo.save(entry);
 
-      return res.status(StatusCodes.CREATED).json({
+      return res.status(201).json({
         success: true,
         message: "Manual Profit & Loss entry created successfully.",
         data: entry
       });
     } catch (error) {
       console.error(error);
-      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      return res.status(500).json({
         success: false,
         message: "Failed to create Profit & Loss entry."
       });
@@ -46,7 +45,7 @@ export class ProfitLossController {
   static async getAll(req: Request, res: Response) {
     try {
       const { company_id } = req.query;
-      const repo = getRepository(ProfitLoss);
+      const repo = dataSource.getRepository(ProfitLoss);
 
       const query = repo.createQueryBuilder("pl");
       
@@ -58,13 +57,13 @@ export class ProfitLossController {
 
       const records = await query.getMany();
 
-      return res.status(StatusCodes.OK).json({
+      return res.status(200).json({
         success: true,
         data: records
       });
     } catch (error) {
       console.error(error);
-      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      return res.status(500).json({
         success: false,
         message: "Failed to fetch Profit & Loss records."
       });
@@ -75,17 +74,17 @@ export class ProfitLossController {
   static async delete(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const repo = getRepository(ProfitLoss);
+      const repo = dataSource.getRepository(ProfitLoss);
 
       await repo.delete(id);
 
-      return res.status(StatusCodes.OK).json({
+      return res.status(200).json({
         success: true,
         message: "Record deleted successfully."
       });
     } catch (error) {
       console.error(error);
-      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      return res.status(500).json({
         success: false,
         message: "Failed to delete record."
       });
@@ -98,14 +97,14 @@ export class ProfitLossController {
       const { company_id, start_date, end_date } = req.body;
 
       if (!company_id || !start_date || !end_date) {
-        return res.status(StatusCodes.BAD_REQUEST).json({
+        return res.status(400).json({
           success: false,
           message: "company_id, start_date, and end_date are required."
         });
       }
 
       // 1. Calculate Revenue from Orders
-      const orderRepo = getRepository(Order);
+      const orderRepo = dataSource.getRepository(Order);
       const orders = await orderRepo.createQueryBuilder("order")
         .where("order.company_id = :company_id", { company_id })
         .andWhere("order.created_at >= :start_date", { start_date })
@@ -113,21 +112,21 @@ export class ProfitLossController {
         .andWhere("order.status = :status", { status: "DELIVERED" }) // Assuming delivered orders count as revenue
         .getMany();
 
-      const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+      const totalRevenue = orders.reduce((sum: number, o: Order) => sum + Number(o.total || 0), 0);
 
       // 2. Calculate Expenses (e.g. Salaries)
-      const salaryRepo = getRepository(Salary);
+      const salaryRepo = dataSource.getRepository(Salary);
       const salaries = await salaryRepo.createQueryBuilder("salary")
         // NOTE: If salary doesn't have company_id directly, we would join employee
         // We will assume expenses could be salaries + other deductions
         .getMany(); // Simplified for MVP
 
-      const totalExpenses = salaries.reduce((sum, s) => sum + Number(s.net_salary || 0), 0);
+      const totalExpenses = salaries.reduce((sum: number, s: Salary) => sum + Number(s.net_salary || 0), 0);
       
       const netProfit = totalRevenue - totalExpenses;
 
       // 3. Save as AUTO entry
-      const plRepo = getRepository(ProfitLoss);
+      const plRepo = dataSource.getRepository(ProfitLoss);
       const entry = plRepo.create({
         company_id,
         record_date: new Date().toISOString().split('T')[0],
@@ -140,7 +139,7 @@ export class ProfitLossController {
 
       await plRepo.save(entry);
 
-      return res.status(StatusCodes.OK).json({
+      return res.status(200).json({
         success: true,
         message: "P&L auto-calculated successfully.",
         data: entry
@@ -148,7 +147,7 @@ export class ProfitLossController {
 
     } catch (error) {
       console.error("Auto calc error", error);
-      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      return res.status(500).json({
         success: false,
         message: "Failed to auto-calculate Profit & Loss."
       });
