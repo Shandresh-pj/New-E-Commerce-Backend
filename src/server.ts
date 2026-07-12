@@ -32,7 +32,7 @@ async function initDatabase() {
 async function startServer() {
   try {
     await initDatabase();
-    await EmailService.verifyConnection();
+    EmailService.verifyConnection(); // Run asynchronously so it doesn't block Render startup
 
 
     const port = Number(process.env.PORT || 3000);
