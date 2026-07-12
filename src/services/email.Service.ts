@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { TemplateRenderer } from "../utils/templateRenderer";
 
 class EmailService {
 
@@ -43,33 +44,18 @@ class EmailService {
         email:string,
         otp:string
     ){
-
-        return this.transporter.sendMail({
-
-            from: `"System" <${process.env.EMAIL_USER}>`,
-            to: email,
-
-            subject:"OTP Verification",
-
-            html:`
-
-            <div style="font-family:Arial">
-
-            <h2>Email Verification</h2>
-
-            <p>Your OTP:</p>
-
-            <h1>${otp}</h1>
-
-            <p>
-            Expires in 5 minutes
-            </p>
-
-            </div>
-
-            `
+        const html = TemplateRenderer.renderTemplate('email-verification', {
+            user_name: 'User',
+            otp_code: otp,
+            verify_url: process.env.APP_URL || 'http://localhost:4200'
         });
 
+        return this.transporter.sendMail({
+            from: `"System" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject:"OTP Verification",
+            html: html
+        });
     }
 
     async sendTemporaryPassword(
@@ -77,35 +63,18 @@ class EmailService {
         password:string,
         name:string
     ){
-
-        return this.transporter.sendMail({
-
-            from: `"System" <${process.env.EMAIL_USER}>`,
-            to:email,
-
-            subject:"Account Created",
-
-            html:`
-
-            <div>
-
-            <h2>
-            Welcome ${name}
-            </h2>
-
-            <p>
-            Temporary Password:
-            </p>
-
-            <h3>
-            ${password}
-            </h3>
-
-            </div>
-
-            `
+        const html = TemplateRenderer.renderTemplate('account-created', {
+            user_name: name,
+            password: password,
+            dashboard_url: process.env.APP_URL || 'http://localhost:4200'
         });
 
+        return this.transporter.sendMail({
+            from: `"System" <${process.env.EMAIL_USER}>`,
+            to:email,
+            subject:"Account Created",
+            html: html
+        });
     }
 
     async sendInvoice(
@@ -113,26 +82,25 @@ class EmailService {
         filePath:string,
         invoiceNo:string
     ){
+        const html = TemplateRenderer.renderTemplate('invoice-receipt', {
+            user_name: 'Customer',
+            invoice_id: invoiceNo,
+            amount: 'See attached PDF',
+            invoice_url: process.env.APP_URL || 'http://localhost:4200'
+        });
 
         return this.transporter.sendMail({
-
             from:`"Invoice System" <${process.env.EMAIL_USER}>`,
-
             to:email,
-
             subject:`Invoice ${invoiceNo}`,
-
-            text:"Please find attached invoice",
-
+            html: html,
             attachments:[
                 {
                     filename:`${invoiceNo}.pdf`,
                     path:filePath
                 }
             ]
-
         });
-
     }
 
 }

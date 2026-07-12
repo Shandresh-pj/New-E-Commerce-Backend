@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { TemplateRenderer } from "./templateRenderer";
 
 export const sendInvoiceEmail = async (
   email: string,
@@ -14,11 +15,18 @@ export const sendInvoiceEmail = async (
     },
   });
 
+  const html = TemplateRenderer.renderTemplate('invoice-receipt', {
+      user_name: 'Customer',
+      invoice_id: invoiceNo,
+      amount: 'See attached PDF',
+      invoice_url: process.env.APP_URL || 'http://localhost:4200'
+  });
+
   await transporter.sendMail({
     from: "Invoice System",
     to: email,
     subject: `Invoice ${invoiceNo}`,
-    text: "Please find attached your invoice.",
+    html: html,
     attachments: [
       {
         filename: `${invoiceNo}.pdf`,

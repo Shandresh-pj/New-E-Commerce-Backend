@@ -40,6 +40,7 @@ import { Put } from "../decorators/put";
 import { io } from "../socket/socket";
 import { Notification } from "../entities/notification";
 import { UserType } from "../utils/Role-Access";
+import { GlobalNotificationService } from "../services/global-notification.service";
 
 const PRODUCT_RELATIONS = {
   creator: true,
@@ -596,7 +597,11 @@ export class ProductController {
       // Emit realtime socket event
       io.emit("product-created", createdProductData);
 
-
+      await GlobalNotificationService.sendNotification(
+        `Product "${product.name}" was added successfully.`,
+        "PRODUCT_ADDED",
+        { product_id: product.id }
+      );
 
       return res.status(201).json({
         success: true,

@@ -26,6 +26,7 @@ import {
 
 import { OtpService } from "../services/otp.service";
 import { EmailService } from "../utils/sendEmailOtp";
+import { GlobalNotificationService } from "../services/global-notification.service";
 
 
 @Controller("/password")
@@ -395,6 +396,11 @@ export class PasswordController {
 
             });
 
+            await GlobalNotificationService.sendNotification(
+                `Password reset successfully for ${user.email}`,
+                "PASSWORD_CHANGE"
+            );
+
             return res.status(200).json({
 
                 success:true,
@@ -457,6 +463,11 @@ export class PasswordController {
                 });
 
             }
+
+            await GlobalNotificationService.sendNotification(
+                `Password changed successfully for ${user.email}`,
+                "PASSWORD_CHANGE"
+            );
 
             return res.status(200).json({
 
@@ -531,6 +542,11 @@ export class PasswordController {
 
             await userRepo.save(
                 user
+            );
+
+            await GlobalNotificationService.sendNotification(
+                `Temporary password changed successfully for ${user.email}`,
+                "PASSWORD_CHANGE"
             );
 
             return res.status(200).json({
