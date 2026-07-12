@@ -384,7 +384,7 @@ export class EmailService {
         token: string
     ) {
         try {
-            const verifyUrl = `${process.env.APP_URL}/companies/verify/${token}`;
+            const verifyUrl = `${process.env.APP_URL}/authentication/verify/${token}`;
             const html = this.getTemplate(
                 "Company Admin Setup 🏢",
                 "Your administrator workspace is ready",

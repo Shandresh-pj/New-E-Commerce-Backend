@@ -391,7 +391,7 @@ router.get(
  *         description: Internal server error
  */
 router.get(
-  "/verify/:token",
+  "/auth/verify/:token",
   verifyEmailLimiter,
   companyController.verifyEmail.bind(companyController)
 );
