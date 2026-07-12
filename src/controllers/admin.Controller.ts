@@ -456,9 +456,7 @@ message:
 
 }
 
-await repo.remove(
-access
-);
+await repo.delete(access.id);
 
 return res.json({
 

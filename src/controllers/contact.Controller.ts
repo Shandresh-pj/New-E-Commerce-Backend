@@ -134,6 +134,20 @@ export class ContactController {
         return res.status(400).json({ success: false, message: "Email is already registered" });
       }
 
+      const existingPhoneContact = await contactRepo.findOne({ where: { phone, isDeleted: false } });
+      const existingPhoneUser = await userRepo.findOne({ where: { mobilenumber: phone } });
+      const existingPhoneCompany = await dataSource.getRepository(Company).findOne({ where: { phone } });
+      if (existingPhoneContact || existingPhoneUser || existingPhoneCompany) {
+        return res.status(400).json({ success: false, message: "Mobile number is already registered" });
+      }
+
+      if (companyName) {
+         const existingCompany = await dataSource.getRepository(Company).findOne({ where: { name: companyName } });
+         if (existingCompany) {
+             return res.status(400).json({ success: false, message: "Company name is already registered" });
+         }
+      }
+
       const verifyToken = crypto.randomUUID();
       const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -149,7 +163,7 @@ export class ContactController {
         businessType,
         gst: gst || null,
         website: website || null,
-        employeeCount: Number(employeeCount),
+        employeeCount: employeeCount ? Number(employeeCount) : 1,
         preferredPlan,
         billingCycle,
         message: message || null,

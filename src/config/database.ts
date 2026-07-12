@@ -26,6 +26,12 @@ if (isProduction) {
       ssl: {
         rejectUnauthorized: false,
       },
+      poolSize: 10,
+      extra: {
+        max: 10,
+        connectionTimeoutMillis: 20000,
+        idleTimeoutMillis: 30000
+      }
     };
   } else {
     dbConfig = {
@@ -41,6 +47,12 @@ if (isProduction) {
       ssl: {
         rejectUnauthorized: false,
       },
+      poolSize: 10,
+      extra: {
+        max: 10,
+        connectionTimeoutMillis: 20000,
+        idleTimeoutMillis: 30000
+      }
     };
   }
 } else {
@@ -57,6 +69,12 @@ if (isProduction) {
       synchronize: String(process.env.DB_SYNC).toLowerCase().trim() === "true",
       logging: true,
       entities: [path.join(__dirname, "../entities/**/*.{ts,js}")],
+      poolSize: 10,
+      extra: {
+        max: 10,
+        connectionTimeoutMillis: 20000,
+        idleTimeoutMillis: 30000
+      }
     };
   } else {
     dbConfig = {

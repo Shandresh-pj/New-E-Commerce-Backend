@@ -7,6 +7,10 @@ export class CreateContactDto {
   @MaxLength(150)
   companyName!: string;
 
+  @IsOptional()
+  @IsString()
+  fullName?: string;
+
   @IsString()
   @IsNotEmpty()
   @MaxLength(150)
@@ -49,10 +53,14 @@ export class CreateContactDto {
   @IsString()
   website?: string;
 
+  @IsOptional()
   @IsNumber()
-  @IsNotEmpty()
   @Type(() => Number)
-  employeeCount!: number;
+  employeeCount?: number;
+
+  @IsOptional()
+  @IsString()
+  selectedPlan?: string;
 
   @IsString()
   @IsNotEmpty()

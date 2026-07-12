@@ -135,12 +135,12 @@ public async create(req: any, res: any) {
 
     await queryRunner.commitTransaction();
 
-    // Email outside transaction (safe)
+    // Email outside transaction (safe & non-blocking)
     EmailService.sendTemporaryPassword(
       email,
       tempPassword,
       `${name} BRANCH MANAGER`
-    ).catch(() => {});
+    ).catch((err) => console.log("Branch Mail Error:", err));
 
     return res.status(201).json({
       success: true,

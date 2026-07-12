@@ -26,8 +26,9 @@ import { BiometricDevice, BiometricAuthLog } from "../entities/biometric_device.
 import { AttendanceNotification } from "../entities/attendance_notification.entity";
 import { Attendance, AttendanceBreakLog } from "../entities/attendance.entity";
 import { Salary } from "../entities/salary";
-import { Leave } from "../entities/leave.entity";
+import { LeaveRequest } from "../entities/leave.entity";
 import { Shift, ShiftAssignment } from "../entities/shift.entity";
+
 import { BreakPolicy } from "../entities/break_policy.entity";
 import { BreakSetting } from "../entities/break-setting.entity";
 import { ProfitLoss } from "../entities/profit_loss.entity";
@@ -326,6 +327,7 @@ savedCompany.id
 });
 
 
+
 // =====================================
 // COMMIT
 // =====================================
@@ -337,21 +339,12 @@ await queryRunner.commitTransaction();
 // EMAIL OUTSIDE TRANSACTION
 // =====================================
 
-EmailService
-.sendCompanyAdminCredentials(
-
-email,
-tempPassword,
-verifyToken
-
-)
-.catch((error)=>{
-
-console.log(
-"Mail Error:",
-error
-);
-
+EmailService.sendCompanyAdminCredentials(
+  email,
+  tempPassword,
+  verifyToken
+).catch((error: any) => {
+  console.log("Mail Error:", error);
 });
 
 
@@ -359,16 +352,10 @@ error
 // RESPONSE
 // =====================================
 
-return res.status(201)
-.json({
-
-success:true,
-
-message:
-"Company created successfully",
-
-companyId:
-savedCompany.id,
+return res.status(201).json({
+  success: true,
+  message: "Company created successfully",
+  companyId: savedCompany.id,
 
 adminUserId:
 savedUser.id
@@ -556,8 +543,10 @@ public async update(
 
     if (companyAdmin) {
 
-      companyAdmin.name =
-        `${name} Admin`;
+      companyAdmin.name = name
+        ? `${name} Admin`
+        : companyAdmin.name;
+
 
       companyAdmin.email =
         email ??
@@ -748,6 +737,13 @@ message:error.message
     res: any
   ) {
 
+    if (!req.user.isSuperAdmin && req.user.companyId !== Number(req.params.id)) {
+      return res.status(403).json({
+        success: false,
+        message: "You do not have permission to view this company's details"
+      });
+    }
+
     const repo =
       dataSource.getRepository(
         Company
@@ -769,6 +765,10 @@ message:error.message
         message:
           "Company not found"
       });
+    }
+
+    if (company.razorpay_key_secret) {
+      company.razorpay_key_secret = "••••••••••••••••";
     }
 
     return res.json({
@@ -889,7 +889,7 @@ message:
     }
 
     // Clean up all dependent metrics, logs, transactions and profiles first
-    await queryRunner.manager.delete(UserRole, { company_id: companyId });
+    await queryRunner.manager.query(`DELETE FROM user_roles WHERE company_id = $1`, [companyId]);
     await queryRunner.manager.delete(RolePermission, { company_id: companyId });
     await queryRunner.manager.delete(BranchStock, { company_id: companyId });
     await queryRunner.manager.delete(BiometricAuthLog, { company_id: companyId });
@@ -898,8 +898,9 @@ message:
     await queryRunner.manager.delete(AttendanceBreakLog, { company_id: companyId });
     await queryRunner.manager.delete(Attendance, { company_id: companyId });
     await queryRunner.manager.delete(Salary, { company_id: companyId });
-    await queryRunner.manager.delete(Leave, { company_id: companyId });
+    await queryRunner.manager.delete(LeaveRequest, { company_id: companyId });
     await queryRunner.manager.delete(ShiftAssignment, { company_id: companyId });
+
     await queryRunner.manager.delete(Shift, { company_id: companyId });
     await queryRunner.manager.delete(BreakPolicy, { company_id: companyId });
     await queryRunner.manager.delete(BreakSetting, { company_id: companyId });
@@ -920,7 +921,7 @@ message:
     }
 
     await queryRunner.manager.delete(Register, { company_id: companyId });
-    await queryRunner.manager.delete(Branch, { company_id: companyId });
+    await queryRunner.manager.query(`DELETE FROM branches WHERE company_id = $1`, [companyId]);
 
     await companyRepo.remove(company);
 

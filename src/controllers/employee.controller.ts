@@ -9,6 +9,7 @@ import { User, UserRole } from "../entities/user";
 
 import { EmailService } from "../utils/sendEmailOtp";
 import { UserType } from "../utils/Role-Access";
+import { TenantService } from "../middleware/tenantFilter.middleware";
 
 import {
   Delete,
@@ -263,31 +264,21 @@ await roleRepo.save(
 userRole);
 
 
+await queryRunner.commitTransaction();
+
 // ====================
 // Send mail
 // ====================
 
-await EmailService
-.sendTemporaryPassword(
+EmailService.sendTemporaryPassword(
+  email,
+  tempPassword,
+  name
+).catch(err => console.log("Employee Mail Error:", err));
 
-email,
-tempPassword,
-name
-
-);
-
-
-await queryRunner
-.commitTransaction();
-
-
-return res.status(201)
-.json({
-
-success:true,
-
-message:
-"Employee created successfully",
+return res.status(201).json({
+  success: true,
+  message: "Employee created successfully",
 
 data:{
 
@@ -439,14 +430,7 @@ message:error.message
       const employee =
       await repo.findOne({
 
-        where:{
-
-          id:Number(
-            req.params.id
-          ),
-
-          userType: In([UserType.BRANCH_MANAGER, UserType.SHOPKEEPER, UserType.DELIVERY_BOY, UserType.EMPLOYEE])
-        },
+        where: TenantService.scopeWhere(req.user, { id: Number(req.params.id), userType: In([UserType.BRANCH_MANAGER, UserType.SHOPKEEPER, UserType.DELIVERY_BOY, UserType.EMPLOYEE]) }),
 
         select:{
           id:true,
@@ -516,12 +500,7 @@ message:error.message
       const employee =
       await repo.findOne({
 
-        where:{
-          id:Number(
-            req.params.id
-          )
-        }
-
+        where: TenantService.scopeWhere(req.user, { id: Number(req.params.id) })
       });
 
       if(!employee){
@@ -597,12 +576,7 @@ message:error.message
       const employee =
       await repo.findOne({
 
-        where:{
-          id:Number(
-            req.params.id
-          )
-        }
-
+        where: TenantService.scopeWhere(req.user, { id: Number(req.params.id) })
       });
 
       if(!employee){
