@@ -29,9 +29,20 @@ async function initDatabase() {
   console.log("✅ Database Connected");
 }
 
+import { redisClient } from "./config/redis";
+
 async function startServer() {
   try {
     await initDatabase();
+    
+    // Connect to Redis (v4+ requires explicit connection)
+    try {
+      await redisClient.connect();
+      console.log("✅ Redis Connected");
+    } catch (redisErr: any) {
+      console.warn("⚠️ Redis failed to connect. Caching will be disabled:", redisErr.message);
+    }
+
     EmailService.verifyConnection(); // Run asynchronously so it doesn't block Render startup
 
 

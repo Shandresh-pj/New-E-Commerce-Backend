@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, BaseEntity } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, BaseEntity, Index } from "typeorm";
 
 export enum ContactStatus {
   PENDING = "PENDING",
@@ -8,6 +8,10 @@ export enum ContactStatus {
 }
 
 @Entity("contacts")
+@Index(["status"])
+@Index(["email"])
+@Index(["phone"])
+@Index(["isDeleted"])
 export class Contact extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;

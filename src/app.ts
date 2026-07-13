@@ -80,11 +80,16 @@ app.use((req, res, next) => {
 app.use(preventDuplicateCalls);
 app.use(timezoneMiddleware);
 
+import { redisCache } from "./middleware/redisCache";
+
 /* ================= SWAGGER ================= */
 
 app.use("/pjsv", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 /* ================= ROUTE LOADER ================= */
+
+// Apply redis cache to all API routes
+app.use("/api", redisCache(60));
 
 const loadRoutes = (dir: string) => {
   if (!fs.existsSync(dir)) {

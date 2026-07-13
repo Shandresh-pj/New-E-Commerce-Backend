@@ -1,10 +1,13 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn, Index } from "typeorm";
 import { Branch } from "./branch";
 import { Company } from "./company";
 import { Role } from "./roles";
 import { StatusType, UserType } from "../utils/Role-Access";
 
 @Entity("users")
+@Index(["mobilenumber"])
+@Index(["isActive"])
+@Index(["status"])
 export class User {
 
   @PrimaryGeneratedColumn()
@@ -88,6 +91,10 @@ verificationTokenExpires: Date | null;
 
 
 @Entity("user_roles")
+@Index(["user_id"])
+@Index(["role_id"])
+@Index(["company_id"])
+@Index(["branch_id"])
 export class UserRole {
 
   @PrimaryGeneratedColumn()

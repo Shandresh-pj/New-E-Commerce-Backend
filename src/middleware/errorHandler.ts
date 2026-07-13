@@ -60,7 +60,7 @@ const errorHandler = (
   /* =========================
      MYSQL ERRORS
   ========================= */
-  if (error.code === "ER_DUP_ENTRY") {
+  if (error.code === "ER_DUP_ENTRY" || error.code === "23505") {
     statusCode = 409;
     message = "Duplicate record found";
   }
