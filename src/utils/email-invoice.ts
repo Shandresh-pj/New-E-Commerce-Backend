@@ -15,7 +15,7 @@ export const sendInvoiceEmail = async (
 
   // Fire and forget sending with retry logic
   EmailProvider.sendWithRetry({
-    from: `"Invoice System" <${process.env.EMAIL_USER || process.env.EMAIL}>`,
+
     to: email,
     subject: `Invoice ${invoiceNo}`,
     html: html,

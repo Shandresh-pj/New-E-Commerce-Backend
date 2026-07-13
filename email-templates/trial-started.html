@@ -53,24 +53,21 @@
         }
 
         /* Unique Responsive Animations */
-        @keyframes fadeSlideUp { 0% { opacity: 0; transform: translateY(30px); } 100% { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeSlideUp {
+            0% { opacity: 0; transform: translateY(30px); }
             100% { opacity: 1; transform: translateY(0); }
         }
 
-        
-            70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
-        }
-
-        @keyframes subtleScale { 0% { transform: scale(0.98); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
-            100% { opacity: 1; transform: translateX(0); }
+        @keyframes subtleScale {
+            0% { transform: scale(0.98); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         .animate-fade-in-up { animation: fadeSlideUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 
-        .animate-scale { animation: subtleScale 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-
-        
+        .animate-scale {
+            animation: subtleScale 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
     
         @keyframes gradientShift {
             0% { background-position: 0% 50%; }

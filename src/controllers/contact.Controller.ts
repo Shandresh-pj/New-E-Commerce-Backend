@@ -654,7 +654,7 @@ export class ContactController {
       });
       try {
         await transporter.sendMail({
-          from: process.env.EMAIL_USER,
+
           to: contact.email,
           subject: "Registration status update - SVK E-Com",
           html: rejectHtml

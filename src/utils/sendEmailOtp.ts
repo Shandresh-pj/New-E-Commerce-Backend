@@ -30,7 +30,7 @@ export class EmailService {
 
         // Fire-and-forget sending to prevent blocking API responses
         EmailProvider.sendWithRetry({
-            from: `"SVK E-Com" <${process.env.EMAIL_USER || process.env.EMAIL}>`,
+
             to: email,
             subject: "Welcome to Our Platform",
             html
@@ -49,7 +49,7 @@ export class EmailService {
         });
 
         EmailProvider.sendWithRetry({
-            from: `"SVK E-Com Security" <${process.env.EMAIL_USER || process.env.EMAIL}>`,
+
             to: email,
             subject: "OTP Verification",
             html
@@ -70,7 +70,7 @@ export class EmailService {
         });
 
         EmailProvider.sendWithRetry({
-            from: `"SVK E-Com System" <${process.env.EMAIL_USER || process.env.EMAIL}>`,
+
             to: email,
             subject: "Company Admin Account Created",
             html
@@ -85,7 +85,7 @@ export class EmailService {
         });
 
         EmailProvider.sendWithRetry({
-            from: `"SVK E-Com Security" <${process.env.EMAIL_USER || process.env.EMAIL}>`,
+
             to: email,
             subject: "Verify your SVK E-Com Registration",
             html
@@ -100,7 +100,7 @@ export class EmailService {
         });
 
         EmailProvider.sendWithRetry({
-            from: `"SVK E-Com System" <${process.env.EMAIL_USER || process.env.EMAIL}>`,
+
             to: email,
             subject: "SVK E-Com Registration Approved - Setup Password",
             html
@@ -120,7 +120,7 @@ export class EmailService {
         });
 
         EmailProvider.sendWithRetry({
-            from: `"SVK E-Com Security" <${process.env.EMAIL_USER || process.env.EMAIL}>`,
+
             to: email,
             subject: "Password Reset Request",
             html
@@ -136,7 +136,7 @@ export class EmailService {
         });
 
         EmailProvider.sendWithRetry({
-            from: `"SVK E-Com Security" <${process.env.EMAIL_USER || process.env.EMAIL}>`,
+
             to: email,
             subject: "New Login Detected",
             html
@@ -152,7 +152,7 @@ export class EmailService {
         });
 
         EmailProvider.sendWithRetry({
-            from: `"SVK E-Com Billing" <${process.env.EMAIL_USER || process.env.EMAIL}>`,
+
             to: email,
             subject: `Payment Successful - ${transactionId}`,
             html
@@ -165,7 +165,7 @@ export class EmailService {
         });
 
         EmailProvider.sendWithRetry({
-            from: `"SVK E-Com Support" <${process.env.EMAIL_USER || process.env.EMAIL}>`,
+
             to: email,
             subject: "We received your message",
             html
