@@ -11,15 +11,14 @@ import helmet from "helmet";
 const hpp = require("hpp");
 import { xssSanitizer } from "./middleware/xssSanitizer";
 
-
 import { swaggerSpec } from "./config/swagger";
 import { timezoneMiddleware } from "./middleware/timezone";
 import errorHandler from "./middleware/errorHandler";
 import logger from "./utils/logger";
 import { preventDuplicateCalls } from "./middleware/preventDuplicateCalls";
-import { writeFileSync } from "fs";
-import { resolve } from "path";
 import dataSource from "./config/database";
+import { redisClient } from "./config/redis";
+import { smtpStatus } from "./services/email.Provider";
 
 const app = express();
 
@@ -34,10 +33,27 @@ app.use(xssSanitizer);
 
 
 
+// CORS: lock to specific origins in production, open in development
+const isProd = process.env.NODE_ENV === "production";
+const allowedOrigins = (
+  process.env.CORS_ORIGIN ||
+  process.env.FRONTEND_URL ||
+  "http://localhost:4200"
+).split(",").map((o) => o.trim());
+
 app.use(
   cors({
-    origin: true,
-    credentials: true
+    origin: isProd
+      ? (origin, callback) => {
+          // Allow server-to-server calls (no origin) and whitelisted origins
+          if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+          } else {
+            callback(new Error(`CORS: origin '${origin}' not allowed`));
+          }
+        }
+      : true, // Allow all origins in development
+    credentials: true,
   })
 );
 
@@ -135,20 +151,25 @@ app.get("/health", async (req, res) => {
     let dbTest = "SKIPPED";
     if (dbConnected) {
       await dataSource.query("SELECT 1");
-      dbTest = "SUCCESS";
+      dbTest = "OK";
     }
+
     res.json({
       status: "UP",
-      database: dbConnected ? "CONNECTED" : "DISCONNECTED",
-      dbQuery: dbTest,
-      time: new Date()
+      uptime: `${Math.floor(process.uptime())}s`,
+      nodeVersion: process.version,
+      timestamp: new Date().toISOString(),
+      services: {
+        database: dbConnected ? `CONNECTED (${dbTest})` : "DISCONNECTED",
+        redis: redisClient.isReady ? "CONNECTED" : "UNAVAILABLE (non-fatal)",
+        smtp: smtpStatus === "ok" ? "VERIFIED" : smtpStatus === "failed" ? "UNAVAILABLE" : "UNCHECKED",
+      },
     });
   } catch (err: any) {
-    res.json({
-      status: "UP",
-      database: "ERROR",
+    res.status(503).json({
+      status: "DEGRADED",
       error: err.message,
-      time: new Date()
+      timestamp: new Date().toISOString(),
     });
   }
 });

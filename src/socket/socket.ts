@@ -19,7 +19,8 @@ export const initializeSocket = (server: any) => {
     try {
       const token = socket.handshake.auth?.token || socket.handshake.query?.token;
       if (!token) return next(new Error("No token"));
-      const jwtSecret = process.env.JWT_SECRET || "fallback_default_secret_key_12345";
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) return next(new Error("Server configuration error"));
       const decoded = jwt.verify(token, jwtSecret);
       socket.user = decoded;
       next();

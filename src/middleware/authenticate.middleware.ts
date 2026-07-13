@@ -11,11 +11,13 @@ const authenticateMiddleware = (req: any, res: any, next: any) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const token   = auth.split(" ")[1];
-    console.log("[Auth Middleware] Token received, verifying with JWT_SECRET...");
-    const jwtSecret = process.env.JWT_SECRET || "fallback_default_secret_key_12345";
+    const token = auth.split(" ")[1];
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error("❌ [Auth] JWT_SECRET is not set. All authenticated requests will fail.");
+      return res.status(500).json({ success: false, message: "Server configuration error" });
+    }
     const decoded: any = jwt.verify(token, jwtSecret);
-    console.log("[Auth Middleware] Token verified successfully. Decoded payload:", decoded);
 
     if (decoded.type === "refresh") {
       console.log("[Auth Middleware] Rejected: Token is a refresh token");

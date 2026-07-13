@@ -531,7 +531,7 @@ const { permissions, menus } = await PermissionService.resolveAccess(user, userR
 
 // );
 
-const jwtSecret = process.env.JWT_SECRET || "fallback_default_secret_key_12345";
+const jwtSecret = process.env.JWT_SECRET!;
 const token = jwt.sign({
 
 userId:user.id,

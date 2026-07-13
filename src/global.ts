@@ -1,4 +1,4 @@
-import * as redis from "redis";
+// redis import removed — client is managed centrally via config/redis.ts
 import { config } from "dotenv";
 import { resolve } from "path";
 import { DataSourceOptions } from "typeorm";
@@ -46,49 +46,8 @@ const REDIS_URL = process.env.REDIS_URL;
 const dbType =
   process.env.DB_TYPE as DataSourceOptions["type"];
 
-/* ==========================================
-   DATABASE CONFIG LOG
-========================================== */
-
-console.log(
-  "========== DATABASE CONFIG =========="
-);
-
-console.log(
-  "DB_TYPE:",
-  process.env.DB_TYPE
-);
-
-console.log(
-  "DB_HOST:",
-  process.env.DB_HOST
-);
-
-console.log(
-  "DB_PORT:",
-  process.env.DB_PORT
-);
-
-console.log(
-  "DB_USERNAME:",
-  process.env.DB_USERNAME
-);
-
-console.log(
-  "DB_PASSWORD:",
-  process.env.DB_PASSWORD
-    ? "******"
-    : "EMPTY"
-);
-
-console.log(
-  "DB_DATABASE:",
-  process.env.DB_DATABASE
-);
-
-console.log(
-  "===================================="
-);
+// DB config logging is handled in config/database.ts — removed from here to prevent
+// duplicate startup log spam before the server has initialized.
 
 /* ==========================================
    MYSQL CONFIG
@@ -229,14 +188,9 @@ export namespace Global {
       ? "Testnet"
       : "Mainnet";
 
-  console.log(REDIS_URL);
-
-  export const client =
-    REDIS_URL
-      ? redis.createClient({
-          url: REDIS_URL,
-        })
-      : null;
+  // Redis client is managed centrally via config/redis.ts with retry strategies and error handlers.
+  // Do NOT create a second client here — it would be orphaned with no error handling.
+  export const client = null;
 
   export const dbConfig =
     localConfig;
