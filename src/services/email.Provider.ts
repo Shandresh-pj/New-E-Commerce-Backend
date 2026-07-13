@@ -54,8 +54,18 @@ export class EmailProvider {
       console.log("✅ [EmailProvider] Resend API verified. Email service is active.");
       console.log(`✅ [EmailProvider] Sending from: ${FROM_ADDRESS}`);
     } catch (error: any) {
-      smtpStatus = "failed";
       const msg = error?.message || String(error);
+      
+      // If the user created a "Sending Only" key, it will fail the domains.list() 
+      // but it is still perfectly valid for sending emails!
+      if (msg.includes("restricted") || msg.includes("only send emails")) {
+        smtpStatus = "ok";
+        console.log("✅ [EmailProvider] Resend API key verified (Sending Only mode).");
+        console.log(`✅ [EmailProvider] Sending from: ${FROM_ADDRESS}`);
+        return;
+      }
+
+      smtpStatus = "failed";
       if (msg.includes("401") || msg.includes("invalid_api_key") || msg.includes("Unauthorized")) {
         console.error("❌ [EmailProvider] Invalid RESEND_API_KEY — please check your Render env vars.");
       } else {
