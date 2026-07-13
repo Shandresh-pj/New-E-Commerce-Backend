@@ -1,34 +1,21 @@
-import nodemailer from "nodemailer";
 import { TemplateRenderer } from "./templateRenderer";
+import { EmailProvider } from "../services/email.Provider";
 
 export const sendInvoiceEmail = async (
   email: string,
   filePath: string,
   invoiceNo: string
 ) => {
-
-  const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-      user: process.env.EMAIL_USER || process.env.EMAIL,
-      pass: process.env.EMAIL_PASS,
-    },
-    tls: {
-      rejectUnauthorized: false
-    }
-  });
-
   const html = TemplateRenderer.renderTemplate('invoice-receipt', {
       user_name: 'Customer',
       invoice_id: invoiceNo,
       amount: 'See attached PDF',
-      invoice_url: process.env.APP_URL || 'http://localhost:4200'
+      invoice_url: process.env.FRONTEND_URL || 'http://localhost:4200'
   });
 
-  await transporter.sendMail({
-    from: "Invoice System",
+  // Fire and forget sending with retry logic
+  EmailProvider.sendWithRetry({
+    from: `"Invoice System" <${process.env.EMAIL_USER || process.env.EMAIL}>`,
     to: email,
     subject: `Invoice ${invoiceNo}`,
     html: html,
@@ -38,5 +25,5 @@ export const sendInvoiceEmail = async (
         path: filePath,
       },
     ],
-  });
+  }).catch(err => console.error("[Facade] Background invoice email error:", err.message));
 };
