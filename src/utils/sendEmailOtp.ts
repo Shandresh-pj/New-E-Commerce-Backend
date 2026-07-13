@@ -15,14 +15,16 @@ export class EmailService {
 
     private static transporter =
     nodemailer.createTransport({
-
-        service:"gmail",
-
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
         auth:{
             user:process.env.EMAIL_USER,
             pass:process.env.EMAIL_PASS
+        },
+        tls: {
+            rejectUnauthorized: false
         }
-
     });
 
 
@@ -65,9 +67,9 @@ export class EmailService {
             });
 
             await this.transporter.sendMail({
-                from: process.env.EMAIL_USER,
+                from: `"SVK E-Com" <${process.env.EMAIL_USER}>`,
                 to: email,
-                subject: "🎉 Welcome to Our Platform",
+                subject: "Welcome to Our Platform",
                 html
             });
         } catch (error) {
@@ -92,9 +94,9 @@ export class EmailService {
             });
 
             await this.transporter.sendMail({
-                from: process.env.EMAIL_USER,
+                from: `"SVK E-Com Security" <${process.env.EMAIL_USER}>`,
                 to: email,
-                subject: "🔑 OTP Verification",
+                subject: "OTP Verification",
                 html
             });
         } catch (error) {
@@ -122,9 +124,9 @@ export class EmailService {
             });
 
             await this.transporter.sendMail({
-                from: process.env.EMAIL_USER,
+                from: `"SVK E-Com System" <${process.env.EMAIL_USER}>`,
                 to: email,
-                subject: "🏢 Company Admin Account Created",
+                subject: "Company Admin Account Created",
                 html
             });
         } catch (error) {
@@ -146,9 +148,9 @@ export class EmailService {
             });
 
             await this.transporter.sendMail({
-                from: process.env.EMAIL_USER,
+                from: `"SVK E-Com Security" <${process.env.EMAIL_USER}>`,
                 to: email,
-                subject: "🔑 Verify your SVK E-Com registration",
+                subject: "Verify your SVK E-Com Registration",
                 html
             });
         } catch (error) {
@@ -171,9 +173,9 @@ export class EmailService {
             });
 
             await this.transporter.sendMail({
-                from: process.env.EMAIL_USER,
+                from: `"SVK E-Com System" <${process.env.EMAIL_USER}>`,
                 to: email,
-                subject: "🔑 SVK E-Com Registration Approved - Setup Password",
+                subject: "SVK E-Com Registration Approved - Setup Password",
                 html
             });
         } catch (error) {
