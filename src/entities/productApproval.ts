@@ -1,81 +1,61 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-} from "typeorm";
+import { Entity, Column, Index, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import { Product } from "./products";
 
+// ─── Enums ─────────────────────────────────────────────────────────────────
 export enum ApprovalStatus {
-  PENDING = "Pending",
-  APPROVED = "Approved",
-  REJECTED = "Rejected",
-  CANCELLED = "Cancelled",
+  PENDING           = "Pending",
+  APPROVED          = "Approved",
+  REJECTED          = "Rejected",
+  CANCELLED         = "Cancelled",
   CHANGES_REQUESTED = "Changes Requested",
 }
 
 export enum ApprovalActionType {
-  CREATE = "CREATE",
-  UPDATE = "UPDATE",
+  CREATE       = "CREATE",
+  UPDATE       = "UPDATE",
   STOCK_ADJUST = "STOCK_ADJUST",
 }
 
 @Entity("product_approvals")
 export class ProductApproval {
+
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ nullable: true })
-  product_id!: number;
+  @Column({ type: "int", nullable: true })
+  product_id!: number | null;
 
-  @ManyToOne(() => Product, { onDelete: "SET NULL", nullable: true })
-  @JoinColumn({ name: "product_id" })
-  product!: Product;
+  @Column({ type: "int", nullable: true })
+  branch_id!: number | null;
 
-  @Column({ nullable: true })
-  branch_id!: number;
+  @Column({ type: "int", nullable: true })
+  company_id!: number | null;
 
-  @Column({ nullable: true })
-  company_id!: number;
-
-  @Column()
+  @Column({ type: "varchar", length: 255 })
   requested_by!: string;
 
-  @Column()
+  @Column({ type: "int" })
   requested_by_id!: number;
 
-  @CreateDateColumn()
-  requested_date!: Date;
-
-  @Column({ nullable: true })
-  approved_by!: string;
+  @Column({ type: "varchar", length: 255, nullable: true })
+  approved_by!: string | null;
 
   @Column({ type: "timestamp", nullable: true })
-  approved_date!: Date;
+  approved_date!: Date | null;
 
-  @Column({ nullable: true })
-  rejected_by!: string;
+  @Column({ type: "varchar", length: 255, nullable: true })
+  rejected_by!: string | null;
 
   @Column({ type: "timestamp", nullable: true })
-  rejected_date!: Date;
+  rejected_date!: Date | null;
 
   @Column({ type: "text", nullable: true })
-  approval_comment!: string;
+  approval_comment!: string | null;
 
-  @Column({
-    type: "enum",
-    enum: ApprovalStatus,
-    default: ApprovalStatus.PENDING,
-  })
+  @Column({ type: "enum", enum: ApprovalStatus, default: ApprovalStatus.PENDING })
   status!: ApprovalStatus;
 
-  @Column({
-    type: "enum",
-    enum: ApprovalActionType,
-  })
+  @Column({ type: "enum", enum: ApprovalActionType })
   action_type!: ApprovalActionType;
 
   @Column({ type: "simple-json", nullable: true })
@@ -87,9 +67,17 @@ export class ProductApproval {
   @Column({ type: "simple-json", nullable: true })
   audit_history!: any[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "requested_date" })
+  requested_date!: Date;
+
+  @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: "updated_at" })
   updated_at!: Date;
+
+  // ── Relations ────────────────────────────────────────────────────────
+  @ManyToOne(() => Product, (p) => p.approvals, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "product_id" })
+  product!: Product | null;
 }

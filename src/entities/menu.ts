@@ -1,74 +1,73 @@
-
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  JoinColumn,
+  PrimaryGeneratedColumn,
+  OneToMany,
   ManyToOne,
-  OneToMany
+  JoinColumn,
 } from "typeorm";
-import { Role } from "./roles";
 
+// ─── Enums ─────────────────────────────────────────────────────────────────
 export enum MenuType {
   DASHBOARD = "Dashboard",
-  USERS = "Users",
-  ORDERS = "Orders",
-  PRODUCTS = "Products",
-  BRANCHES = "Branches",
+  USERS     = "Users",
+  ORDERS    = "Orders",
+  PRODUCTS  = "Products",
+  BRANCHES  = "Branches",
   COMPANIES = "Companies",
 }
 
 export enum PermissionType {
-  READ = "READ",
-  WRITE = "WRITE",
-  UPDATE = "UPDATE",
-  DELETE = "DELETE",
+  READ    = "READ",
+  WRITE   = "WRITE",
+  UPDATE  = "UPDATE",
+  DELETE  = "DELETE",
   APPROVE = "APPROVE",
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MENU
+// ═══════════════════════════════════════════════════════════════════════════
 @Entity("menus")
 export class Menu {
 
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
-  @Column({ unique: true })
-  name: string;
+  @Column({ type: "varchar", length: 100, unique: true })
+  name!: string;
 
-  @Column({ unique: true })
-  path: string;
+  @Column({ type: "varchar", length: 255, unique: true })
+  path!: string;
 
-  @Column({ nullable: true })
-  icon: string;
+  @Column({ type: "varchar", length: 100, nullable: true })
+  icon!: string | null;
 
-  @Column({ default: true })
-  isActive: boolean;
+  @Column({ type: "boolean", default: true })
+  isActive!: boolean;
 
-  @OneToMany(() => Permission, p => p.menu)
-  permissions: Permission[];
+  // ── Relations ────────────────────────────────────────────────────────
+  @OneToMany(() => Permission, (p) => p.menu)
+  permissions!: Permission[];
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PERMISSION
+// ═══════════════════════════════════════════════════════════════════════════
 @Entity("permissions")
 export class Permission {
 
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
-  @Column({
-    type: "enum",
-    enum: PermissionType
-  })
-  action: PermissionType;
+  @Column({ type: "enum", enum: PermissionType })
+  action!: PermissionType;
 
-  @Column()
-  menu_id: number;
+  @Column({ type: "int" })
+  menu_id!: number;
 
-  @ManyToOne(() => Menu, m => m.permissions, { onDelete: "CASCADE" })
+  // ── Relations ────────────────────────────────────────────────────────
+  @ManyToOne(() => Menu, (m) => m.permissions, { onDelete: "CASCADE" })
   @JoinColumn({ name: "menu_id" })
-  menu: Menu;
+  menu!: Menu;
 }
-
-
-

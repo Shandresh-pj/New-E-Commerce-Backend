@@ -32,380 +32,214 @@ export class EmployeeController {
   // CREATE EMPLOYEE
   // =====================================
 
-@Post("/")
-@Middleware([authenticateMiddleware,auditMiddleware("EMPLOYEE"),])
-@Swagger(
- "Create Employee",
- "Create employee with company, branch and role assignment"
-)
-async create(
- req:any,
- res:Response
-){
+  @Post("/")
+  @Middleware([authenticateMiddleware, auditMiddleware("EMPLOYEE")])
+  @Swagger(
+    "Create Employee",
+    "Create employee with company, branch and role assignment"
+  )
+  async create(req: any, res: Response) {
+
+    const queryRunner = dataSource.createQueryRunner();
+
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+
+      const userRepo = queryRunner.manager.getRepository(User);
+      const roleRepo = queryRunner.manager.getRepository(UserRole);
+      const companyRepo = queryRunner.manager.getRepository(Company);
+      const branchRepo = queryRunner.manager.getRepository(Branch);
+      const roleMasterRepo = queryRunner.manager.getRepository(Role);
+
+      const {
+        name,
+        email,
+        mobilenumber,
+        company_id,
+        branch_id,
+        role_id,
+        userType
+      } = req.body;
+
+      // ====================
+      // Existing email check
+      // ====================
+
+      const exists = await userRepo.findOne({
+        where: { email }
+      });
+
+      if (exists) {
+        return res.status(409).json({
+          success: false,
+          message: "Email already exists"
+        });
+      }
+
+      // ====================
+      // Validate relations
+      // ====================
+
+      if (company_id) {
+        const company = await companyRepo.findOne({ where: { id: company_id } });
+        if (!company) {
+          return res.status(404).json({ success: false, message: "Company not found" });
+        }
+      }
+
+      if (branch_id) {
+        const branch = await branchRepo.findOne({ where: { id: branch_id } });
+        if (!branch) {
+          return res.status(404).json({ success: false, message: "Branch not found" });
+        }
+      }
+
+      const role = await roleMasterRepo.findOne({
+        where: { id: role_id }
+      });
+
+      if (!role) {
+        return res.status(404).json({
+          success: false,
+          message: "Role not found"
+        });
+      }
+
+      // ====================
+      // Generate password
+      // ====================
+
+      const tempPassword = crypto.randomBytes(4).toString("hex");
+      const hashedPassword = await bcrypt.hash(tempPassword, 12);
+
+      // ====================
+      // Create employee
+      // ====================
+
+      const employee = userRepo.create({
+        name,
+        email,
+        mobilenumber,
+        password: hashedPassword,
+        userType: userType || UserType.SHOPKEEPER,
+        mustChangePassword: true,
+        isActive: true,
+        isSuperAdmin: false
+      });
+
+      await userRepo.save(employee);
+
+      // ====================
+      // Create assignment
+      // ====================
+
+      const userRole = roleRepo.create({
+        user_id: employee.id,
+        role_id: role_id,
+        company_id: company_id || null,
+        branch_id: branch_id || null
+      });
+
+      await roleRepo.save(userRole);
+
+      await queryRunner.commitTransaction();
+
+      // ====================
+      // Send mail
+      // ====================
+
+      EmailService.sendTemporaryPassword(
+        email,
+        tempPassword,
+        name
+      ).catch(err => console.log("Employee Mail Error:", err));
+
+      return res.status(201).json({
+        success: true,
+        message: "Employee created successfully",
+        data: {
+          id: employee.id,
+          name: employee.name,
+          email: employee.email,
+          mobilenumber: employee.mobilenumber,
+          userRole: {
+            company_id,
+            branch_id,
+            role_id
+          }
+        }
+      });
+
+    } catch (error: any) {
+      await queryRunner.rollbackTransaction();
+      return res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    } finally {
+      await queryRunner.release();
+    }
+  }
 
-const queryRunner=
-dataSource.createQueryRunner();
-
-await queryRunner.connect();
-
-await queryRunner.startTransaction();
-
-try{
-
-const userRepo=
-queryRunner.manager.getRepository(
-User
-);
-
-const roleRepo=
-queryRunner.manager.getRepository(
-UserRole
-);
-
-const companyRepo=
-queryRunner.manager.getRepository(
-Company
-);
-
-const branchRepo=
-queryRunner.manager.getRepository(
-Branch
-);
-
-const roleMasterRepo=
-queryRunner.manager.getRepository(
-Role
-);
-
-
-const{
-
-name,
-email,
-mobilenumber,
-company_id,
-branch_id,
-role_id,
-userType
-
-}=req.body;
-
-
-// ====================
-// Existing email check
-// ====================
-
-const exists=
-await userRepo.findOne({
-
-where:{
-email
-}
-
-});
-
-if(exists){
-
-return res.status(409)
-.json({
-
-success:false,
-message:"Email already exists"
-
-});
-
-}
-
-
-// ====================
-// Validate relations
-// ====================
-
-const company=
-await companyRepo.findOne({
-
-where:{
-id:company_id
-}
-
-});
-
-if(!company){
-
-return res.status(404)
-.json({
-
-success:false,
-message:"Company not found"
-
-});
-
-}
-
-
-const branch=
-await branchRepo.findOne({
-
-where:{
-id:branch_id
-}
-
-});
-
-if(!branch){
-
-return res.status(404)
-.json({
-
-success:false,
-message:"Branch not found"
-
-});
-
-}
-
-
-const role=
-await roleMasterRepo.findOne({
-
-where:{
-id:role_id
-}
-
-});
-
-if(!role){
-
-return res.status(404)
-.json({
-
-success:false,
-message:"Role not found"
-
-});
-
-}
-
-
-
-// ====================
-// Generate password
-// ====================
-
-const tempPassword=
-crypto
-.randomBytes(4)
-.toString("hex");
-
-const hashedPassword=
-await bcrypt.hash(
-tempPassword,
-12
-);
-
-
-// ====================
-// Create employee
-// ====================
-
-const employee=
-userRepo.create({
-
-name,
-email,
-mobilenumber,
-
-password:
-hashedPassword,
-
-userType:
-userType ||
-UserType.SHOPKEEPER,
-
-mustChangePassword:true,
-
-isActive:true,
-
-isSuperAdmin:false
-
-});
-
-await userRepo.save(
-employee
-);
-
-
-// ====================
-// Create assignment
-// ====================
-
-const userRole=
-roleRepo.create({
-
-user:{
-id:employee.id
-},
-
-company:{
-id:company_id
-},
-
-branch:{
-id:branch_id
-},
-
-role:{
-id:role_id
-}
-
-});
-
-await roleRepo.save(
-userRole);
-
-
-await queryRunner.commitTransaction();
-
-// ====================
-// Send mail
-// ====================
-
-EmailService.sendTemporaryPassword(
-  email,
-  tempPassword,
-  name
-).catch(err => console.log("Employee Mail Error:", err));
-
-return res.status(201).json({
-  success: true,
-  message: "Employee created successfully",
-
-data:{
-
-id:
-employee.id,
-
-name:
-employee.name,
-
-email:
-employee.email,
-
-mobilenumber:
-employee.mobilenumber,
-
-userRole:{
-
-company_id,
-branch_id,
-role_id
-
-}
-
-}
-
-});
-
-}
-catch(error:any){
-
-await queryRunner
-.rollbackTransaction();
-
-return res.status(500)
-.json({
-
-success:false,
-message:error.message
-
-});
-
-}
-finally{
-
-await queryRunner.release();
-
-}
-
-}
   // =====================================
   // GET ALL EMPLOYEES
   // =====================================
 
-@Get("/")
-@Middleware([authenticateMiddleware])
-async getAll(
- req:any,
- res:Response
-){try{
+  @Get("/")
+  @Middleware([authenticateMiddleware])
+  async getAll(req: any, res: Response) {
+    try {
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
 
-const page=Number(req.query.page)||1;
+      const repo = dataSource.getRepository(User);
 
-const limit=Number(req.query.limit)||10;
+      const qb = repo.createQueryBuilder("user")
+        .leftJoinAndSelect("user.userRoles", "ur")
+        .leftJoinAndSelect("ur.company", "company")
+        .leftJoinAndSelect("ur.branch", "branch")
+        .leftJoinAndSelect("ur.role", "role")
+        .where("user.userType IN (:...types)", {
+          types: [UserType.BRANCH_MANAGER, UserType.SHOPKEEPER, UserType.DELIVERY_BOY, UserType.EMPLOYEE]
+        })
+        .select([
+          "user.id", "user.name", "user.email", "user.mobilenumber", "user.userType",
+          "ur.id", "company.id", "company.name", "branch.id", "branch.name", "branch.location", "role.id", "role.name"
+        ]);
 
-const skip=(page-1)*limit;
+      if (!req.user.isSuperAdmin && req.user.companyId) {
+        qb.andWhere("ur.company_id = :companyId", { companyId: req.user.companyId });
+      }
 
-const repo=dataSource.getRepository(User);
+      if (req.user.branchId) {
+        qb.andWhere("ur.branch_id = :branchId", { branchId: req.user.branchId });
+      }
 
-const qb = repo.createQueryBuilder("user")
-  .leftJoinAndSelect("user.userRoles", "ur")
-  .leftJoinAndSelect("ur.company", "company")
-  .leftJoinAndSelect("ur.branch", "branch")
-  .leftJoinAndSelect("ur.role", "role")
-  .where("user.userType IN (:...types)", {
-    types: [UserType.BRANCH_MANAGER, UserType.SHOPKEEPER, UserType.DELIVERY_BOY, UserType.EMPLOYEE]
-  })
-  .select([
-    "user.id", "user.name", "user.email", "user.mobilenumber", "user.userType",
-    "ur.id", "company.id", "company.name", "branch.id", "branch.name", "branch.location", "role.id", "role.name"
-  ]);
+      qb.skip(skip).take(limit);
 
-if (!req.user.isSuperAdmin && req.user.companyId) {
-  qb.andWhere("ur.company_id = :companyId", { companyId: req.user.companyId });
-}
+      const [users, total] = await qb.getManyAndCount();
 
-if (req.user.branchId) {
-  qb.andWhere("ur.branch_id = :branchId", { branchId: req.user.branchId });
-}
+      return res.json({
+        success: true,
+        data: users,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      });
 
-qb.skip(skip).take(limit);
-
-const [users, total] = await qb.getManyAndCount();
-
-return res.json({
-
-success:true,
-data:users,
-
-pagination:{
-
-total,
-page,
-limit,
-
-totalPages:
-Math.ceil(
-total/limit
-)
-
-}
-
-});
-
-}
-catch(error:any){
-
-return res.status(500)
-.json({
-
-success:false,
-message:error.message
-
-});
-
-}
-
-}
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 
   // =====================================
   // GET SINGLE EMPLOYEE
@@ -417,64 +251,39 @@ message:error.message
     "Get Employee",
     "Get employee by id"
   )
-  async getOne(
-    req:any,
-    res:Response
-  ){
+  async getOne(req: any, res: Response) {
+    try {
+      const repo = dataSource.getRepository(User);
 
-    try{
-
-      const repo =
-      dataSource.getRepository(User);
-
-      const employee =
-      await repo.findOne({
-
+      const employee = await repo.findOne({
         where: TenantService.scopeWhere(req.user, { id: Number(req.params.id), userType: In([UserType.BRANCH_MANAGER, UserType.SHOPKEEPER, UserType.DELIVERY_BOY, UserType.EMPLOYEE]) }),
-
-        select:{
-          id:true,
-          name:true,
-          email:true,
-          mobilenumber:true,
-          userType:true
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          mobilenumber: true,
+          userType: true
         }
-
       });
 
-      if(!employee){
-
-        return res.status(404)
-        .json({
-
-          success:false,
-          message:
-          "Employee not found"
-
+      if (!employee) {
+        return res.status(404).json({
+          success: false,
+          message: "Employee not found"
         });
-
       }
 
       return res.json({
-
-        success:true,
-        data:employee
-
+        success: true,
+        data: employee
       });
 
-    }
-    catch(error:any){
-
-      return res.status(500)
-      .json({
-
-        success:false,
-        message:error.message
-
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message
       });
-
     }
-
   }
 
   // =====================================
@@ -487,70 +296,38 @@ message:error.message
     "Update Employee",
     "Update employee"
   )
-  async update(
-    req:any,
-    res:Response
-  ){
+  async update(req: any, res: Response) {
+    try {
+      const repo = dataSource.getRepository(User);
 
-    try{
-
-      const repo =
-      dataSource.getRepository(User);
-
-      const employee =
-      await repo.findOne({
-
+      const employee = await repo.findOne({
         where: TenantService.scopeWhere(req.user, { id: Number(req.params.id) })
       });
 
-      if(!employee){
-
-        return res.status(404)
-        .json({
-
-          success:false,
-          message:
-          "Employee not found"
-
+      if (!employee) {
+        return res.status(404).json({
+          success: false,
+          message: "Employee not found"
         });
-
       }
 
       delete req.body.password;
 
-      repo.merge(
-        employee,
-        req.body
-      );
-
-      await repo.save(
-        employee
-      );
+      repo.merge(employee, req.body);
+      await repo.save(employee);
 
       return res.json({
-
-        success:true,
-
-        message:
-        "Employee updated",
-
-        data:employee
-
+        success: true,
+        message: "Employee updated",
+        data: employee
       });
 
-    }
-    catch(error:any){
-
-      return res.status(500)
-      .json({
-
-        success:false,
-        message:error.message
-
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message
       });
-
     }
-
   }
 
   // =====================================
@@ -563,125 +340,33 @@ message:error.message
     "Delete Employee",
     "Delete employee"
   )
-  async delete(
-    req:any,
-    res:Response
-  ){
+  async delete(req: any, res: Response) {
+    try {
+      const repo = dataSource.getRepository(User);
 
-    try{
-
-      const repo =
-      dataSource.getRepository(User);
-
-      const employee =
-      await repo.findOne({
-
+      const employee = await repo.findOne({
         where: TenantService.scopeWhere(req.user, { id: Number(req.params.id) })
       });
 
-      if(!employee){
-
-        return res.status(404)
-        .json({
-
-          success:false,
-          message:
-          "Employee not found"
-
+      if (!employee) {
+        return res.status(404).json({
+          success: false,
+          message: "Employee not found"
         });
-
       }
 
-      await repo.delete(
-        employee.id
-      );
+      await repo.delete(employee.id);
 
       return res.json({
-
-        success:true,
-
-        message:
-        "Employee deleted"
-
+        success: true,
+        message: "Employee deleted"
       });
 
-    }
-    catch(error:any){
-
-      return res.status(500)
-      .json({
-
-        success:false,
-        message:error.message
-
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message
       });
-
     }
-
   }
-
-  // =====================================
-  // ASSIGN ROLE + BRANCH
-  // =====================================
-
-  // @Post("/assign")
-  // @Middleware([authenticateMiddleware])
-  // @Swagger(
-  //   "Assign Employee",
-  //   "Assign branch and role"
-  // )
-  // async assign(
-  //   req:any,
-  //   res:Response
-  // ){
-
-  //   try{
-
-  //     const {
-
-  //       user_id,
-  //       branch_id,
-  //       company_id,
-  //       role_id
-
-  //     } = req.body;
-
-  //     const roleRepo =
-  //     dataSource.getRepository(
-  //       UserRole
-  //     );
-
-  //     await roleRepo.save({
-
-  //       user_id,
-  //       branch_id,
-  //       company_id,
-  //       role_id
-
-  //     });
-
-  //     return res.json({
-
-  //       success:true,
-
-  //       message:
-  //       "Employee assigned successfully"
-
-  //     });
-
-  //   }
-  //   catch(error:any){
-
-  //     return res.status(500)
-  //     .json({
-
-  //       success:false,
-  //       message:error.message
-
-  //     });
-
-  //   }
-
-  // }
-
 }

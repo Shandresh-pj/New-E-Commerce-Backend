@@ -1,103 +1,82 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  PrimaryGeneratedColumn,
+  Index,
 } from "typeorm";
-import { Company } from "./company";
-import { Branch } from "./branch";
+import { Company }      from "./company";
+import { Branch }       from "./branch";
 import { EmployeeType } from "../utils/Role-Access";
 
 @Entity("employees")
+@Index(["company_id"])
+@Index(["branch_id"])
 export class Employee {
 
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column()
+  @Column({ type: "int" })
   company_id!: number;
 
- @JoinColumn({
-   name:"company_id"
- })
- company:Company;
+  @Column({ type: "int" })
+  branch_id!: number;
 
-  @Column()
- branch_id:number;
-
- @JoinColumn({
-   name:"branch_id"
- })
- branch:Branch;
-
-  @Column({
-    unique: true,
-  })
+  @Column({ type: "varchar", length: 50, unique: true })
   employee_code!: string;
 
-  @Column()
+  @Column({ type: "varchar", length: 255 })
   name!: string;
 
-  @Column({
-    unique: true,
-  })
+  @Column({ type: "varchar", length: 255, unique: true })
   email!: string;
 
-  @Column()
+  @Column({ type: "varchar", length: 20 })
   mobile!: string;
 
-  @Column({
-    nullable: true,
-  })
-  address!: string;
+  @Column({ type: "text", nullable: true })
+  address!: string | null;
 
-  @Column()
+  @Column({ type: "varchar", length: 100 })
   designation!: string;
 
-  @Column()
+  @Column({ type: "varchar", length: 100 })
   department!: string;
 
-  @Column({
-    type: "enum",
-    enum: EmployeeType
-  })
-  type: EmployeeType;
-role!: string;
+  @Column({ type: "enum", enum: EmployeeType })
+  type!: EmployeeType;
 
-  @Column({
-    type: "decimal",
-    precision: 10,
-    scale: 2,
-    default: 0,
-  })
+  @Column({ type: "decimal", precision: 10, scale: 2, default: 0 })
   salary!: number;
 
-  @Column({
-    default: 8,
-  })
+  @Column({ type: "int", default: 8 })
   working_hours!: number;
 
-  @Column({
-    nullable: true,
-  })
-  joining_date!: string;
+  @Column({ type: "varchar", length: 20, nullable: true })
+  joining_date!: string | null;
 
-  @Column({
-    nullable: true,
-  })
-  profile_image!: string;
+  @Column({ type: "varchar", length: 500, nullable: true })
+  profile_image!: string | null;
 
-  @Column({
-    default: true,
-  })
+  @Column({ type: "boolean", default: true })
   status!: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: "updated_at" })
   updated_at!: Date;
+
+  // ── Relations ────────────────────────────────────────────────────────
+  @ManyToOne(() => Company, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "company_id" })
+  company!: Company;
+
+  @ManyToOne(() => Branch, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "branch_id" })
+  branch!: Branch;
 }

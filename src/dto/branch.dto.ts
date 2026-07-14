@@ -1,4 +1,8 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// src/dto/branch.dto.ts
+// ─────────────────────────────────────────────────────────────────────────────
 import {
+  IsBoolean,
   IsEmail,
   IsNotEmpty,
   IsNumber,
@@ -10,7 +14,6 @@ import {
 import { Type } from "class-transformer";
 
 export class CreateBranchDto {
-
   @IsNumber()
   @IsNotEmpty()
   company_id!: number;
@@ -30,7 +33,7 @@ export class CreateBranchDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(200)
+  @MaxLength(500)
   location?: string;
 
   @IsOptional()
@@ -40,7 +43,6 @@ export class CreateBranchDto {
 }
 
 export class UpdateBranchDto {
-
   @IsOptional()
   @IsString()
   @IsNotEmpty()
@@ -58,6 +60,10 @@ export class UpdateBranchDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(200)
+  @MaxLength(500)
   location?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

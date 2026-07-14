@@ -1,94 +1,75 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn, Index } from "typeorm";
-import { Branch } from "./branch";
-import { Company } from "./company";
-import { Role } from "./roles";
+import { Entity, Column, Index } from "typeorm";
+import { AbstractBaseEntity } from "./base/base.entity";
 import { StatusType, UserType } from "../utils/Role-Access";
+import { OneToMany } from "typeorm";
 
 @Entity("users")
 @Index(["mobilenumber"])
 @Index(["isActive"])
 @Index(["status"])
-export class User {
+export class User extends AbstractBaseEntity {
 
-  @PrimaryGeneratedColumn()
-  id: number;
+  @Column({ type: "varchar", length: 255 })
+  name!: string;
 
-  @Column()
-  name: string;
+  @Column({ type: "varchar", length: 255, unique: true })
+  email!: string;
 
-  @Column({
-    unique: true
-  })
-  email: string;
+  @Column({ type: "varchar", length: 255 })
+  password!: string;
 
-  @Column()
-  password: string;
-
-  @Column({
-    nullable: true
-  })
-  mobilenumber: string;
+  @Column({ type: "varchar", length: 20, nullable: true })
+  mobilenumber!: string | null;
 
   @Column({
     type: "enum",
     enum: UserType,
-    default: UserType.CUSTOMER
+    default: UserType.CUSTOMER,
   })
-  userType: UserType;
+  userType!: UserType;
 
-  @Column({
-    default: true
-  })
-  mustChangePassword: boolean;
+  @Column({ type: "boolean", default: true })
+  mustChangePassword!: boolean;
 
-  @Column({
-    default: false
-  })
-  emailVerified: boolean;
+  @Column({ type: "boolean", default: false })
+  emailVerified!: boolean;
 
-  @Column({
-    default: true
-  })
-  isActive: boolean;
+  @Column({ type: "boolean", default: true })
+  isActive!: boolean;
 
-  @Column({
-    default: false
-  })
-  isSuperAdmin: boolean;
+  @Column({ type: "boolean", default: false })
+  isSuperAdmin!: boolean;
 
-  @Column({
-    nullable: true
-  })
-  lastLoginAt: Date;
-
-  @OneToMany(
-    () => UserRole,
-    role => role.user
-  )
-  userRoles: UserRole[];
+  @Column({ type: "timestamp", nullable: true })
+  lastLoginAt!: Date | null;
 
   @Column({ type: "varchar", length: 255, nullable: true })
-verificationToken: string | null;
-  
-@Column({ type: "timestamp", nullable: true })
-verificationTokenExpires: Date | null;
+  verificationToken!: string | null;
 
-@Column({ nullable: true })
-  image!: string;
+  @Column({ type: "timestamp", nullable: true })
+  verificationTokenExpires!: Date | null;
 
-  @Column({ nullable: true })
-  address!: string;
+  @Column({ type: "varchar", length: 500, nullable: true })
+  image!: string | null;
 
-  @Column({ default: "ACTIVE" })
+  @Column({ type: "text", nullable: true })
+  address!: string | null;
+
+  @Column({ type: "varchar", default: "ACTIVE" })
   status!: StatusType;
 
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
+  // ── Relations ────────────────────────────────────────────────────────
+  @OneToMany(() => UserRole, (ur) => ur.user)
+  userRoles!: UserRole[];
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// UserRole — user ↔ role ↔ company ↔ branch mapping
+// ───────────────────────────────────────────────────────────────────────────
+import { ManyToOne, JoinColumn, PrimaryGeneratedColumn } from "typeorm";
+import { Role }    from "./roles";
+import { Company } from "./company";
+import { Branch }  from "./branch";
 
 @Entity("user_roles")
 @Index(["user_id"])
@@ -98,30 +79,33 @@ verificationTokenExpires: Date | null;
 export class UserRole {
 
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
-  @Column()
- user_id:number;
+  @Column({ type: "int" })
+  user_id!: number;
 
- @Column()
- role_id:number;
+  @Column({ type: "int" })
+  role_id!: number;
 
- @Column({ nullable: true })
- company_id: number;
+  @Column({ type: "int", nullable: true })
+  company_id!: number | null;
 
- @Column({ nullable: true })
- branch_id: number;
+  @Column({ type: "int", nullable: true })
+  branch_id!: number | null;
 
- @ManyToOne(()=>User,user=>user.userRoles)
- @JoinColumn({name:"user_id" })user:User;
+  @ManyToOne(() => User, (u) => u.userRoles, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "user_id" })
+  user!: User;
 
- @ManyToOne(()=>Role) @JoinColumn({name:"role_id"})role:Role;
+  @ManyToOne(() => Role, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "role_id" })
+  role!: Role;
 
+  @ManyToOne(() => Company, (c) => c.userRoles, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "company_id" })
+  company!: Company | null;
 
- @ManyToOne(()=>Company,company=>company.userRoles)
- @JoinColumn({name:"company_id"})company:Company;
-
-
- @ManyToOne(()=>Branch, branch=>branch.userRoles )
- @JoinColumn({ name:"branch_id"})branch:Branch;
+  @ManyToOne(() => Branch, (b) => b.userRoles, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "branch_id" })
+  branch!: Branch | null;
 }

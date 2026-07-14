@@ -1,25 +1,16 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-  OneToMany,
-} from "typeorm";
-
-import { User } from "./user";
-import { CouponProduct } from "./coupons";
-import {  StockLog } from "./stock";
-import { Order, OrderItem } from "./order";
+import { Entity, Column, Index, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from "typeorm";
+import { ProductAttributeValue } from "./productAttribute";
+import { StockLog }    from "./stock";
 import { BranchStock } from "./branch_stock";
 import { LowStockAlert } from "./lowstock";
-import { Category } from "./category";
+import { OrderItem }   from "./order";
+import { CouponProduct } from "./coupons";
 import { ProductAttributeValueProduct } from "./productAttribute";
 import { ProductVariant } from "./productVariant";
+import { ProductApproval } from "./productApproval";
+import { User }        from "./user";
+import { Category }    from "./category";
 import { ProductType, ProductStatus, ProductApprovalStatus } from "../dto/products.dto";
-import { Register } from "./register";
 
 @Entity("products_table_1")
 export class Product {
@@ -27,99 +18,46 @@ export class Product {
   @PrimaryGeneratedColumn()
   id!: number;
 
-@OneToMany(() => BranchStock, bs => bs.product)
-branchStocks!: BranchStock[];
-
-@OneToMany(() => StockLog, log => log.product)
-stockLogs!: StockLog[];
-
-@OneToMany(() => LowStockAlert, alert => alert.product)
-lowStockAlerts!: LowStockAlert[];
-
-@OneToMany(() => OrderItem, item => item.order)
-orderItems!: OrderItem[];
-
-  @Column()
+  @Column({ type: "varchar", length: 255 })
   name!: string;
 
-  @Column({
-    type: "text",
-    nullable: true,
-  })
-  description!: string;
+  @Column({ type: "text", nullable: true })
+  description!: string | null;
 
-  @Column("decimal", {
-    precision: 10,
-    scale: 2,
-  })
+  @Column({ type: "decimal", precision: 10, scale: 2 })
   price!: number;
 
-  @Column({
-    nullable: true,
-  })
-  barcode!: string;
+  @Column({ type: "varchar", length: 100, nullable: true })
+  barcode!: string | null;
 
-  @Column({
-    nullable: true,
-  })
-  image!: string;
-  
-  @Column({
-    type: "simple-json",
-    nullable: true,
-  })
-  images!: string[];
+  @Column({ type: "varchar", length: 500, nullable: true })
+  image!: string | null;
 
-  @Column({
-    nullable: true,
-  })
-  video!: string;
+  @Column({ type: "simple-json", nullable: true })
+  images!: string[] | null;
 
-  @Column()
+  @Column({ type: "varchar", length: 500, nullable: true })
+  video!: string | null;
+
+  @Column({ type: "int" })
   registration_id!: number;
 
-  @ManyToOne(() => User, { onDelete: "CASCADE" })
-  @JoinColumn({
-    name: "registration_id",
-  })
-  creator!: User;
-
-  @Column({
-    type: "int",
-    default: 0,
-  })
+  @Column({ type: "int", default: 0 })
   stock!: number;
 
-  @Column({
-    nullable: true,
-  })
-  category!: string;
+  @Column({ type: "varchar", length: 100, nullable: true })
+  category!: string | null;
 
-  @Column({
-    type: "enum",
-    enum: ProductType,
-    default: ProductType.SINGLE,
-  })
+  @Column({ type: "enum", enum: ProductType, default: ProductType.SINGLE })
   product_type!: ProductType;
 
-  @Column({
-    type: "int",
-    default: 0,
-  })
+  @Column({ type: "int", default: 0 })
   stock_in_hand!: number;
 
-  @Column({
-    type: "enum",
-    enum: ProductStatus,
-    default: ProductStatus.ACTIVE,
-  })
+  @Column({ type: "enum", enum: ProductStatus, default: ProductStatus.ACTIVE })
   status!: ProductStatus;
 
-  @Column({
-    type: "enum",
-    enum: ProductApprovalStatus,
-    default: ProductApprovalStatus.PUBLISHED,
-  })
+  @Column({ type: "enum", enum: ProductApprovalStatus, default: ProductApprovalStatus.PUBLISHED })
   approval_status!: ProductApprovalStatus;
 
   @Column({ type: "int", default: 5 })
@@ -128,62 +66,78 @@ orderItems!: OrderItem[];
   @Column({ type: "int", default: 2 })
   critical_stock_threshold!: number;
 
-  @OneToMany(
-    () => CouponProduct,
-    cp => cp.product
-  )
-  couponProducts!: CouponProduct[];
-
-  @OneToMany(
-    () => ProductAttributeValueProduct,
-    link => link.Product
-  )
-  attributeValueLinks!: ProductAttributeValueProduct[];
-
-  @OneToMany(
-    () => ProductVariant,
-    variant => variant.Product
-  )
-  variants!: ProductVariant[];
-
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: "updated_at" })
   updated_at!: Date;
+
+  // ── Relations ────────────────────────────────────────────────────────
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "registration_id" })
+  creator!: User;
+
+  @OneToMany(() => BranchStock,   (bs)   => bs.product)
+  branchStocks!: BranchStock[];
+
+  @OneToMany(() => StockLog,      (sl)   => sl.product)
+  stockLogs!: StockLog[];
+
+  @OneToMany(() => LowStockAlert, (la)   => la.product)
+  lowStockAlerts!: LowStockAlert[];
+
+  @OneToMany(() => OrderItem,     (oi)   => oi.product)
+  orderItems!: OrderItem[];
+
+  @OneToMany(() => CouponProduct, (cp)   => cp.product)
+  couponProducts!: CouponProduct[];
+
+  @OneToMany(() => ProductAttributeValueProduct, (link) => link.Product)
+  attributeValueLinks!: ProductAttributeValueProduct[];
+
+  @OneToMany(() => ProductVariant, (v)   => v.Product)
+  variants!: ProductVariant[];
+
+  @OneToMany(() => ProductApproval, (pa) => pa.product)
+  approvals!: ProductApproval[];
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CART
+// ═══════════════════════════════════════════════════════════════════════════
+import { Register } from "./register";
 
 @Entity("cart")
 export class Cart {
 
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
-  @Column()
-  user_id: number;
+  @Column({ type: "int" })
+  user_id!: number;
 
-  @Column()
-  product_id: number;
+  @Column({ type: "int" })
+  product_id!: number;
 
-  @Column({ default: 1 })
-  quantity: number;
+  @Column({ type: "int", default: 1 })
+  quantity!: number;
 
+  @Column({ type: "int", nullable: true })
+  category_id!: number | null;
+
+  @CreateDateColumn({ name: "created_at" })
+  created_at!: Date;
+
+  // ── Relations ────────────────────────────────────────────────────────
   @ManyToOne(() => Register, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })
-  user: Register;
+  user!: Register;
 
   @ManyToOne(() => Product, { onDelete: "CASCADE" })
   @JoinColumn({ name: "product_id" })
-  product: Product;
+  product!: Product;
 
-  @Column({ nullable: true })
-  category_id: number;
-
-  @ManyToOne(() => Category, { onDelete: "SET NULL", nullable: true })
+  @ManyToOne(() => Category, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "category_id" })
-  category: Category;
-
-  @CreateDateColumn()
-  created_at: Date;
+  category!: Category | null;
 }

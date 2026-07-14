@@ -71,56 +71,65 @@ export class PasswordController {
 
             }
 
-            const existingOtp =
-            await otpRepo.findOne({
+            let existingOtp = await otpRepo.findOne({
+                where: { user_id: user.id }
+            });
 
-                where:{
-                    user_id:user.id
+            const now = new Date();
+
+            if (existingOtp) {
+                // 1. Check if account is locked due to too many failed verify attempts
+                if (existingOtp.lock_until && existingOtp.lock_until > now) {
+                    return res.status(429).json({
+                        success: false,
+                        message: "Account is temporarily locked due to too many failed attempts. Please try again later."
+                    });
                 }
 
-            });
+                // 2. Check 24-hour resend limit (3 attempts max per 24 hours)
+                if (existingOtp.resend_attempts >= 3) {
+                    if (existingOtp.last_resend_at && (now.getTime() - existingOtp.last_resend_at.getTime()) < 24 * 60 * 60 * 1000) {
+                        return res.status(429).json({
+                            success: false,
+                            message: "Maximum resend attempts reached. Please try again after 24 hours."
+                        });
+                    } else {
+                        // Reset resend attempts after 24 hours
+                        existingOtp.resend_attempts = 0;
+                    }
+                }
 
-            if(
-                existingOtp &&
-                existingOtp.expires_at >
-                new Date()
-            ){
-
-                return res.status(429).json({
-
-                    success:false,
-                    message:
-                    "Please wait before requesting another OTP"
-
-                });
-
+                // 3. Prevent rapid resend spam (1 minute cooldown)
+                if (existingOtp.last_resend_at && (now.getTime() - existingOtp.last_resend_at.getTime()) < 60 * 1000) {
+                    return res.status(429).json({
+                        success: false,
+                        message: "Please wait 1 minute before requesting another OTP."
+                    });
+                }
             }
 
-            const otp =
-            OtpService.generate();
+            const otp = OtpService.generate();
+            const hashedOtp = await bcrypt.hash(otp, 10);
 
-            const hashedOtp =
-            await bcrypt.hash(
-                otp,
-                10
-            );
-
-            await otpRepo.delete({
-                user_id:user.id
-            });
-
-            await otpRepo.save({
-
-                user_id:user.id,
-                otp:hashedOtp,
-                verified:false,
-                attempts:0,
-
-                expires_at:new Date(
-                    Date.now()+1*60*1000
-                )
-
-            });
+            if (existingOtp) {
+                existingOtp.otp = hashedOtp;
+                existingOtp.expires_at = new Date(Date.now() + 5 * 60 * 1000); // 5 mins validity
+                existingOtp.verified = false;
+                existingOtp.attempts = 0; // Reset verify attempts on new send
+                existingOtp.resend_attempts += 1;
+                existingOtp.last_resend_at = now;
+                await otpRepo.save(existingOtp);
+            } else {
+                await otpRepo.save({
+                    user_id: user.id,
+                    otp: hashedOtp,
+                    verified: false,
+                    attempts: 0,
+                    resend_attempts: 1,
+                    last_resend_at: now,
+                    expires_at: new Date(Date.now() + 5 * 60 * 1000)
+                });
+            }
 
             await EmailService.sendOtp(
                 email,
@@ -194,84 +203,60 @@ export class PasswordController {
 
             }
 
-            const record =
-            await otpRepo.findOne({
-
-                where:{
-                    user_id:user.id
-                }
-
+            const record = await otpRepo.findOne({
+                where: { user_id: user.id }
             });
 
-            if(!record){
-
+            if (!record) {
                 return res.status(400).json({
-
-                    success:false,
-                    message:"OTP not found"
-
+                    success: false,
+                    message: "OTP not found"
                 });
-
             }
 
-            if(
-                new Date() >
-                record.expires_at
-            ){
+            const now = new Date();
 
-                await otpRepo.delete({
-                    id:record.id
-                });
-
-                return res.status(400).json({
-
-                    success:false,
-                    message:"OTP expired"
-
-                });
-
-            }
-
-            if(record.attempts>=5){
-
+            // 1. Check if account is locked
+            if (record.lock_until && record.lock_until > now) {
                 return res.status(429).json({
-
-                    success:false,
-                    message:
-                    "Maximum attempts exceeded"
-
+                    success: false,
+                    message: "Account is temporarily locked. Please try again later."
                 });
-
             }
 
-            const valid =
-            await bcrypt.compare(
-                otp,
-                record.otp
-            );
-
-            if(!valid){
-
-                record.attempts++;
-
-                await otpRepo.save(
-                    record
-                );
-
+            // 2. Check if OTP expired
+            if (now > record.expires_at) {
                 return res.status(400).json({
-
-                    success:false,
-                    message:"Invalid OTP"
-
+                    success: false,
+                    message: "OTP expired"
                 });
-
             }
 
-            record.verified=true;
+            const valid = await bcrypt.compare(otp, record.otp);
 
-            await otpRepo.save(
-                record
-            );
+            if (!valid) {
+                record.attempts += 1;
+                
+                // 3. Check if failed limit reached (3 attempts)
+                if (record.attempts >= 3) {
+                    record.lock_until = new Date(now.getTime() + 30 * 60 * 1000); // Lock for 30 minutes
+                    await otpRepo.save(record);
+                    return res.status(429).json({
+                        success: false,
+                        message: "Too many failed attempts. Account locked for 30 minutes."
+                    });
+                }
+
+                await otpRepo.save(record);
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid OTP"
+                });
+            }
+
+            record.verified = true;
+            record.attempts = 0; // Reset attempts on success
+            await otpRepo.save(record);
 
             return res.status(200).json({
 

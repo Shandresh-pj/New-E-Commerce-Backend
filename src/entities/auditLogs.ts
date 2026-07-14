@@ -1,93 +1,87 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  Index
-} from "typeorm";
+import { Entity, Column, Index, PrimaryGeneratedColumn, CreateDateColumn } from "typeorm";
 
 @Entity("audit_logs")
 export class AuditLog {
 
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Index()
-  @Column()
-  module: string; // USER, ORDER, BRANCH, PRODUCT
+  @Column({ type: "varchar", length: 100 })
+  module!: string;  // USER, ORDER, BRANCH, PRODUCT, etc.
 
-  @Column()
-  action: string; // CREATE, UPDATE, DELETE
-
-  @Index()
-  @Column()
-  recordId: number;
+  @Column({ type: "varchar", length: 50 })
+  action!: string;  // CREATE, UPDATE, DELETE
 
   @Index()
-  @Column()
-  userId: number;
-
-  @Column()
-  roleId: number;
+  @Column({ type: "int" })
+  recordId!: number;
 
   @Index()
-  @Column({ nullable: true })
-  companyId: number;
+  @Column({ type: "int" })
+  userId!: number;
+
+  @Column({ type: "int" })
+  roleId!: number;
 
   @Index()
-  @Column({ nullable: true })
-  branchId: number;
+  @Column({ type: "int", nullable: true })
+  companyId!: number | null;
 
-  @Column({ nullable: true })
-  ip: string;
+  @Index()
+  @Column({ type: "int", nullable: true })
+  branchId!: number | null;
 
-  @Column({ nullable: true, length: 512 })
-  device: string;
+  @Column({ type: "varchar", length: 45, nullable: true })
+  ip!: string | null;
+
+  @Column({ type: "varchar", length: 512, nullable: true })
+  device!: string | null;
 
   @Column({ type: "json", nullable: true })
-  diff: any;
+  diff!: Record<string, any> | null;
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn({ name: "createdAt" })
+  createdAt!: Date;
 }
 
 @Entity("audit_logs_backup")
 export class AuditLogBackup {
 
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Index()
-  @Column()
-  module: string;
+  @Column({ type: "varchar", length: 100 })
+  module!: string;
 
-  @Column()
-  action: string;
+  @Column({ type: "varchar", length: 50 })
+  action!: string;
 
-  @Column()
-  recordId: number;
+  @Column({ type: "int" })
+  recordId!: number;
 
-  @Column()
-  userId: number;
+  @Column({ type: "int" })
+  userId!: number;
 
-  @Column()
-  roleId: number;
+  @Column({ type: "int" })
+  roleId!: number;
 
-  @Column({ nullable: true })
-  companyId: number;
+  @Column({ type: "int", nullable: true })
+  companyId!: number | null;
 
-  @Column({ nullable: true })
-  branchId: number;
+  @Column({ type: "int", nullable: true })
+  branchId!: number | null;
 
-  @Column({ nullable: true })
-  ip: string;
+  @Column({ type: "varchar", length: 45, nullable: true })
+  ip!: string | null;
 
-  @Column({ nullable: true, length: 512 })
-  device: string;
+  @Column({ type: "varchar", length: 512, nullable: true })
+  device!: string | null;
 
   @Column({ type: "json", nullable: true })
-  diff: any;
+  diff!: Record<string, any> | null;
 
-  @CreateDateColumn()
-  createdAt: Date;
+  @CreateDateColumn({ name: "createdAt" })
+  createdAt!: Date;
 }

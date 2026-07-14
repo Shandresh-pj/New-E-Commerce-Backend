@@ -1,57 +1,51 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
   ManyToOne,
   JoinColumn,
+  OneToMany,
+  PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToMany
 } from "typeorm";
-
 import { Company } from "./company";
-import { Employee } from "./employee.entity";
 import { UserRole } from "./user";
 
 @Entity("branches")
 export class Branch {
 
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
+  @Column({ type: "int" })
+  company_id!: number;
 
-  @ManyToOne(()=>Company)
-@JoinColumn({
-name:"company_id"
-})
-company:Company;
+  @Column({ type: "varchar", length: 255 })
+  name!: string;
 
+  @Column({ type: "text" })
+  location!: string;
 
-@OneToMany(
- ()=>UserRole,
- userRole=>userRole.branch
-)
-userRoles:UserRole[];
+  @Column({ type: "varchar", length: 255 })
+  email!: string;
 
-  @Column()
-  name: string;
+  @Column({ type: "varchar", length: 20 })
+  phone!: string;
 
-  @Column()
-  location: string;
+  @Column({ type: "boolean", default: true })
+  isActive!: boolean;
 
-  @Column()
-  email:string;
+  @CreateDateColumn({ name: "created_at" })
+  created_at!: Date;
 
+  @UpdateDateColumn({ name: "updated_at" })
+  updated_at!: Date;
 
-  @Column()
-  phone:string;
+  // ── Relations ────────────────────────────────────────────────────────
+  @ManyToOne(() => Company, (c) => c.branches, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "company_id" })
+  company!: Company;
 
-  @Column({ default: true })
-  isActive: boolean;
-
-  @CreateDateColumn()
-  created_at: Date;
-
-  @UpdateDateColumn()
-  updated_at: Date;
+  @OneToMany(() => UserRole, (ur) => ur.branch)
+  userRoles!: UserRole[];
 }

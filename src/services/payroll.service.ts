@@ -5,6 +5,7 @@ import { LeaveRequest } from "../entities/leave.entity";
 import { Salary, PayrollStatus } from "../entities/salary";
 import { nowDate } from "../utils/dateTime";
 import moment from "moment";
+import { TenantService } from "../middleware/tenantFilter.middleware";
 
 // ─── Tax Slab (India standard, simplified) ─────────────────────────────────
 const TAX_SLABS = [
@@ -161,18 +162,19 @@ export class PayrollService {
     return repo.save(payroll);
   }
 
-  async getPayslip(payrollId: number, companyId: number) {
+  async getPayslip(payrollId: number, user: any) {
     const repo    = dataSource.getRepository(Salary);
     const empRepo = dataSource.getRepository(Employee);
-    const payroll = await repo.findOne({ where: { id: payrollId, company_id: companyId } });
+    const where   = TenantService.scopeWhere(user, { id: payrollId });
+    const payroll = await repo.findOne({ where });
     if (!payroll) throw new Error("Payroll record not found");
     const employee = await empRepo.findOne({ where: { id: payroll.employee_id } });
     return { payroll, employee };
   }
 
-  async getMonthlySummary(companyId: number, month: string, year: number, branchId?: number) {
+  async getMonthlySummary(user: any, month: string, year: number, branchId?: number) {
     const repo  = dataSource.getRepository(Salary);
-    const where: any = { company_id: companyId, month, year };
+    const where: any = TenantService.scopeWhere(user, { month, year });
     if (branchId) where.branch_id = branchId;
     const records = await repo.find({ where });
     return {

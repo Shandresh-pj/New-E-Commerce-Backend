@@ -1,7 +1,10 @@
 /**
  * Idempotency Utility
- * Prevents duplicate operations using Redis or in-memory fallback
+ * Prevents duplicate operations using Redis or in-memory fallback.
+ * Uses the central Redis client from config/redis.ts.
  */
+
+import { redisClient } from "../config/redis";
 
 // In-memory fallback store (TTL in ms)
 const inMemoryStore = new Map<string, { expires: number }>();
@@ -15,12 +18,12 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 // ─── Set Idempotency Key ────────────────────────────────────────────────────
+// Returns true if the key was newly set (operation is safe to proceed).
+// Returns false if the key already exists (operation is a duplicate).
 export const setIdempotencyKey = async (key: string, ttlSeconds = 86400): Promise<boolean> => {
   try {
-    // Try Redis first
-    const redis = require("../middleware/redis");
-    if (redis && redis.client?.isReady) {
-      const result = await redis.client.set(key, "1", { NX: true, EX: ttlSeconds });
+    if (redisClient.isReady) {
+      const result = await redisClient.set(key, "1", { NX: true, EX: ttlSeconds });
       return result === "OK";
     }
   } catch {
@@ -36,9 +39,8 @@ export const setIdempotencyKey = async (key: string, ttlSeconds = 86400): Promis
 // ─── Check Idempotency Key ──────────────────────────────────────────────────
 export const checkIdempotency = async (key: string): Promise<boolean> => {
   try {
-    const redis = require("../middleware/redis");
-    if (redis && redis.client?.isReady) {
-      const exists = await redis.client.exists(key);
+    if (redisClient.isReady) {
+      const exists = await redisClient.exists(key);
       return exists === 1;
     }
   } catch {
@@ -57,9 +59,8 @@ export const checkIdempotency = async (key: string): Promise<boolean> => {
 // ─── Remove Idempotency Key ─────────────────────────────────────────────────
 export const removeIdempotencyKey = async (key: string): Promise<void> => {
   try {
-    const redis = require("../middleware/redis");
-    if (redis && redis.client?.isReady) {
-      await redis.client.del(key);
+    if (redisClient.isReady) {
+      await redisClient.del(key);
       return;
     }
   } catch {}

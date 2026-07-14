@@ -1,16 +1,34 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// src/dto/stock.dto.ts
+// ─────────────────────────────────────────────────────────────────────────────
 import {
+  IsEnum,
+  IsNotEmpty,
   IsNumber,
-  IsString
+  IsOptional,
+  IsString,
+  Min,
 } from "class-validator";
 
-export class UpdateStockDto {
+export enum StockLogAction {
+  ADD    = "ADD",
+  REMOVE = "REMOVE",
+  SET    = "SET",
+  RETURN = "RETURN",
+}
 
+export class UpdateStockDto {
   @IsNumber()
   product_id!: number;
 
   @IsNumber()
+  @Min(0)
   quantity!: number;
 
+  @IsEnum(StockLogAction)
+  action!: StockLogAction;
+
+  @IsOptional()
   @IsString()
-  action!: string;
+  reason?: string;
 }

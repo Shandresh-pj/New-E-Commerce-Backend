@@ -1,6 +1,10 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// src/dto/order.dto.ts
+// ─────────────────────────────────────────────────────────────────────────────
 import {
   IsArray,
   IsEnum,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -8,60 +12,62 @@ import {
   ValidateNested,
   ArrayMinSize,
 } from "class-validator";
-
 import { Type } from "class-transformer";
 
-/**
- * PAYMENT TYPE
- */
+// ─── Enums ─────────────────────────────────────────────────────────────────
+
+/** All supported payment channels */
 export enum PaymentMethod {
-  CASH = "CASH",
-  ONLINE = "ONLINE", // General Online (Legacy/Default)
-  STRIPE = "STRIPE",
-  PAYPAL = "PAYPAL",
-  RAZORPAY = "RAZORPAY",
-  UPI = "UPI",
-  WALLET = "WALLET",
-  EMI = "EMI",
-  PAY_LATER = "PAY_LATER",
-  BANK_TRANSFER = "BANK_TRANSFER",
+  CASH             = "CASH",
+  ONLINE           = "ONLINE",        // Generic online (legacy/default)
+  STRIPE           = "STRIPE",
+  PAYPAL           = "PAYPAL",
+  RAZORPAY         = "RAZORPAY",
+  UPI              = "UPI",
+  WALLET           = "WALLET",
+  EMI              = "EMI",
+  PAY_LATER        = "PAY_LATER",
+  BANK_TRANSFER    = "BANK_TRANSFER",
   CASH_ON_DELIVERY = "CASH_ON_DELIVERY",
-  PAY_ON_DELIVERY = "PAY_ON_DELIVERY",
-  GIFT_CARD = "GIFT_CARD",
-  PARTIAL = "PARTIAL",
+  PAY_ON_DELIVERY  = "PAY_ON_DELIVERY",
+  GIFT_CARD        = "GIFT_CARD",
+  PARTIAL          = "PARTIAL",
 }
 
-/**
- * PAYMENT STATUS
- */
+/** Payment lifecycle states */
 export enum PaymentStatus {
   PENDING = "PENDING",
   SUCCESS = "SUCCESS",
-  FAILED = "FAILED",
+  FAILED  = "FAILED",
+  REFUNDED = "REFUNDED",
 }
 
-/**
- * ORDER ITEM DTO
- */
-export class OrderItemDto {
+/** Order lifecycle states */
+export enum OrderStatus {
+  PENDING   = "PENDING",
+  CONFIRMED = "CONFIRMED",
+  SHIPPED   = "SHIPPED",
+  DELIVERED = "DELIVERED",
+  CANCELLED = "CANCELLED",
+  FAILED    = "FAILED",
+}
 
+// ─── Nested DTOs ───────────────────────────────────────────────────────────
+
+export class OrderItemDto {
   @IsNumber()
   product_id!: number;
 
   @IsNumber()
-  @Min(1, { message: "Price must be greater than 0" })
+  @Min(0.01, { message: "price must be greater than 0" })
   price!: number;
 
   @IsNumber()
-  @Min(1, { message: "Quantity must be at least 1" })
+  @Min(1, { message: "quantity must be at least 1" })
   quantity!: number;
 }
 
-/**
- * PAYMENT DTO
- */
 export class PaymentDto {
-
   @IsEnum(PaymentMethod)
   method!: PaymentMethod;
 
@@ -77,11 +83,9 @@ export class PaymentDto {
   gateway?: string;
 }
 
-/**
- * CREATE ORDER DTO (IMPROVED)
- */
-export class CreateOrderDto {
+// ─── Request DTOs ──────────────────────────────────────────────────────────
 
+export class CreateOrderDto {
   @IsNumber()
   user_id!: number;
 
@@ -98,6 +102,13 @@ export class CreateOrderDto {
   @ValidateNested()
   @Type(() => PaymentDto)
   payment!: PaymentDto;
+}
 
-  
+export class UpdateOrderStatusDto {
+  @IsEnum(OrderStatus)
+  status!: OrderStatus;
+
+  @IsOptional()
+  @IsEnum(PaymentStatus)
+  payment_status?: PaymentStatus;
 }

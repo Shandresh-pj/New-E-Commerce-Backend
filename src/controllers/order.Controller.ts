@@ -79,21 +79,18 @@ export class OrderController {
     }
 
     else if (coupon.type === "bogo") {
-      for (const item of eligibleItems) {
-        const freeQty = Math.floor(Number(item.quantity) / 2);
-        discount += freeQty * Number(item.price);
-      }
-    }
-
-    else if (coupon.type === "buy_x_get_y") {
-
-      const x = Number((coupon as any).buy_x ?? 2);
-      const y = Number((coupon as any).get_y ?? 1);
+      const x = Number(coupon.buy_x ?? 1);
+      const y = Number(coupon.get_y ?? 1);
 
       for (const item of eligibleItems) {
         const sets = Math.floor(Number(item.quantity) / (x + y));
         discount += sets * y * Number(item.price);
       }
+    }
+    
+    else if (coupon.type === "free_shipping") {
+      // Free shipping discount logic, normally handled in shipping calculation
+      discount = 0; 
     }
 
     return discount;

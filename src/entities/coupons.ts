@@ -13,8 +13,12 @@ export class Coupon {
   @Column()
   code!: string;
 
-  @Column()
-  type!: "percent" | "flat";
+  @Column({
+    type: "enum",
+    enum: ["percent", "flat", "bogo", "free_shipping"],
+    default: "flat"
+  })
+  type!: "percent" | "flat" | "bogo" | "free_shipping";
 
   @Column("decimal")
   value!: number;
@@ -28,14 +32,31 @@ export class Coupon {
   created_by!: number;
 
   @Column({
+    type: "int",
     nullable: true,
   })
   buy_x!: number;
 
   @Column({
+    type: "int",
     nullable: true,
   })
   get_y!: number;
+
+  @Column({ type: "timestamp", nullable: true })
+  expiry_date!: Date | null;
+
+  @Column({ type: "int", nullable: true })
+  usage_limit!: number | null;
+
+  @Column({ default: 0 })
+  usage_count!: number;
+
+  @Column({ type: "int", nullable: true })
+  company_id!: number | null;
+
+  @Column({ type: "int", nullable: true })
+  branch_id!: number | null;
 
   // @ManyToOne(
   //   () => Register,

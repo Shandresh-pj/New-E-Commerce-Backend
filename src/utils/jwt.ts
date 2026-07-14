@@ -19,9 +19,3 @@ export const verifyToken = (
 export const decodeToken = (token: string): JwtPayload | string | null => {
   return jwt.decode(token) as JwtPayload | string | null;
 };
-
-module.exports = {
-  generateToken,
-  verifyToken,
-  decodeToken,
-};

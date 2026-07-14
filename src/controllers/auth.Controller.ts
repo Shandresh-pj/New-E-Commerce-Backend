@@ -487,88 +487,41 @@ message:
 
 
 // =====================================
-// LOAD PERMISSIONS (SCOPE-AWARE)
+// JWT — LEAN PAYLOAD (no permissions/menus)
 // =====================================
-// Shared with GET /auth/me/permissions and the role-access socket refresh
-// so this resolution logic only lives in one place.
-
-const { permissions, menus } = await PermissionService.resolveAccess(user, userRoles);
-
-
-// =====================================
-// SMALL TOKEN PAYLOAD
-// =====================================
-
-// const token=
-// jwt.sign({
-
-// userId:
-// user.id,
-
-// email:
-// user.email,
-
-// userType:
-// user.userType,
-
-// isSuperAdmin:
-// user.isSuperAdmin,
-
-// roleIds:
-// userRoles.map(
-// x=>x.role.id
-// )
-
-// },
-
-// process.env.JWT_SECRET!,
-
-// {
-
-// expiresIn:"1d"
-
-// }
-
-// );
+// Permissions and menus are intentionally omitted from the JWT to keep
+// the Authorization header small. Users with many role-permission rows
+// can produce tokens >8KB which Render's nginx proxy rejects (431 error).
+//
+// The frontend fetches permissions fresh via GET /auth/me/permissions
+// immediately after login and on every socket "permissions-updated" event,
+// so embedding them in the token provides zero benefit.
 
 const jwtSecret = process.env.JWT_SECRET!;
 const token = jwt.sign({
 
-userId:user.id,
+  userId:      user.id,
+  email:       user.email,
+  userType:    user.userType,
+  isSuperAdmin: user.isSuperAdmin,
 
-email:user.email,
+  company_id:
+    userRoles[0]?.company?.id ?? userRoles[0]?.company_id ?? null,
 
-userType:user.userType,
+  branch_id:
+    userRoles[0]?.branch?.id ?? userRoles[0]?.branch_id ?? null,
 
-isSuperAdmin:user.isSuperAdmin,
-
-company_id:
-userRoles[0]?.company?.id ?? userRoles[0]?.company_id ?? null,
-
-branch_id:
-userRoles[0]?.branch?.id ?? userRoles[0]?.branch_id ?? null,
-
-roles:
-userRoles.map(x=>({
-
-roleId:x.role.id,
-name:x.role.name
-
-})),
-
-permissions,
-
-menus
+  roles: userRoles.map(x => ({
+    roleId: x.role.id,
+    name:   x.role.name
+  })),
 
 },
 
 jwtSecret,
 
-{
+{ expiresIn: "1d" }
 
-expiresIn:"1d"
-
-}
 );
 
 
@@ -587,10 +540,9 @@ password:userPassword,
 // RESPONSE
 // =====================================
 
-// permissions/menus are intentionally left out of this response —
-// they stay signed inside the JWT for backend authorization, and the
-// frontend fetches them fresh via GET /auth/me/permissions so a
-// role-access change can be picked up without a new login.
+// permissions/menus are NOT in the JWT or this response body.
+// The frontend calls GET /auth/me/permissions immediately after login
+// and on every socket "permissions-updated" event to get fresh access data.
 return res.status(200)
 .json({
 

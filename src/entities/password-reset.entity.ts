@@ -41,7 +41,23 @@ attempts: number;
   })
   verified!: boolean;
 
+  @Column({
+    type: "timestamp",
+    nullable: true
+  })
+  lock_until!: Date | null;
+
+  @Column({
+    default: 0
+  })
+  resend_attempts!: number;
+
+  @Column({
+    type: "timestamp",
+    nullable: true
+  })
+  last_resend_at!: Date | null;
+
   @CreateDateColumn()
   created_at!: Date;
 }
-

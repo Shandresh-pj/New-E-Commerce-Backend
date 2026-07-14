@@ -1,3 +1,6 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// src/dto/company.dto.ts
+// ─────────────────────────────────────────────────────────────────────────────
 import {
   IsEmail,
   IsNotEmpty,
@@ -10,7 +13,6 @@ import {
 import { Type } from "class-transformer";
 
 export class CreateCompanyDto {
-
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
@@ -44,7 +46,6 @@ export class CreateCompanyDto {
 }
 
 export class UpdateCompanyDto {
-
   @IsOptional()
   @IsString()
   @IsNotEmpty()
@@ -72,4 +73,12 @@ export class UpdateCompanyDto {
     { message: "gst_number must be a valid GST number (e.g. 33ABCDE1234F1Z5)" }
   )
   gst_number?: string;
+
+  @IsOptional()
+  @IsString()
+  razorpay_key_id?: string;
+
+  @IsOptional()
+  @IsString()
+  razorpay_key_secret?: string;
 }

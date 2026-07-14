@@ -1,23 +1,21 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  OneToMany
-} from "typeorm";
-import { RolePermission } from "./role-access";
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from "typeorm";
 
 @Entity("roles")
 export class Role {
 
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
-  @Column({ unique: true })
-  name: string;
+  @Column({ type: "varchar", length: 100, unique: true })
+  name!: string;
 
-  @Column({ default: true })
-  isActive: boolean;
+  /** Soft disable — inactive roles cannot be assigned */
+  @Column({ type: "boolean", default: true })
+  isActive!: boolean;
 
-  @OneToMany(() => RolePermission, rp => rp.role)
-  rolePermissions: RolePermission[];
+  @CreateDateColumn({ name: "created_at" })
+  created_at!: Date;
+
+  @UpdateDateColumn({ name: "updated_at" })
+  updated_at!: Date;
 }

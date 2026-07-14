@@ -1,33 +1,41 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// src/dto/products.dto.ts
+// ─────────────────────────────────────────────────────────────────────────────
 import {
-  IsString,
-  IsOptional,
-  IsNumber,
-  IsNotEmpty,
-  IsEnum,
   IsArray,
-  ValidateNested,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
   Matches,
+  MaxLength,
   Min,
+  ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
 
+// ─── Enums ─────────────────────────────────────────────────────────────────
+
 export enum ProductType {
-  SINGLE = "single",
+  SINGLE  = "single",
   VARIANT = "variant",
 }
 
 export enum ProductStatus {
-  ACTIVE = "active",
+  ACTIVE   = "active",
   INACTIVE = "inactive",
 }
 
 export enum ProductApprovalStatus {
-  DRAFT = "Draft",
-  PENDING = "Pending Approval",
-  APPROVED = "Approved",
+  DRAFT     = "Draft",
+  PENDING   = "Pending Approval",
+  APPROVED  = "Approved",
   PUBLISHED = "Published",
-  REJECTED = "Rejected",
+  REJECTED  = "Rejected",
 }
+
+// ─── Nested DTOs ───────────────────────────────────────────────────────────
 
 export class ProductVariantDto {
   @IsOptional()
@@ -40,6 +48,7 @@ export class ProductVariantDto {
 
   @IsOptional()
   @IsString()
+  @Matches(/^\d{8,14}$/, { message: "Barcode must be 8–14 digits" })
   Barcode?: string;
 
   @IsNumber()
@@ -50,27 +59,31 @@ export class ProductVariantDto {
   @Min(0)
   Stock!: number;
 
-  @IsNotEmpty()
   @IsNumber()
+  @IsNotEmpty()
   ProductAttributeId!: number;
 
-  @IsNotEmpty()
   @IsNumber()
+  @IsNotEmpty()
   ProductAttributeValueId!: number;
 }
 
 export class ProductAttributeValueLinkDto {
-  @IsNotEmpty()
   @IsNumber()
+  @IsNotEmpty()
   ProductAttributeId!: number;
 
-  @IsNotEmpty()
   @IsNumber()
+  @IsNotEmpty()
   ProductAttributeValueId!: number;
 }
 
+// ─── Request DTOs ──────────────────────────────────────────────────────────
+
 export class CreateProductDto {
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
   name!: string;
 
   @IsOptional()
@@ -78,23 +91,25 @@ export class CreateProductDto {
   description?: string;
 
   @IsNumber()
+  @Min(0)
   price!: number;
 
-   @IsOptional()
+  @IsOptional()
   @IsString()
-  @Matches(/^\d{8,14}$/)
-  barcode?: string;   // ✅ barcode added
+  @Matches(/^\d{8,14}$/, { message: "barcode must be 8–14 digits" })
+  barcode?: string;
 
   @IsOptional()
   @IsNumber()
   registration_id?: number;
 
   @IsNumber()
+  @Min(0)
   stock!: number;
 
   @IsOptional()
   @IsString()
-  category!:string;
+  category?: string;
 
   @IsOptional()
   @IsEnum(ProductType)
@@ -135,6 +150,8 @@ export class CreateProductDto {
 export class UpdateProductDto {
   @IsOptional()
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
   name?: string;
 
   @IsOptional()
@@ -143,19 +160,17 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(0)
   price?: number;
 
   @IsOptional()
   @IsString()
-  @Matches(/^\d{8,14}$/)
+  @Matches(/^\d{8,14}$/, { message: "barcode must be 8–14 digits" })
   barcode?: string;
 
   @IsOptional()
   @IsNumber()
-  registration_id?: number;
-
-  @IsOptional()
-  @IsNumber()
+  @Min(0)
   stock?: number;
 
   @IsOptional()
@@ -176,6 +191,10 @@ export class UpdateProductDto {
   status?: ProductStatus;
 
   @IsOptional()
+  @IsEnum(ProductApprovalStatus)
+  approval_status?: ProductApprovalStatus;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ProductVariantDto)
@@ -187,8 +206,7 @@ export class UpdateProductDto {
   @Type(() => ProductAttributeValueLinkDto)
   attribute_values?: ProductAttributeValueLinkDto[];
 
-  // JSON string array of gallery image paths to keep on update; see
-  // product.Controller.ts's parseExistingImages.
+  /** JSON-stringified array of existing gallery image paths to retain */
   @IsOptional()
   existing_images?: string;
 
@@ -204,17 +222,22 @@ export class UpdateProductDto {
 }
 
 export class ScanProductDto {
-  @IsNotEmpty()
   @IsString()
-  code!: string; // barcode or QR value
+  @IsNotEmpty()
+  code!: string;  // barcode or QR value
 }
 
 export class AddToCartDto {
-
   @IsNumber()
   product_id!: number;
 
   @IsNumber()
   @Min(1)
+  quantity!: number;
+}
+
+export class UpdateCartDto {
+  @IsNumber()
+  @Min(0)
   quantity!: number;
 }

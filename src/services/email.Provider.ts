@@ -92,16 +92,28 @@ export class EmailProvider {
       return;
     }
 
-    // Only send real emails on the live server to save Resend quota
-    if (process.env.NODE_ENV !== "production") {
-      console.log(`\n📧 [DEV MODE] Email mocked (not sent to Resend API)`);
-      console.log(`To: ${mailOptions.to}`);
-      console.log(`Subject: ${mailOptions.subject}`);
-      console.log(`Status: Resend API is configured to ONLY run on live server.\n`);
-      return;
-    }
+    const isProd = process.env.NODE_ENV === "production";
+    const sendInDev = process.env.SEND_EMAIL_LOCAL === "true" || process.env.FORCE_SEND_EMAIL === "true";
 
     const recipients = Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to];
+
+    // If not production and not explicitly enabled via SEND_EMAIL_LOCAL, mock and display preview
+    if (!isProd && !sendInDev) {
+      console.log(`\n📧 [DEV MODE] Email mocked (not sent via Resend API)`);
+      console.log(`   To:      ${recipients.join(", ")}`);
+      console.log(`   Subject: ${mailOptions.subject}`);
+      
+      // Extract key details from HTML so developer/tester can see passwords & links right in terminal
+      const pwdMatch = mailOptions.html.match(/password[:\s<>bstrong/]+([a-zA-Z0-9@#\$\^&\*_-]{6,30})/i) || mailOptions.html.match(/>([a-zA-Z0-9@#\$\^&\*_-]{8,16})<\//);
+      const otpMatch = mailOptions.html.match(/([0-9]{4,6})/);
+      const urlMatch = mailOptions.html.match(/href="([^"]+)"/i);
+      
+      if (pwdMatch) console.log(`   🔑 Password Preview: ${pwdMatch[1]}`);
+      if (otpMatch && mailOptions.subject.toLowerCase().includes("otp")) console.log(`   🔢 OTP Code: ${otpMatch[1]}`);
+      if (urlMatch) console.log(`   🔗 Action URL:       ${urlMatch[1]}`);
+      console.log(`   Status:  To send real emails via Resend in dev mode, keep SEND_EMAIL_LOCAL=true in .env\n`);
+      return;
+    }
 
     for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
       try {

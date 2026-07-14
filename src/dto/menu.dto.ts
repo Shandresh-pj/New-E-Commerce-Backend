@@ -1,30 +1,73 @@
-import { IsNumber, IsOptional, IsString } from "class-validator";
+// ─────────────────────────────────────────────────────────────────────────────
+// src/dto/menu.dto.ts
+// ─────────────────────────────────────────────────────────────────────────────
+import {
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from "class-validator";
 import { PermissionType } from "../entities/menu";
 
-
-
-
 export class CreateMenuDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  name!: string;
 
-@IsString()
-  name: string;
-@IsString()
-  path: string;
-    @IsOptional()
-@IsString()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  path!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
   icon?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class UpdateMenuDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  path?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  icon?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class CreatePermissionDto {
-@IsString()
-  menu: string;
-@IsString()
-  action: PermissionType;
+  @IsString()
+  @IsNotEmpty()
+  menu!: string;  // menu name or path
+
+  @IsEnum(PermissionType)
+  action!: PermissionType;
 }
 
-export class CreateRoleAccessDto {
-@IsNumber()
-  role_id: number;
-@IsNumber()
-  permissionId: number;
+export class AssignRoleAccessDto {
+  @IsNumber()
+  role_id!: number;
+
+  @IsNumber()
+  permissionId!: number;
 }

@@ -1,26 +1,28 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
+  Index,
+  PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
-  Index,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
 } from "typeorm";
 
-// ─── Attendance Status Enum ────────────────────────────────────────────────
+// ─── Enums ─────────────────────────────────────────────────────────────────
 export enum AttendanceStatus {
-  PRESENT      = "PRESENT",
-  LATE         = "LATE",
-  HALF_DAY     = "HALF_DAY",
-  ABSENT       = "ABSENT",
-  LEAVE        = "LEAVE",
-  HOLIDAY      = "HOLIDAY",
-  WEEKEND      = "WEEKEND",
+  PRESENT        = "PRESENT",
+  LATE           = "LATE",
+  HALF_DAY       = "HALF_DAY",
+  ABSENT         = "ABSENT",
+  LEAVE          = "LEAVE",
+  HOLIDAY        = "HOLIDAY",
+  WEEKEND        = "WEEKEND",
   WORK_FROM_HOME = "WORK_FROM_HOME",
-  OVERTIME     = "OVERTIME",
+  OVERTIME       = "OVERTIME",
 }
 
-// ─── Attendance Source Enum ────────────────────────────────────────────────
 export enum AttendanceSource {
   MANUAL    = "MANUAL",
   BIOMETRIC = "BIOMETRIC",
@@ -30,17 +32,15 @@ export enum AttendanceSource {
   QR        = "QR",
 }
 
-// ─── Auth Type Enum ────────────────────────────────────────────────────────
 export enum AuthType {
-  FINGERPRINT  = "FINGERPRINT",
-  FACE         = "FACE",
-  RFID         = "RFID",
-  QR           = "QR",
-  PIN          = "PIN",
-  GPS          = "GPS",
+  FINGERPRINT = "FINGERPRINT",
+  FACE        = "FACE",
+  RFID        = "RFID",
+  QR          = "QR",
+  PIN         = "PIN",
+  GPS         = "GPS",
 }
 
-// ─── Deduction Type Enum ───────────────────────────────────────────────────
 export enum DeductionType {
   NONE             = "NONE",
   WARNING          = "WARNING",
@@ -49,8 +49,15 @@ export enum DeductionType {
   HR_REVIEW        = "HR_REVIEW",
 }
 
+export enum BreakType {
+  LUNCH    = "LUNCH",
+  TEA      = "TEA",
+  PERSONAL = "PERSONAL",
+  FLEXIBLE = "FLEXIBLE",
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
-// ATTENDANCE ENTITY
+// ATTENDANCE
 // ═══════════════════════════════════════════════════════════════════════════
 @Entity("attendance")
 @Index(["employee_id", "attendance_date"], { unique: true })
@@ -59,157 +66,122 @@ export class Attendance {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  // ── Identifiers ──────────────────────────────────────────────────────────
   @Index()
-  @Column()
+  @Column({ type: "int" })
   employee_id!: number;
 
   @Index()
-  @Column()
+  @Column({ type: "int" })
   company_id!: number;
 
   @Index()
-  @Column()
+  @Column({ type: "int" })
   branch_id!: number;
 
-  // ── Shift Reference ───────────────────────────────────────────────────────
-  @Column({ nullable: true })
-  shift_id!: number;
+  @Column({ type: "int", nullable: true })
+  shift_id!: number | null;
 
-  @Column({ nullable: true, length: 100 })
-  shift_name!: string;
+  @Column({ type: "varchar", length: 100, nullable: true })
+  shift_name!: string | null;
 
-  // ── Date / Time ───────────────────────────────────────────────────────────
   @Index()
-  @Column({ length: 20 })
-  attendance_date!: string; // DD:MM:YYYY
+  @Column({ type: "varchar", length: 20 })
+  attendance_date!: string;   // DD:MM:YYYY
 
-  @Column({ nullable: true, length: 10 })
-  check_in!: string;       // HH:mm:ss
+  @Column({ type: "varchar", length: 10, nullable: true })
+  check_in!: string | null;   // HH:mm:ss
 
-  @Column({ nullable: true, length: 10 })
-  check_out!: string;      // HH:mm:ss
+  @Column({ type: "varchar", length: 10, nullable: true })
+  check_out!: string | null;  // HH:mm:ss
 
-  // ── Computed Time Fields ──────────────────────────────────────────────────
-  @Column({ default: 0 })
-  total_minutes!: number;        // check_out − check_in
+  @Column({ type: "int", default: 0 })
+  total_minutes!: number;
 
-  @Column({ default: 0 })
-  break_minutes!: number;        // sum of all break sessions
+  @Column({ type: "int", default: 0 })
+  break_minutes!: number;
 
-  @Column({ default: 0 })
-  net_worked_minutes!: number;   // total_minutes − break_minutes
+  @Column({ type: "int", default: 0 })
+  net_worked_minutes!: number;
 
-  @Column({ default: 0 })
+  @Column({ type: "int", default: 0 })
   overtime_minutes!: number;
 
-  @Column({ default: 0 })
+  @Column({ type: "int", default: 0 })
   payable_minutes!: number;
 
-  // ── Status ────────────────────────────────────────────────────────────────
-  @Column({
-    type: "enum",
-    enum: AttendanceStatus,
-    default: AttendanceStatus.PRESENT,
-  })
+  @Column({ type: "enum", enum: AttendanceStatus, default: AttendanceStatus.PRESENT })
   status!: AttendanceStatus;
 
-  // ── Break Deduction Logic ─────────────────────────────────────────────────
-  @Column({
-    type: "enum",
-    enum: DeductionType,
-    default: DeductionType.NONE,
-  })
+  @Column({ type: "enum", enum: DeductionType, default: DeductionType.NONE })
   deduction_type!: DeductionType;
 
-  @Column({ default: 0 })
-  deduction_minutes!: number;     // excess break minutes
+  @Column({ type: "int", default: 0 })
+  deduction_minutes!: number;
 
-  // ── Attendance Source & Device ────────────────────────────────────────────
-  @Column({
-    type: "enum",
-    enum: AttendanceSource,
-    default: AttendanceSource.WEB,
-  })
+  @Column({ type: "enum", enum: AttendanceSource, default: AttendanceSource.WEB })
   source!: AttendanceSource;
 
-  @Column({ nullable: true })
-  device_id!: number;
+  @Column({ type: "int", nullable: true })
+  device_id!: number | null;
 
-  @Column({ nullable: true, length: 100 })
-  device_serial!: string;
+  @Column({ type: "varchar", length: 100, nullable: true })
+  device_serial!: string | null;
 
-  @Column({ nullable: true, length: 45 })
-  device_ip!: string;
+  @Column({ type: "varchar", length: 45, nullable: true })
+  device_ip!: string | null;
 
-  @Column({ nullable: true, length: 200 })
-  device_location!: string;
+  @Column({ type: "varchar", length: 200, nullable: true })
+  device_location!: string | null;
 
-  @Column({
-    type: "enum",
-    enum: AuthType,
-    nullable: true,
-  })
-  auth_type!: AuthType;
+  @Column({ type: "enum", enum: AuthType, nullable: true })
+  auth_type!: AuthType | null;
 
   @Column({ type: "decimal", precision: 5, scale: 2, nullable: true })
-  confidence_score!: number;      // biometric match score 0–100
+  confidence_score!: number | null;
 
-  // ── Geo Tracking ─────────────────────────────────────────────────────────
-  @Column({ nullable: true, length: 45 })
-  ip_address!: string;
-
-  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
-  gps_lat!: number;
+  @Column({ type: "varchar", length: 45, nullable: true })
+  ip_address!: string | null;
 
   @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
-  gps_lng!: number;
+  gps_lat!: number | null;
 
-  // ── Regularization (Admin Override) ──────────────────────────────────────
-  @Column({ default: false })
+  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
+  gps_lng!: number | null;
+
+  @Column({ type: "boolean", default: false })
   is_regularized!: boolean;
 
-  @Column({ nullable: true })
-  regularized_by!: number;
+  @Column({ type: "int", nullable: true })
+  regularized_by!: number | null;
 
-  @Column({ nullable: true, length: 20 })
-  regularized_at!: string;
+  @Column({ type: "varchar", length: 20, nullable: true })
+  regularized_at!: string | null;
 
-  @Column({ nullable: true, length: 500 })
-  regularization_note!: string;
+  @Column({ type: "varchar", length: 500, nullable: true })
+  regularization_note!: string | null;
 
-  // ── Idempotency ───────────────────────────────────────────────────────────
-  @Column({ nullable: true, unique: true, length: 100 })
-  idempotency_key!: string;
+  @Column({ type: "varchar", length: 100, nullable: true, unique: true })
+  idempotency_key!: string | null;
 
-  // ── Approval ─────────────────────────────────────────────────────────────
-  @Column({ default: false })
+  @Column({ type: "boolean", default: false })
   is_approved!: boolean;
 
-  @Column({ nullable: true })
-  approved_by!: number;
+  @Column({ type: "int", nullable: true })
+  approved_by!: number | null;
 
-  @Column({ nullable: true, length: 20 })
-  approved_at!: string;
+  @Column({ type: "varchar", length: 20, nullable: true })
+  approved_at!: string | null;
 
-  // ── Timestamps ───────────────────────────────────────────────────────────
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: "updated_at" })
   updated_at!: Date;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ATTENDANCE BREAK LOG ENTITY
+// ATTENDANCE BREAK LOG
 // ═══════════════════════════════════════════════════════════════════════════
-export enum BreakType {
-  LUNCH    = "LUNCH",
-  TEA      = "TEA",
-  PERSONAL = "PERSONAL",
-  FLEXIBLE = "FLEXIBLE",
-}
-
 @Entity("attendance_break_logs")
 export class AttendanceBreakLog {
 
@@ -217,44 +189,40 @@ export class AttendanceBreakLog {
   id!: number;
 
   @Index()
-  @Column()
+  @Column({ type: "int" })
   attendance_id!: number;
 
   @Index()
-  @Column()
+  @Column({ type: "int" })
   employee_id!: number;
 
-  @Column()
+  @Column({ type: "int" })
   company_id!: number;
 
-  @Column()
+  @Column({ type: "int" })
   branch_id!: number;
 
-  @Column({ nullable: true })
-  break_policy_id!: number;
+  @Column({ type: "int", nullable: true })
+  break_policy_id!: number | null;
 
-  @Column({
-    type: "enum",
-    enum: BreakType,
-    default: BreakType.PERSONAL,
-  })
+  @Column({ type: "enum", enum: BreakType, default: BreakType.PERSONAL })
   break_type!: BreakType;
 
-  @Column({ length: 10 })
-  start_time!: string;  // HH:mm:ss
+  @Column({ type: "varchar", length: 10 })
+  start_time!: string;   // HH:mm:ss
 
-  @Column({ nullable: true, length: 10 })
-  end_time!: string;    // HH:mm:ss
+  @Column({ type: "varchar", length: 10, nullable: true })
+  end_time!: string | null;   // HH:mm:ss
 
-  @Column({ default: 0 })
+  @Column({ type: "int", default: 0 })
   total_minutes!: number;
 
-  @Column({ default: false })
+  @Column({ type: "boolean", default: false })
   is_paid!: boolean;
 
-  @Column({ default: false })
+  @Column({ type: "boolean", default: false })
   deduction_applied!: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 }

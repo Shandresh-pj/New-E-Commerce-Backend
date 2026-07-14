@@ -3,6 +3,8 @@ import { RolePermission } from "../entities/role-access";
 import { User, UserRole } from "../entities/user";
 import { StatusType } from "../utils/Role-Access";
 import dataSource from "../config/database";
+import logger from "../utils/logger";
+
 
 export class PermissionService {
 
@@ -67,12 +69,12 @@ export class PermissionService {
     // working; Inactive/Suspended are shut off.
     const usableStatus = In([StatusType.ACTIVE, StatusType.PENDING]);
 
-    console.log("[PermissionService] Querying role permissions with scope conditions:", scopeConditions);
+    logger.debug("[PermissionService] Querying role permissions with scope conditions:", scopeConditions);
     const matched = await rolePermissionRepo.find({
       where: scopeConditions.map(c => ({ ...c, status: usableStatus })),
       relations: { permission: { menu: true } },
     });
-    console.log("[PermissionService] Role permissions fetched count:", matched.length);
+    logger.debug("[PermissionService] Role permissions fetched count:", matched.length);
 
     // Most specific scope wins per permission: employee > branch > admin > global
     const specificity = (rp: any) =>
@@ -118,29 +120,29 @@ export class PermissionService {
   // GET /auth/me/permissions and whenever role-access rows change, so a
   // client can refresh its access without needing a new login token.
   static async getUserAccess(userId: number) {
-    console.log("[PermissionService] getUserAccess called for userId:", userId);
+    logger.debug("[PermissionService] getUserAccess called for userId:", userId);
     const userRepo = dataSource.getRepository(User);
     const userRoleRepo = dataSource.getRepository(UserRole);
 
-    console.log("[PermissionService] Querying user details...");
+    logger.debug("[PermissionService] Querying user details...");
     const user = await userRepo.findOne({ where: { id: userId } });
 
     if (!user) {
-      console.log("[PermissionService] Error: User not found for id", userId);
+      logger.error("[PermissionService] Error: User not found for id", userId);
       throw new Error("User not found");
     }
-    console.log("[PermissionService] User found:", user.email, "isSuperAdmin:", user.isSuperAdmin);
+    logger.debug("[PermissionService] User found:", user.email, "isSuperAdmin:", user.isSuperAdmin);
 
-    console.log("[PermissionService] Querying user roles with relations...");
+    logger.debug("[PermissionService] Querying user roles with relations...");
     const userRoles = await userRoleRepo.find({
       where: { user_id: userId },
       relations: { role: true, company: true, branch: true },
     });
-    console.log("[PermissionService] User roles fetched. Count:", userRoles.length);
+    logger.debug("[PermissionService] User roles fetched. Count:", userRoles.length);
 
-    console.log("[PermissionService] Resolving scope-aware access...");
+    logger.debug("[PermissionService] Resolving scope-aware access...");
     const { permissions, menus } = await this.resolveAccess(user, userRoles);
-    console.log("[PermissionService] Access resolved. Permissions:", permissions.length, "Menus:", menus.length);
+    logger.debug("[PermissionService] Access resolved. Permissions:", permissions.length, "Menus:", menus.length);
 
     const roles = userRoles.map(r => ({
       roleId: r.role.id,

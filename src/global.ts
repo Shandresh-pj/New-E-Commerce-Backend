@@ -1,215 +1,189 @@
-// redis import removed — client is managed centrally via config/redis.ts
+import "reflect-metadata";
 import { config } from "dotenv";
 import { resolve } from "path";
-import { DataSourceOptions } from "typeorm";
-import { Order, OrderItem, OrderTracking } from "./entities/order";
-import { Attendance, AttendanceBreakLog } from "./entities/attendance.entity";
-import { AuditLog, AuditLogBackup } from "./entities/auditLogs";
-import { Branch } from "./entities/branch";
-import { BranchStock } from "./entities/branch_stock";
-import { BreakSetting } from "./entities/break-setting.entity";
-import { Category } from "./entities/category";
-import { Company } from "./entities/company";
-import { Coupon, CouponProduct } from "./entities/coupons";
-import { CustomerLocation } from "./entities/customerLocation.dto";
-import { DeliveryAssignment, DeliveryTracking } from "./entities/delivery.entity";
-import { Employee } from "./entities/employee.entity";
-import { LeaveRequest } from "./entities/leave.entity";
-import { LowStockAlert } from "./entities/lowstock";
-import { Menu, Permission } from "./entities/menu";
-import { OtpVerification } from "./entities/otp";
-import { PasswordReset } from "./entities/password-reset.entity";
-import { Payment } from "./entities/payment";
+
+config({ path: resolve(".env") });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENTITY IMPORTS — every entity class used by TypeORM must be listed here.
+// global.ts is the single source of truth for all database tables.
+// database.ts reads ALL_ENTITIES from here so no glob pattern is needed.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Auth / Users
+import { User, UserRole }                              from "./entities/user";
+import { Register }                                    from "./entities/register";
+import { UserAddress }                                 from "./entities/userAddress";
+
+// Roles & Permissions
+import { Role }                                        from "./entities/roles";
+import { RolePermission }                              from "./entities/role-access";
+import { Menu, Permission }                            from "./entities/menu";
+
+// Company & Branch
+import { Company }                                     from "./entities/company";
+import { Branch }                                      from "./entities/branch";
+import { BranchTransfer }                              from "./entities/branchTransfer";
+import { BranchStock }                                 from "./entities/branch_stock";
+
+// Products & Categories
+import { Product, Cart }                               from "./entities/products";
+import { Category }                                    from "./entities/category";
+import { ProductVariant }                              from "./entities/productVariant";
 import { ProductAttribute, ProductAttributeValue, ProductAttributeValueProduct } from "./entities/productAttribute";
-import { Cart, Product } from "./entities/products";
-import { ProductVariant } from "./entities/productVariant";
-import { Register } from "./entities/register";
-import { RolePermission } from "./entities/role-access";
-import { Role } from "./entities/roles";
-import { Salary } from "./entities/salary";
-import { Status } from "./entities/status.entity";
-import { StockLog } from "./entities/stock";
-import { User, UserRole } from "./entities/user";
-import { UserAddress } from "./entities/userAddress";
-import { Wishlist } from "./entities/wishlist";
-import { PascalCaseNamingStrategy } from "./utils/pascalCase";
-import { InvoiceSettings } from "./entities/invoiceSettings";
-import { ProfitLoss } from "./entities/profit_loss.entity";
+import { ProductApproval }                             from "./entities/productApproval";
 
+// Orders & Payments
+import { Order, OrderItem, OrderTracking }             from "./entities/order";
+import { Payment }                                     from "./entities/payment";
+import { Invoice }                                     from "./entities/invoice";
+import { InvoiceSettings }                             from "./entities/invoiceSettings";
+import { Coupon, CouponProduct }                       from "./entities/coupons";
 
-config({
-  path: resolve(".env"),
-});
+// Inventory & Stock
+import { StockLog }                                    from "./entities/stock";
+import { LowStockAlert }                               from "./entities/lowstock";
 
-const REDIS_URL = process.env.REDIS_URL;
+// Delivery
+import { DeliveryAssignment, DeliveryTracking }        from "./entities/delivery.entity";
 
-const dbType =
-  process.env.DB_TYPE as DataSourceOptions["type"];
+// Customers & CRM
+import { CustomerLocation }                            from "./entities/customerLocation.dto";
+import { Contact }                                     from "./entities/contact.entity";
+import { Wishlist }                                    from "./entities/wishlist";
 
-// DB config logging is handled in config/database.ts — removed from here to prevent
-// duplicate startup log spam before the server has initialized.
+// Employees & HR
+import { Employee }                                    from "./entities/employee.entity";
+import { Salary }                                      from "./entities/salary";
+import { LeaveRequest }                                from "./entities/leave.entity";
 
-/* ==========================================
-   MYSQL CONFIG
-========================================== */
+// Attendance & Shifts
+import { Attendance, AttendanceBreakLog }              from "./entities/attendance.entity";
+import { AttendanceNotification }                      from "./entities/attendance_notification.entity";
+import { Shift, ShiftAssignment }                      from "./entities/shift.entity";
+import { BreakPolicy }                                 from "./entities/break_policy.entity";
+import { BreakSetting }                                from "./entities/break-setting.entity";
 
-let localConfig: DataSourceOptions = {
-  type: "mysql",
+// Biometric
+import { BiometricDevice, BiometricAuthLog }           from "./entities/biometric_device.entity";
 
-  host: process.env.DB_HOST,
+// Finance
+import { ProfitLoss }                                  from "./entities/profit_loss.entity";
 
-  port: Number(process.env.DB_PORT),
+// Notifications & Audit
+import { Notification }                                from "./entities/notification";
+import { AuditLog, AuditLogBackup }                   from "./entities/auditLogs";
 
-  username: process.env.DB_USERNAME,
+// Auth / Security
+import { OtpVerification }                             from "./entities/otp";
+import { PasswordReset }                               from "./entities/password-reset.entity";
 
-  password: process.env.DB_PASSWORD,
+// Misc
+import { Status }                                      from "./entities/status.entity";
 
-  database: process.env.DB_DATABASE,
+// ─────────────────────────────────────────────────────────────────────────────
+// ALL_ENTITIES — the authoritative list registered with TypeORM.
+// Add any new entity class here; database.ts will pick it up automatically.
+// ─────────────────────────────────────────────────────────────────────────────
+export const ALL_ENTITIES = [
+  // Auth / Users
+  User,
+  UserRole,
+  Register,
+  UserAddress,
 
-  legacySpatialSupport: false,
+  // Roles & Permissions
+  Role,
+  RolePermission,
+  Menu,
+  Permission,
 
-  synchronize:
-    process.env.DB_SYNC === "true" &&
-    process.env.NODE_ENV ===
-      "development",
+  // Company & Branch
+  Company,
+  Branch,
+  BranchTransfer,
+  BranchStock,
 
-  logging:
-    process.env.NODE_ENV ===
-    "development",
+  // Products & Categories
+  Product,
+  Cart,
+  Category,
+  ProductVariant,
+  ProductAttribute,
+  ProductAttributeValue,
+  ProductAttributeValueProduct,
+  ProductApproval,
 
-  timezone: "Z",
+  // Orders & Payments
+  Order,
+  OrderItem,
+  OrderTracking,
+  Payment,
+  Invoice,
+  InvoiceSettings,
+  Coupon,
+  CouponProduct,
 
-  charset: "utf8mb4_unicode_ci",
+  // Inventory & Stock
+  StockLog,
+  LowStockAlert,
 
-  entities: [
-    AttendanceBreakLog,
-    Attendance,
-    Branch,
-    BranchStock,
-    BreakSetting,
-    Company,
-    CustomerLocation,
-    Coupon, 
-    CouponProduct,
-    Cart, 
-    Category,
-    DeliveryTracking,
-    DeliveryAssignment,
-    Employee,
-    LowStockAlert,
-    LeaveRequest,
-    Menu,
-    Order,
-    OrderItem,
-    OtpVerification,
-    OrderTracking,
-    Register,
-    Product,
-    Payment,
-    Permission,
-    PasswordReset,
-    ProductAttribute,
-    ProductAttributeValue,
-    ProductAttributeValueProduct,
-    ProductVariant,
-    RolePermission,
-    UserRole,
-    Salary,
-    StockLog,
-    Status,
-    Role,
-    UserAddress,
-    User,
-    Wishlist,
-    AuditLogBackup,
-    AuditLog,
-    InvoiceSettings,
-    ProfitLoss
-  ],
+  // Delivery
+  DeliveryAssignment,
+  DeliveryTracking,
 
-  namingStrategy:
-    new PascalCaseNamingStrategy(),
+  // Customers & CRM
+  CustomerLocation,
+  Contact,
+  Wishlist,
 
-  migrationsRun: true,
-};
+  // Employees & HR
+  Employee,
+  Salary,
+  LeaveRequest,
 
-/* ==========================================
-   POSTGRES CONFIG
-========================================== */
+  // Attendance & Shifts
+  Attendance,
+  AttendanceBreakLog,
+  AttendanceNotification,
+  Shift,
+  ShiftAssignment,
+  BreakPolicy,
+  BreakSetting,
 
-if (dbType === "postgres") {
-  localConfig = {
-    type: "postgres",
+  // Biometric
+  BiometricDevice,
+  BiometricAuthLog,
 
-    host: process.env.DB_HOST,
+  // Finance
+  ProfitLoss,
 
-    port: Number(
-      process.env.DB_PORT
-    ),
+  // Notifications & Audit
+  Notification,
+  AuditLog,
+  AuditLogBackup,
 
-    username:
-      process.env.DB_USERNAME,
+  // Auth / Security
+  OtpVerification,
+  PasswordReset,
 
-    password:
-      process.env.DB_PASSWORD,
+  // Misc
+  Status,
+] as const;
 
-    database:
-      process.env.DB_DATABASE,
-
-    synchronize:
-      process.env.DB_SYNC ===
-        "false" &&
-      process.env.NODE_ENV ===
-        "development",
-
-    logging:
-      process.env.NODE_ENV ===
-      "development",
-
-    entities: [
-      Register,
-    ],
-
-    namingStrategy:
-      new PascalCaseNamingStrategy(),
-
-  migrationsRun: false,
-  };
-}
-
-/* ==========================================
-   GLOBAL CONFIG
-========================================== */
-
+/* ============================================================
+   GLOBAL NAMESPACE — RUNTIME CONSTANTS
+============================================================ */
 export namespace Global {
   export const network =
-    process.env.NODE_ENV ===
-    "development"
-      ? "Testnet"
-      : "Mainnet";
-
-  // Redis client is managed centrally via config/redis.ts with retry strategies and error handlers.
-  // Do NOT create a second client here — it would be orphaned with no error handling.
-  export const client = null;
-
-  export const dbConfig =
-    localConfig;
-
-  export const DbType =
-    dbType;
+    process.env.NODE_ENV === "development" ? "Testnet" : "Mainnet";
 
   export let lang: any;
-
   export let publicApiUrl: any;
-
   export let publicWebUrl: any;
-
   export let UserTypes: any;
-
   export let user: any;
-
   export let defaultLang: any;
 
-  export const AllowedOriginsCache: Set<string> =
-    new Set();
+  export const AllowedOriginsCache: Set<string> = new Set();
 }

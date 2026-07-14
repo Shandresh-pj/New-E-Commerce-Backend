@@ -1,54 +1,47 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm";
-import { Branch } from "./branch";
-import { Employee } from "./employee.entity";
+import { Entity, Column, OneToMany, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Branch }   from "./branch";
 import { UserRole } from "./user";
 
 @Entity("companies")
 export class Company {
 
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
-  @Column()
-  name: string;
+  @Column({ type: "varchar", length: 255 })
+  name!: string;
 
-  @Column()
-  email: string;
+  @Column({ type: "varchar", length: 255, unique: true })
+  email!: string;
 
-  @Column()
-  owner_id: number;
+  @Column({ type: "int" })
+  owner_id!: number;
 
-  @Column({ nullable: true })
-  phone: string;
+  @Column({ type: "varchar", length: 20, nullable: true })
+  phone!: string | null;
 
-  @Column({ nullable: true })
-  address: string;
+  @Column({ type: "text", nullable: true })
+  address!: string | null;
 
-  @Column({ unique: true, nullable: true })
-  gst_number: string;
+  @Column({ type: "varchar", length: 50, unique: true, nullable: true })
+  gst_number!: string | null;
 
-  @Column({ nullable: true })
-  razorpay_key_id: string;
+  @Column({ type: "varchar", length: 255, nullable: true })
+  razorpay_key_id!: string | null;
 
-  @Column({ nullable: true })
-  razorpay_key_secret: string;
+  @Column({ type: "varchar", length: 255, nullable: true })
+  razorpay_key_secret!: string | null;
 
-   @OneToMany(
-    ()=>Branch,
-    branch=>branch.company
-  )
-  branches:Branch[];
+  @CreateDateColumn({ name: "created_at" })
+  created_at!: Date;
 
-  @OneToMany(
- ()=>UserRole,
- userRole=>userRole.company
-)
-userRoles:UserRole[];
+  @UpdateDateColumn({ name: "updated_at" })
+  updated_at!: Date;
 
-  @CreateDateColumn()
-  created_at: Date;
+  // ── Relations ────────────────────────────────────────────────────────
+  @OneToMany(() => Branch, (b) => b.company)
+  branches!: Branch[];
 
-  @UpdateDateColumn()
-  updated_at: Date;
+  @OneToMany(() => UserRole, (ur) => ur.company)
+  userRoles!: UserRole[];
 }
-

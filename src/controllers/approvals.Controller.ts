@@ -187,7 +187,7 @@ export class ApprovalsController {
         const notification = notificationRepo.create({
           message: `Your approval request for "${request.new_values?.name || 'Stock Adjustment'}" is ${request.status.toLowerCase()}`,
           type: request.status === "Approved" ? "PUBLISHED" : "STOCK_UPDATE",
-          product_id: request.product_id,
+          product_id: request.product_id ?? undefined,
         });
         await notificationRepo.save(notification);
         io.emit("new-notification", notification);

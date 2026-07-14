@@ -1,4 +1,13 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+
+export enum NotificationEventType {
+  LOW_STOCK       = "LOW_STOCK",
+  CRITICAL_STOCK  = "CRITICAL_STOCK",
+  APPROVAL_REQUEST = "APPROVAL_REQUEST",
+  PUBLISHED       = "PUBLISHED",
+  STOCK_UPDATE    = "STOCK_UPDATE",
+  BRANCH_ALERT    = "BRANCH_ALERT",
+}
 
 @Entity("notifications")
 export class Notification {
@@ -9,21 +18,23 @@ export class Notification {
   @Column({ type: "text" })
   message!: string;
 
-  @Column()
-  type!: string; // 'LOW_STOCK' | 'CRITICAL_STOCK' | 'APPROVAL_REQUEST' | 'PUBLISHED' | 'STOCK_UPDATE' | 'BRANCH_ALERT'
+  @Index()
+  @Column({ type: "varchar", length: 50 })
+  type!: string;
 
-  @Column({ nullable: true })
-  product_id!: number;
+  // Optional FK columns — use undefined (not null) to satisfy TypeORM DeepPartial<T>
+  @Column({ type: "int", nullable: true })
+  product_id!: number | undefined;
 
-  @Column({ nullable: true })
-  branch_name!: string;
+  @Column({ type: "varchar", length: 255, nullable: true })
+  branch_name!: string | undefined;
 
-  @Column({ nullable: true })
-  quantity!: number;
+  @Column({ type: "int", nullable: true })
+  quantity!: number | undefined;
 
-  @Column({ default: false })
+  @Column({ type: "boolean", default: false })
   is_read!: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 }

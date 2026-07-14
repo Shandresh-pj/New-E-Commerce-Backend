@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import { IsNull } from "typeorm";
-import { Controller, Get, Post, Put, Delete, Swagger } from "../decorators";
+import { Controller, Get, Post, Put, Delete, Swagger, Middleware } from "../decorators";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { auditMiddleware } from "../middleware/audit.Middleware";
 import dataSource from "../config/database";
 import { AttendanceService } from "../services/attendance.service";
-import { Attendance, AttendanceStatus, AttendanceSource, BreakType } from "../entities/attendance.entity";
-import { AttendanceBreakLog } from "../entities/attendance.entity";
+import { Attendance, AttendanceStatus, AttendanceSource, BreakType, AttendanceBreakLog } from "../entities/attendance.entity";
 import { TenantService } from "../middleware/tenantFilter.middleware";
 import { nowDate, nowTime } from "../utils/dateTime";
 
@@ -17,20 +18,37 @@ export class AttendanceController {
   // CHECK-IN
   // ══════════════════════════════════════════════════════════════════════
   @Post("/check-in")
+  @Middleware([authenticateMiddleware])
   @Swagger("Check In", "Employee check in with automatic shift detection and late marking")
   async checkIn(req: any, res: Response) {
     const user = req.user;
-    const { employee_id, source, gps_lat, gps_lng, idempotency_key } = req.body;
+    const { employee_id, company_id, branch_id, source, gps_lat, gps_lng, idempotency_key } = req.body;
 
     const empId = employee_id ?? user.userId;
     if (!empId) {
       return res.status(400).json({ success: false, message: "employee_id is required" });
     }
 
+    let compId = company_id ? Number(company_id) : user.companyId;
+    let bId = branch_id ? Number(branch_id) : user.branchId;
+
+    if (!compId || !bId) {
+      const empRepo = dataSource.getRepository(require("../entities/employee").Employee);
+      const emp = await empRepo.findOne({ where: { id: Number(empId) } });
+      if (emp) {
+        if (!compId) compId = emp.company_id;
+        if (!bId) bId = emp.branch_id;
+      }
+    }
+
+    if (!compId || !bId) {
+      return res.status(400).json({ success: false, message: "company_id and branch_id are required. Please select or assign employee to a company/branch." });
+    }
+
     const attendance = await attendanceService.processCheckIn({
       employee_id: Number(empId),
-      company_id:  user.companyId,
-      branch_id:   user.branchId,
+      company_id:  Number(compId),
+      branch_id:   Number(bId),
       source:      source ?? AttendanceSource.WEB,
       ip_address:  req.ip,
       gps_lat:     gps_lat ? Number(gps_lat) : undefined,
@@ -45,6 +63,7 @@ export class AttendanceController {
   // CHECK-OUT
   // ══════════════════════════════════════════════════════════════════════
   @Post("/check-out/:id")
+  @Middleware([authenticateMiddleware])
   @Swagger("Check Out", "Employee check-out with automatic time/deduction computation")
   async checkOut(req: any, res: Response) {
     const { id } = req.params;
@@ -63,6 +82,7 @@ export class AttendanceController {
   // BREAK START
   // ══════════════════════════════════════════════════════════════════════
   @Post("/break-in")
+  @Middleware([authenticateMiddleware])
   @Swagger("Break Start", "Start an employee break session with policy validation")
   async breakIn(req: any, res: Response) {
     const { attendance_id, break_type, break_policy_id } = req.body;
@@ -84,6 +104,7 @@ export class AttendanceController {
   // BREAK END
   // ══════════════════════════════════════════════════════════════════════
   @Post("/break-out/:breakLogId")
+  @Middleware([authenticateMiddleware])
   @Swagger("Break End", "End an employee break, compute duration, apply deduction rules")
   async breakOut(req: any, res: Response) {
     const { breakLogId } = req.params;
@@ -95,6 +116,7 @@ export class AttendanceController {
   // LIVE DASHBOARD
   // ══════════════════════════════════════════════════════════════════════
   @Get("/dashboard")
+  @Middleware([authenticateMiddleware])
   @Swagger("Live Dashboard", "Real-time attendance metrics: present/absent/break/late counts")
   async dashboard(req: any, res: Response) {
     const branchId = req.query.branch_id ? Number(req.query.branch_id) : req.user.branchId;
@@ -106,6 +128,7 @@ export class AttendanceController {
   // ATTENDANCE LIST
   // ══════════════════════════════════════════════════════════════════════
   @Get("/")
+  @Middleware([authenticateMiddleware])
   @Swagger("Attendance List", "Get paginated attendance records with filters")
   async getAll(req: any, res: Response) {
     const repo   = dataSource.getRepository(Attendance);
@@ -133,6 +156,7 @@ export class AttendanceController {
   // TODAY'S STATUS FOR EMPLOYEE
   // ══════════════════════════════════════════════════════════════════════
   @Get("/today")
+  @Middleware([authenticateMiddleware])
   @Swagger("Today's Attendance", "Get current employee's attendance for today")
   async today(req: any, res: Response) {
     const repo = dataSource.getRepository(Attendance);
@@ -162,6 +186,7 @@ export class AttendanceController {
   // EMPLOYEE HISTORY
   // ══════════════════════════════════════════════════════════════════════
   @Get("/employee/:employeeId")
+  @Middleware([authenticateMiddleware])
   @Swagger("Employee History", "Get full attendance history for a specific employee")
   async employeeHistory(req: any, res: Response) {
     const repo = dataSource.getRepository(Attendance);
@@ -186,6 +211,7 @@ export class AttendanceController {
   // SINGLE ATTENDANCE RECORD
   // ══════════════════════════════════════════════════════════════════════
   @Get("/:id")
+  @Middleware([authenticateMiddleware])
   @Swagger("Attendance Details", "Get single attendance record with break logs")
   async getOne(req: any, res: Response) {
     const repo = dataSource.getRepository(Attendance);
@@ -205,6 +231,7 @@ export class AttendanceController {
   // GET BREAK LOGS
   // ══════════════════════════════════════════════════════════════════════
   @Get("/breaks/:attendanceId")
+  @Middleware([authenticateMiddleware])
   @Swagger("Attendance Breaks", "Get all break logs for a specific attendance record")
   async getBreaks(req: any, res: Response) {
     const repo = dataSource.getRepository(Attendance);
@@ -227,6 +254,7 @@ export class AttendanceController {
   // MANUAL LOG (Admin)
   // ══════════════════════════════════════════════════════════════════════
   @Post("/manual")
+  @Middleware([authenticateMiddleware])
   @Swagger("Manual Attendance", "Admin manually create an attendance record")
   async manual(req: any, res: Response) {
     const repo = dataSource.getRepository(Attendance);
@@ -278,6 +306,7 @@ export class AttendanceController {
   // REGULARIZE (Admin Override)
   // ══════════════════════════════════════════════════════════════════════
   @Post("/regularize/:id")
+  @Middleware([authenticateMiddleware])
   @Swagger("Regularize Attendance", "Admin override attendance record")
   async regularize(req: any, res: Response) {
     const repo = dataSource.getRepository(Attendance);
@@ -309,6 +338,7 @@ export class AttendanceController {
   // APPROVE
   // ══════════════════════════════════════════════════════════════════════
   @Post("/approve/:id")
+  @Middleware([authenticateMiddleware])
   @Swagger("Approve Attendance", "Manager/HR approve an attendance record")
   async approve(req: any, res: Response) {
     const repo = dataSource.getRepository(Attendance);
@@ -327,6 +357,7 @@ export class AttendanceController {
   // UPDATE
   // ══════════════════════════════════════════════════════════════════════
   @Put("/:id")
+  @Middleware([authenticateMiddleware])
   @Swagger("Update Attendance", "Admin update attendance record fields")
   async update(req: any, res: Response) {
     const repo = dataSource.getRepository(Attendance);
@@ -352,6 +383,7 @@ export class AttendanceController {
   // DELETE
   // ══════════════════════════════════════════════════════════════════════
   @Delete("/:id")
+  @Middleware([authenticateMiddleware])
   @Swagger("Delete Attendance", "Admin delete attendance record")
   async delete(req: any, res: Response) {
     const repo = dataSource.getRepository(Attendance);
@@ -367,6 +399,7 @@ export class AttendanceController {
   // DAILY REPORT
   // ══════════════════════════════════════════════════════════════════════
   @Get("/report/daily")
+  @Middleware([authenticateMiddleware])
   @Swagger("Daily Report", "Full daily attendance report for the company/branch")
   async dailyReport(req: any, res: Response) {
     const repo  = dataSource.getRepository(Attendance);
@@ -398,6 +431,7 @@ export class AttendanceController {
   // MONTHLY REPORT
   // ══════════════════════════════════════════════════════════════════════
   @Get("/report/monthly")
+  @Middleware([authenticateMiddleware])
   @Swagger("Monthly Report", "Monthly attendance summary per employee")
   async monthlyReport(req: any, res: Response) {
     const repo = dataSource.getRepository(Attendance);

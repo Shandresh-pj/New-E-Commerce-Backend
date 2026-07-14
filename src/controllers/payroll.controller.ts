@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
-import { Controller, Get, Post, Swagger } from "../decorators";
+import { Controller, Get, Post, Put, Delete, Swagger, Middleware } from "../decorators";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
+import { auditMiddleware } from "../middleware/audit.Middleware";
 import dataSource from "../config/database";
 import { PayrollService } from "../services/payroll.service";
 import { Salary, PayrollStatus } from "../entities/salary";
@@ -12,6 +14,7 @@ export class PayrollController {
 
   // ── Generate Monthly Payroll ──────────────────────────────────────────
   @Post("/generate")
+  @Middleware([authenticateMiddleware])
   @Swagger("Generate Payroll", "Auto-generate payroll from attendance, breaks, leaves, and OT data")
   async generate(req: any, res: Response) {
     const { employee_id, month, year } = req.body;
@@ -32,6 +35,7 @@ export class PayrollController {
 
   // ── Approve Payroll ───────────────────────────────────────────────────
   @Post("/approve/:id")
+  @Middleware([authenticateMiddleware])
   @Swagger("Approve Payroll", "Approve a draft payroll record")
   async approve(req: any, res: Response) {
     const payroll = await payrollService.approvePayroll(Number(req.params.id), req.user.userId);
@@ -40,6 +44,7 @@ export class PayrollController {
 
   // ── Mark as Paid ──────────────────────────────────────────────────────
   @Post("/mark-paid/:id")
+  @Middleware([authenticateMiddleware])
   @Swagger("Mark Payroll Paid", "Mark an approved payroll as paid with payment details")
   async markPaid(req: any, res: Response) {
     const { payment_method, payment_reference } = req.body;
@@ -53,6 +58,7 @@ export class PayrollController {
 
   // ── Monthly Summary ───────────────────────────────────────────────────
   @Get("/summary")
+  @Middleware([authenticateMiddleware])
   @Swagger("Payroll Summary", "Monthly salary summary for company/branch")
   async summary(req: any, res: Response) {
     const { month, year, branch_id } = req.query;
@@ -62,7 +68,7 @@ export class PayrollController {
     }
 
     const data = await payrollService.getMonthlySummary(
-      req.user.companyId,
+      req.user,
       month as string,
       Number(year),
       branch_id ? Number(branch_id) : undefined,
@@ -73,14 +79,16 @@ export class PayrollController {
 
   // ── Payslip Data ──────────────────────────────────────────────────────
   @Get("/slip/:id")
+  @Middleware([authenticateMiddleware])
   @Swagger("Payslip", "Get detailed payslip data for an employee's payroll")
   async payslip(req: any, res: Response) {
-    const data = await payrollService.getPayslip(Number(req.params.id), req.user.companyId);
+    const data = await payrollService.getPayslip(Number(req.params.id), req.user);
     return res.json({ success: true, data });
   }
 
   // ── List All Payroll Records ──────────────────────────────────────────
   @Get("/")
+  @Middleware([authenticateMiddleware])
   @Swagger("Payroll List", "Get all payroll records with optional filters")
   async getAll(req: any, res: Response) {
     const repo  = dataSource.getRepository(Salary);
@@ -106,6 +114,7 @@ export class PayrollController {
 
   // ── Single Payroll ────────────────────────────────────────────────────
   @Get("/:id")
+  @Middleware([authenticateMiddleware])
   @Swagger("Payroll Detail", "Get single payroll record by ID")
   async getOne(req: any, res: Response) {
     const repo    = dataSource.getRepository(Salary);

@@ -82,6 +82,63 @@ export class MenuController {
   }
 
   // =====================================================
+  // CREATE MENUS IN BULK
+  // =====================================================
+  @Post("/bulk")
+  @Middleware([authenticateMiddleware])
+  async createBulk(req: any, res: any) {
+    const queryRunner = dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const items = req.body;
+      if (!Array.isArray(items)) {
+        await queryRunner.rollbackTransaction();
+        return res.status(400).json({ success: false, message: "Expected an array of menus" });
+      }
+
+      const menuRepo = queryRunner.manager.getRepository(Menu);
+      const permissionRepo = queryRunner.manager.getRepository(Permission);
+      const actions = Object.values(PermissionType);
+      const createdMenus = [];
+
+      for (const item of items) {
+        const { name, path, icon } = item;
+        
+        // Skip existing to prevent conflicts in bulk insert
+        const exists = await menuRepo.findOne({ where: { name } });
+        if (exists) continue;
+
+        const menu = await menuRepo.save(menuRepo.create({ name, path, icon }));
+        
+        const permissions = actions.map(action =>
+          permissionRepo.create({ menu_id: menu.id, action })
+        );
+        await permissionRepo.save(permissions);
+        createdMenus.push(menu);
+      }
+
+      await queryRunner.commitTransaction();
+
+      return res.status(201).json({
+        success: true,
+        message: `Successfully created ${createdMenus.length} menus out of ${items.length}`,
+        data: createdMenus
+      });
+
+    } catch (err: any) {
+      await queryRunner.rollbackTransaction();
+      return res.status(500).json({
+        success: false,
+        message: err.message
+      });
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  // =====================================================
   // GET ALL MENUS
   // =====================================================
   @Get("/")

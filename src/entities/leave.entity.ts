@@ -1,10 +1,17 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-} from "typeorm";
+import { Entity, Column, Index, PrimaryGeneratedColumn, CreateDateColumn } from "typeorm";
 
+export enum LeaveType {
+  CASUAL    = "CASUAL",
+  SICK      = "SICK",
+  EMERGENCY = "EMERGENCY",
+  EARNED    = "EARNED",
+}
+
+export enum LeaveStatus {
+  PENDING  = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
 
 @Entity("leave_requests")
 export class LeaveRequest {
@@ -12,53 +19,40 @@ export class LeaveRequest {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column()
+  @Index()
+  @Column({ type: "int" })
   employee_id!: number;
 
-  @Column()
+  @Column({ type: "int" })
   company_id!: number;
 
-  @Column()
+  @Column({ type: "int" })
   branch_id!: number;
 
-  @Column()
+  @Column({ type: "varchar", length: 50 })
   leave_type!: string;
-  // CASUAL
-  // SICK
-  // EMERGENCY
-  // EARNED
 
-  @Column()
+  @Column({ type: "varchar", length: 20 })
   from_date!: string;
 
-  @Column()
+  @Column({ type: "varchar", length: 20 })
   to_date!: string;
 
-  @Column()
+  @Column({ type: "int" })
   total_days!: number;
 
-  @Column("text")
+  @Column({ type: "text" })
   reason!: string;
 
-  @Column({
-    default: "PENDING",
-  })
+  @Column({ type: "varchar", length: 20, default: "PENDING" })
   status!: string;
-  // PENDING
-  // APPROVED
-  // REJECTED
 
-  @Column({
-    nullable: true,
-  })
-  approved_by!: number;
+  @Column({ type: "int", nullable: true })
+  approved_by!: number | null;
 
-  @Column({
-    nullable: true,
-  })
-  approved_at!: string;
+  @Column({ type: "varchar", length: 50, nullable: true })
+  approved_at!: string | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 }
-

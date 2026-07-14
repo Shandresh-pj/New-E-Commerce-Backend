@@ -37,22 +37,41 @@ process.on("uncaughtException", (error: Error) => {
 });
 
 // ─── Database Initialization ─────────────────────────────────────────────────
+// global.ts exports ALL_ENTITIES and database.ts registers them with TypeORM.
+// DB_SYNC=true  → TypeORM will create/alter tables on every startup (default in dev).
+// DB_SYNC=false → No auto-sync; use migrations (recommended for production).
 async function initDatabase() {
   if (!dataSource.isInitialized) {
     await dataSource.initialize();
+    console.log("✅ Database connection established.");
   }
 
-  // Auto-sync if tables are missing
-  try {
-    await dataSource.query('SELECT 1 FROM "roles" LIMIT 1');
-  } catch (error) {
-    console.log("⚠️ Database tables missing. Forcing synchronization...");
-    await dataSource.synchronize(false);
-    console.log("✅ Database synchronized.");
+  // Always run synchronize in development so new entity fields are picked up.
+  // In production, DB_SYNC must be explicitly set to "true" in the dashboard.
+  const shouldSync =
+    String(process.env.DB_SYNC ?? "true").toLowerCase().trim() === "true";
+
+  if (shouldSync) {
+    try {
+      console.log("🔄 Synchronizing all entity tables with the database...");
+      await dataSource.synchronize(false); // false = don't drop existing data
+      console.log("✅ All entity tables are synchronized.");
+    } catch (syncErr: any) {
+      console.error("❌ Database synchronization failed:", syncErr.message);
+      throw syncErr; // crash fast so the problem is visible
+    }
+  } else {
+    // Even when sync is disabled, verify the DB is reachable
+    try {
+      await dataSource.query("SELECT 1");
+    } catch (pingErr: any) {
+      console.error("❌ Database ping failed:", pingErr.message);
+      throw pingErr;
+    }
   }
 
   await seedRoles();
-  console.log("✅ Database Connected");
+  console.log("✅ Database ready.");
 }
 
 // ─── Server Bootstrap ────────────────────────────────────────────────────────

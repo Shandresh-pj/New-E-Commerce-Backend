@@ -1,13 +1,6 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  Index,
-} from "typeorm";
+import { Entity, Column, Index, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from "typeorm";
 
-// ─── Shift Type Enum ───────────────────────────────────────────────────────
+// ─── Enums ─────────────────────────────────────────────────────────────────
 export enum ShiftType {
   FIXED      = "FIXED",
   FLEXIBLE   = "FLEXIBLE",
@@ -16,7 +9,7 @@ export enum ShiftType {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SHIFT ENTITY
+// SHIFT
 // ═══════════════════════════════════════════════════════════════════════════
 @Entity("shifts")
 export class Shift {
@@ -25,66 +18,58 @@ export class Shift {
   id!: number;
 
   @Index()
-  @Column()
+  @Column({ type: "int" })
   company_id!: number;
 
   @Index()
-  @Column()
+  @Column({ type: "int" })
   branch_id!: number;
 
-  @Column({ length: 100 })
-  name!: string;   // e.g. "Morning Shift", "Night Shift"
+  @Column({ type: "varchar", length: 100 })
+  name!: string;
 
-  @Column({
-    type: "enum",
-    enum: ShiftType,
-    default: ShiftType.FIXED,
-  })
+  @Column({ type: "enum", enum: ShiftType, default: ShiftType.FIXED })
   type!: ShiftType;
 
-  @Column({ length: 10 })
-  start_time!: string;   // HH:mm  e.g. "09:00"
+  @Column({ type: "varchar", length: 10 })
+  start_time!: string;  // HH:mm
 
-  @Column({ length: 10 })
-  end_time!: string;     // HH:mm  e.g. "18:00"
+  @Column({ type: "varchar", length: 10 })
+  end_time!: string;    // HH:mm
 
-  // ── Policy Thresholds ──────────────────────────────────────────────────
-  @Column({ default: 15 })
-  grace_period_minutes!: number;   // late arrival grace
+  @Column({ type: "int", default: 15 })
+  grace_period_minutes!: number;
 
-  @Column({ default: 480 })
-  min_work_minutes!: number;       // 8 hours = 480
+  @Column({ type: "int", default: 480 })
+  min_work_minutes!: number;
 
-  @Column({ default: 480 })
-  overtime_threshold_minutes!: number;  // OT starts after this
+  @Column({ type: "int", default: 480 })
+  overtime_threshold_minutes!: number;
 
-  @Column({ default: 15 })
-  late_threshold_minutes!: number;      // marks as LATE after N mins
+  @Column({ type: "int", default: 15 })
+  late_threshold_minutes!: number;
 
-  @Column({ default: 240 })
-  half_day_threshold_minutes!: number;  // below this = HALF_DAY
+  @Column({ type: "int", default: 240 })
+  half_day_threshold_minutes!: number;
 
-  // ── Break Allowance ────────────────────────────────────────────────────
-  @Column({ default: 60 })
+  @Column({ type: "int", default: 60 })
   allowed_break_minutes!: number;
 
-  // ── Weekend / Holiday ─────────────────────────────────────────────────
   @Column({ type: "json", nullable: true })
-  weekend_days!: number[];  // [0=Sun, 6=Sat]
+  weekend_days!: number[] | null;  // [0=Sun, 6=Sat]
 
-  // ── Active Flag ───────────────────────────────────────────────────────
-  @Column({ default: true })
+  @Column({ type: "boolean", default: true })
   is_active!: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: "updated_at" })
   updated_at!: Date;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SHIFT ASSIGNMENT ENTITY
+// SHIFT ASSIGNMENT
 // ═══════════════════════════════════════════════════════════════════════════
 @Entity("shift_assignments")
 @Index(["employee_id", "is_active"])
@@ -94,30 +79,30 @@ export class ShiftAssignment {
   id!: number;
 
   @Index()
-  @Column()
+  @Column({ type: "int" })
   employee_id!: number;
 
-  @Column()
+  @Column({ type: "int" })
   shift_id!: number;
 
-  @Column()
+  @Column({ type: "int" })
   company_id!: number;
 
-  @Column()
+  @Column({ type: "int" })
   branch_id!: number;
 
-  @Column({ length: 20 })
-  effective_from!: string;   // DD:MM:YYYY
+  @Column({ type: "varchar", length: 20 })
+  effective_from!: string;  // DD:MM:YYYY
 
-  @Column({ nullable: true, length: 20 })
-  effective_to!: string;     // DD:MM:YYYY — null means open-ended
+  @Column({ type: "varchar", length: 20, nullable: true })
+  effective_to!: string | null;  // null = open-ended
 
-  @Column({ default: true })
+  @Column({ type: "boolean", default: true })
   is_active!: boolean;
 
-  @Column({ nullable: true })
-  assigned_by!: number;   // admin user ID
+  @Column({ type: "int", nullable: true })
+  assigned_by!: number | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 }

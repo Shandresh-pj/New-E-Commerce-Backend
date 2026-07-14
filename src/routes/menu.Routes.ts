@@ -58,6 +58,23 @@ router.post(
 
 /**
  * @swagger
+ * /menus/bulk:
+ *   post:
+ *     tags: [Menus]
+ *     summary: Create Menus in bulk
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post(
+  "/menus/bulk",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
+  auditMiddleware("MENU"),
+  menuController.createBulk.bind(menuController)
+);
+
+/**
+ * @swagger
  * /menus/update/{id}:
  *   put:
  *     tags: [Menus]

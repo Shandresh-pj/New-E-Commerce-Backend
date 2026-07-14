@@ -44,6 +44,80 @@ router.get(
 
 /**
  * @swagger
+ * /payroll/summary:
+ *   get:
+ *     summary: Get Payroll Summary
+ *     tags: [Payroll]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  "/payroll/summary",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER],
+  }),
+  payrollController.summary.bind(payrollController)
+);
+
+/**
+ * @swagger
+ * /payroll/slip/{id}:
+ *   get:
+ *     summary: Get Payslip Detail
+ *     tags: [Payroll]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get(
+  "/payroll/slip/:id",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.EMPLOYEE],
+  }),
+  payrollController.payslip.bind(payrollController)
+);
+
+/**
+ * @swagger
+ * /payroll/approve/{id}:
+ *   post:
+ *     summary: Approve Payroll
+ *     tags: [Payroll]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post(
+  "/payroll/approve/:id",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER],
+  }),
+  auditMiddleware("PAYROLL_APPROVE"),
+  payrollController.approve.bind(payrollController)
+);
+
+/**
+ * @swagger
+ * /payroll/mark-paid/{id}:
+ *   post:
+ *     summary: Mark Payroll Paid
+ *     tags: [Payroll]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post(
+  "/payroll/mark-paid/:id",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
+  }),
+  auditMiddleware("PAYROLL_PAID"),
+  payrollController.markPaid.bind(payrollController)
+);
+
+/**
+ * @swagger
  * /payroll/{id}:
  *   get:
  *     summary: Get Payroll Details

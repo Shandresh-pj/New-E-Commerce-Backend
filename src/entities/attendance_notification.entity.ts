@@ -1,12 +1,11 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
   Index,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
 } from "typeorm";
 
-// ─── Notification Type Enum ────────────────────────────────────────────────
 export enum NotificationType {
   LATE_ARRIVAL       = "LATE_ARRIVAL",
   EXCESS_BREAK       = "EXCESS_BREAK",
@@ -20,70 +19,53 @@ export enum NotificationType {
   HR_REVIEW_REQUIRED = "HR_REVIEW_REQUIRED",
 }
 
-// ─── Severity Enum ─────────────────────────────────────────────────────────
 export enum NotificationSeverity {
   INFO     = "INFO",
   WARNING  = "WARNING",
   CRITICAL = "CRITICAL",
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ATTENDANCE NOTIFICATION ENTITY
-// ═══════════════════════════════════════════════════════════════════════════
 @Entity("attendance_notifications")
 export class AttendanceNotification {
 
   @PrimaryGeneratedColumn()
   id!: number;
 
-  // ── Target ────────────────────────────────────────────────────────────
   @Index()
-  @Column({ nullable: true })
-  employee_id!: number;   // null = broadcast to all managers
+  @Column({ type: "int", nullable: true })
+  employee_id!: number | null;  // null = broadcast to all managers
 
   @Index()
-  @Column()
+  @Column({ type: "int" })
   company_id!: number;
 
-  @Column()
+  @Column({ type: "int" })
   branch_id!: number;
 
-  // ── Notification Content ──────────────────────────────────────────────
-  @Column({
-    type: "enum",
-    enum: NotificationType,
-  })
+  @Column({ type: "enum", enum: NotificationType })
   notification_type!: NotificationType;
 
-  @Column({ length: 200 })
+  @Column({ type: "varchar", length: 200 })
   title!: string;
 
   @Column({ type: "text" })
   message!: string;
 
-  @Column({
-    type: "enum",
-    enum: NotificationSeverity,
-    default: NotificationSeverity.INFO,
-  })
+  @Column({ type: "enum", enum: NotificationSeverity, default: NotificationSeverity.INFO })
   severity!: NotificationSeverity;
 
-  // ── Payload (structured data for UI) ─────────────────────────────────
-  // JSON: { employeeName, employeeId, branch, eventType, timestamp, excessMinutes, ... }
   @Column({ type: "json", nullable: true })
-  payload!: Record<string, any>;
+  payload!: Record<string, any> | null;
 
-  // ── Read Status ───────────────────────────────────────────────────────
-  @Column({ default: false })
+  @Column({ type: "boolean", default: false })
   is_read!: boolean;
 
-  @Column({ nullable: true, length: 25 })
-  read_at!: string;
+  @Column({ type: "varchar", length: 25, nullable: true })
+  read_at!: string | null;
 
-  // ── Related Record ────────────────────────────────────────────────────
-  @Column({ nullable: true })
-  attendance_id!: number;
+  @Column({ type: "int", nullable: true })
+  attendance_id!: number | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 }

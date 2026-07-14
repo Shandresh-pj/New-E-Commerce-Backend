@@ -1,13 +1,6 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  Index,
-} from "typeorm";
+import { Entity, Column, Index, PrimaryGeneratedColumn, CreateDateColumn } from "typeorm";
 
-// ─── Device Type Enum ──────────────────────────────────────────────────────
+// ─── Enums ─────────────────────────────────────────────────────────────────
 export enum DeviceType {
   FINGERPRINT = "FINGERPRINT",
   FACE        = "FACE",
@@ -18,7 +11,6 @@ export enum DeviceType {
   HYBRID      = "HYBRID",
 }
 
-// ─── Device Status Enum ────────────────────────────────────────────────────
 export enum DeviceStatus {
   ACTIVE   = "ACTIVE",
   INACTIVE = "INACTIVE",
@@ -26,87 +18,6 @@ export enum DeviceStatus {
   BANNED   = "BANNED",
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// BIOMETRIC DEVICE ENTITY
-// ═══════════════════════════════════════════════════════════════════════════
-@Entity("biometric_devices")
-export class BiometricDevice {
-
-  @PrimaryGeneratedColumn()
-  id!: number;
-
-  @Index()
-  @Column()
-  company_id!: number;
-
-  @Index()
-  @Column()
-  branch_id!: number;
-
-  @Column({ length: 100 })
-  device_name!: string;
-
-  @Column({ unique: true, length: 100 })
-  device_serial!: string;
-
-  @Column({
-    type: "enum",
-    enum: DeviceType,
-    default: DeviceType.FINGERPRINT,
-  })
-  device_type!: DeviceType;
-
-  // ── Network Info ──────────────────────────────────────────────────────
-  @Column({ nullable: true, length: 45 })
-  ip_address!: string;
-
-  @Column({ nullable: true, length: 200 })
-  location!: string;
-
-  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
-  gps_lat!: number;
-
-  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
-  gps_lng!: number;
-
-  // ── Security ─────────────────────────────────────────────────────────
-  @Column({ default: false })
-  is_whitelisted!: boolean;
-
-  @Column({ nullable: true, length: 500 })
-  jwt_secret!: string;   // per-device JWT signing secret
-
-  // ── Status ────────────────────────────────────────────────────────────
-  @Column({
-    type: "enum",
-    enum: DeviceStatus,
-    default: DeviceStatus.INACTIVE,
-  })
-  status!: DeviceStatus;
-
-  @Column({ default: false })
-  is_online!: boolean;
-
-  @Column({ nullable: true, type: "timestamp" })
-  last_ping_at!: Date;
-
-  // ── Firmware / Config ─────────────────────────────────────────────────
-  @Column({ nullable: true, length: 50 })
-  firmware_version!: string;
-
-  @Column({ type: "decimal", precision: 5, scale: 2, default: 80.0 })
-  min_confidence_score!: number;  // minimum score to accept auth
-
-  @CreateDateColumn()
-  created_at!: Date;
-
-  @UpdateDateColumn()
-  updated_at!: Date;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// BIOMETRIC AUTH LOG ENTITY
-// ═══════════════════════════════════════════════════════════════════════════
 export enum BiometricAction {
   CHECK_IN    = "CHECK_IN",
   CHECK_OUT   = "CHECK_OUT",
@@ -121,6 +32,77 @@ export enum BiometricAuthStatus {
   TIMEOUT = "TIMEOUT",
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// BIOMETRIC DEVICE
+// ═══════════════════════════════════════════════════════════════════════════
+import { UpdateDateColumn } from "typeorm";
+
+@Entity("biometric_devices")
+export class BiometricDevice {
+
+  @PrimaryGeneratedColumn()
+  id!: number;
+
+  @Index()
+  @Column({ type: "int" })
+  company_id!: number;
+
+  @Index()
+  @Column({ type: "int" })
+  branch_id!: number;
+
+  @Column({ type: "varchar", length: 100 })
+  device_name!: string;
+
+  @Column({ type: "varchar", length: 100, unique: true })
+  device_serial!: string;
+
+  @Column({ type: "enum", enum: DeviceType, default: DeviceType.FINGERPRINT })
+  device_type!: DeviceType;
+
+  @Column({ type: "varchar", length: 45, nullable: true })
+  ip_address!: string | null;
+
+  @Column({ type: "varchar", length: 200, nullable: true })
+  location!: string | null;
+
+  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
+  gps_lat!: number | null;
+
+  @Column({ type: "decimal", precision: 10, scale: 7, nullable: true })
+  gps_lng!: number | null;
+
+  @Column({ type: "boolean", default: false })
+  is_whitelisted!: boolean;
+
+  @Column({ type: "varchar", length: 500, nullable: true })
+  jwt_secret!: string | null;
+
+  @Column({ type: "enum", enum: DeviceStatus, default: DeviceStatus.INACTIVE })
+  status!: DeviceStatus;
+
+  @Column({ type: "boolean", default: false })
+  is_online!: boolean;
+
+  @Column({ type: "timestamp", nullable: true })
+  last_ping_at!: Date | null;
+
+  @Column({ type: "varchar", length: 50, nullable: true })
+  firmware_version!: string | null;
+
+  @Column({ type: "decimal", precision: 5, scale: 2, default: 80.0 })
+  min_confidence_score!: number;
+
+  @CreateDateColumn({ name: "created_at" })
+  created_at!: Date;
+
+  @UpdateDateColumn({ name: "updated_at" })
+  updated_at!: Date;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BIOMETRIC AUTH LOG
+// ═══════════════════════════════════════════════════════════════════════════
 @Entity("biometric_auth_logs")
 export class BiometricAuthLog {
 
@@ -128,47 +110,40 @@ export class BiometricAuthLog {
   id!: number;
 
   @Index()
-  @Column()
+  @Column({ type: "int" })
   device_id!: number;
 
   @Index()
-  @Column({ nullable: true })
-  employee_id!: number;
+  @Column({ type: "int", nullable: true })
+  employee_id!: number | null;
 
-  @Column()
+  @Column({ type: "int" })
   company_id!: number;
 
-  @Column()
+  @Column({ type: "int" })
   branch_id!: number;
 
-  @Column({
-    type: "enum",
-    enum: BiometricAction,
-  })
+  @Column({ type: "enum", enum: BiometricAction })
   action!: BiometricAction;
 
-  @Column({
-    type: "enum",
-    enum: BiometricAuthStatus,
-    default: BiometricAuthStatus.FAILED,
-  })
+  @Column({ type: "enum", enum: BiometricAuthStatus, default: BiometricAuthStatus.FAILED })
   auth_status!: BiometricAuthStatus;
 
   @Column({ type: "decimal", precision: 5, scale: 2, nullable: true })
-  confidence_score!: number;
+  confidence_score!: number | null;
 
-  @Column({ nullable: true, length: 45 })
-  ip_address!: string;
+  @Column({ type: "varchar", length: 45, nullable: true })
+  ip_address!: string | null;
 
-  @Column({ nullable: true, length: 50 })
-  auth_type!: string;
+  @Column({ type: "varchar", length: 50, nullable: true })
+  auth_type!: string | null;
 
-  @Column({ nullable: true })
-  attendance_id!: number;
+  @Column({ type: "int", nullable: true })
+  attendance_id!: number | null;
 
-  @Column({ nullable: true, type: "text" })
-  failure_reason!: string;
+  @Column({ type: "text", nullable: true })
+  failure_reason!: string | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 }

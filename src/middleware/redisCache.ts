@@ -3,6 +3,11 @@ import { redisClient } from "../config/redis";
 
 /**
  * Cache middleware for Express API responses.
+ *
+ * Key fix: Previously hijacked BOTH res.json AND res.send.
+ * Since res.json internally calls res.send, this caused every
+ * response to be written to Redis TWICE. Only res.json is intercepted now.
+ *
  * @param ttl Time to live in seconds (default 60s)
  */
 export const redisCache = (ttl: number = 60) => {
@@ -34,9 +39,11 @@ export const redisCache = (ttl: number = 60) => {
         return;
       }
 
-      // Hijack the res.json to save to Redis before sending
+      // Hijack res.json to save to Redis before sending.
+      // We do NOT also hijack res.send because res.json already calls res.send
+      // internally — intercepting both would cause double Redis writes.
       const originalJson = res.json.bind(res);
-      
+
       res.json = (body: any) => {
         // Only cache successful requests
         if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -44,32 +51,9 @@ export const redisCache = (ttl: number = 60) => {
             console.error("Redis Cache Save Error:", err);
           });
         }
-        
+
         res.setHeader("X-Cache", "MISS");
         return originalJson(body);
-      };
-
-      // Also hijack res.send if it's used instead of res.json
-      const originalSend = res.send.bind(res);
-      res.send = (body: any) => {
-        // If it's already hijacked by json, we don't want to double cache
-        // but if they call send directly with an object, we cache it
-        if (res.statusCode >= 200 && res.statusCode < 300 && typeof body === "string") {
-            try {
-                // Ensure it's valid JSON before caching
-                JSON.parse(body);
-                redisClient.setEx(key, ttl, body).catch((err: any) => {
-                    console.error("Redis Cache Save Error:", err);
-                });
-            } catch (e) {
-                // Not JSON, don't cache
-            }
-        }
-        
-        if (!res.getHeader("X-Cache")) {
-            res.setHeader("X-Cache", "MISS");
-        }
-        return originalSend(body);
       };
 
       next();

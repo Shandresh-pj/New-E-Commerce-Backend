@@ -1,3 +1,6 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// src/dto/category.dto.ts
+// ─────────────────────────────────────────────────────────────────────────────
 import {
   IsBoolean,
   IsNotEmpty,
@@ -5,13 +8,13 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  Min,
 } from "class-validator";
 
 export class CreateCategoryDto {
-
   @IsString()
   @IsNotEmpty()
-  @MaxLength(100)
+  @MaxLength(150)
   name!: string;
 
   @IsOptional()
@@ -25,6 +28,7 @@ export class CreateCategoryDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(1)
   parent_id?: number;
 
   @IsOptional()
@@ -37,11 +41,10 @@ export class CreateCategoryDto {
 }
 
 export class UpdateCategoryDto {
-
   @IsOptional()
   @IsString()
   @IsNotEmpty()
-  @MaxLength(100)
+  @MaxLength(150)
   name?: string;
 
   @IsOptional()
@@ -55,6 +58,7 @@ export class UpdateCategoryDto {
 
   @IsOptional()
   @IsNumber()
+  @Min(1)
   parent_id?: number;
 
   @IsOptional()

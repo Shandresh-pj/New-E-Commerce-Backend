@@ -1,18 +1,9 @@
-import { IsEmail, IsNotEmpty, IsOptional } from "class-validator";
-
-export class SendOtpDto {
-
-  @IsNotEmpty()
-  @IsEmail()
-  email!: string;
-}
-
-export class VerifyOtpDto {
-
-  @IsOptional()
-  @IsEmail()
-  email?: string;
-
-  @IsNotEmpty()
-  otp!: string;
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// src/dto/otp.dto.ts
+//
+// Backward-compatible re-exports — all content moved to auth.dto.ts
+// ─────────────────────────────────────────────────────────────────────────────
+export {
+  SendOtpDto,
+  VerifyOtpDto,
+} from "./auth.dto";

@@ -33,6 +33,9 @@ app.use(xssSanitizer);
 
 
 
+// Trust proxy is required when running behind a load balancer or proxy (like Render, Heroku, AWS)
+app.set("trust proxy", 1);
+
 // CORS: lock to specific origins in production, open in development
 const isProd = process.env.NODE_ENV === "production";
 const allowedOrigins = (
@@ -46,10 +49,13 @@ app.use(
     origin: isProd
       ? (origin, callback) => {
           // Allow server-to-server calls (no origin) and whitelisted origins
-          if (!origin || allowedOrigins.includes(origin)) {
+          // or allow all if allowedOrigins includes '*'
+          if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
             callback(null, true);
           } else {
-            callback(new Error(`CORS: origin '${origin}' not allowed`));
+            // Using callback(null, false) instead of Error prevents a 500 Internal Server Error.
+            // The browser will handle the CORS block naturally.
+            callback(null, false);
           }
         }
       : true, // Allow all origins in development
@@ -125,7 +131,7 @@ const loadRoutes = (dir: string) => {
       continue;
     }
 
-    if (!file.endsWith("Routes.ts") && !file.endsWith("Routes.js")) continue;
+    if (!file.toLowerCase().endsWith("routes.ts") && !file.toLowerCase().endsWith("routes.js")) continue;
 
     try {
       const route = require(fullPath).default;

@@ -1,15 +1,39 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 
+// Use the same allowed-origins list that HTTP CORS uses, so the socket
+// server doesn't accept connections from origins that the REST API blocks.
+const isProd = process.env.NODE_ENV === "production";
+const allowedOrigins = (
+  process.env.CORS_ORIGIN ||
+  process.env.FRONTEND_URL ||
+  "http://localhost:4200"
+).split(",").map((o) => o.trim());
+
 export let io: Server;
 
 export const initializeSocket = (server: any) => {
 
   io = new Server(server, {
-    cors: { origin: "*" },
+    cors: {
+      origin: isProd
+        ? (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+              callback(null, true);
+            } else {
+              callback(new Error(`Socket CORS: origin '${origin}' not allowed`));
+            }
+          }
+        : true,
+      credentials: true,
+    },
     path: "/ws",
     pingInterval: 25000,
     pingTimeout:  60000,
+    // Explicitly allow both transports — on Render, the WebSocket
+    // upgrade may take an extra round-trip; falling back to polling
+    // ensures the handshake still completes while WS is negotiated.
+    transports: ["websocket", "polling"],
   });
 
   // ═══════════════════════════════════════════════════════════════════

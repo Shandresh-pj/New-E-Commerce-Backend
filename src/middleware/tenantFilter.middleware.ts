@@ -17,6 +17,7 @@ export class TenantService {
       case UserType.BRANCH:
       case UserType.BRANCH_MANAGER:
       case UserType.SHOPKEEPER:
+      case UserType.EMPLOYEE:
         qb.andWhere(`${alias}.company_id = :companyId`, { companyId: user.companyId });
         qb.andWhere(`${alias}.branch_id = :branchId`,   { branchId:  user.branchId  });
         break;
@@ -48,6 +49,7 @@ export class TenantService {
       case UserType.BRANCH:
       case UserType.BRANCH_MANAGER:
       case UserType.SHOPKEEPER:
+      case UserType.EMPLOYEE:
         return { ...baseWhere, company_id: user.companyId, branch_id: user.branchId };
 
       case UserType.DELIVERY_BOY:
