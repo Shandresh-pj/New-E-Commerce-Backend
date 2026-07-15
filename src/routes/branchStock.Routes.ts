@@ -45,6 +45,18 @@ router.get(
   controller.getAll.bind(controller)
 );
 
+/**
+ * @swagger
+ * /branch-stock/transfer:
+ *   post:
+ *     summary: POST /branch-stock/transfer
+ *     tags: [BranchStock]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.post(
   "/branch-stock/transfer",
   authenticateMiddleware,
@@ -55,6 +67,18 @@ router.post(
   controller.requestTransfer.bind(controller)
 );
 
+/**
+ * @swagger
+ * /branch-stock/transfers:
+ *   get:
+ *     summary: GET /branch-stock/transfers
+ *     tags: [BranchStock]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.get(
   "/branch-stock/transfers",
   authenticateMiddleware,
@@ -64,6 +88,24 @@ router.get(
   controller.getTransfers.bind(controller)
 );
 
+/**
+ * @swagger
+ * /branch-stock/transfers/{id}/approve:
+ *   put:
+ *     summary: PUT /branch-stock/transfers/:id/approve
+ *     tags: [BranchStock]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.put(
   "/branch-stock/transfers/:id/approve",
   authenticateMiddleware,

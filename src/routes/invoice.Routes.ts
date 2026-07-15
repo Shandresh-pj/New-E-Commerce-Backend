@@ -16,6 +16,18 @@ const allowedRoles = [
   UserType.EMPLOYEE
 ];
 
+/**
+ * @swagger
+ * /invoices/suggestions:
+ *   get:
+ *     summary: GET /invoices/suggestions
+ *     tags: [Invoice]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.get(
   "/invoices/suggestions",
   authenticateMiddleware,
@@ -23,6 +35,18 @@ router.get(
   invoiceController.getSuggestions.bind(invoiceController)
 );
 
+/**
+ * @swagger
+ * /invoices/create:
+ *   post:
+ *     summary: POST /invoices/create
+ *     tags: [Invoice]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.post(
   "/invoices/create",
   authenticateMiddleware,
@@ -30,6 +54,18 @@ router.post(
   invoiceController.create.bind(invoiceController)
 );
 
+/**
+ * @swagger
+ * /invoices/print:
+ *   post:
+ *     summary: POST /invoices/print
+ *     tags: [Invoice]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.post(
   "/invoices/print",
   authenticateMiddleware,
@@ -37,6 +73,18 @@ router.post(
   invoiceController.print.bind(invoiceController)
 );
 
+/**
+ * @swagger
+ * /invoices/download:
+ *   post:
+ *     summary: POST /invoices/download
+ *     tags: [Invoice]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.post(
   "/invoices/download",
   authenticateMiddleware,

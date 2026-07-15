@@ -42,6 +42,18 @@ router.delete(
   alertController.deleteAlert.bind(alertController)
 );
 
+/**
+ * @swagger
+ * /notifications:
+ *   get:
+ *     summary: GET /notifications
+ *     tags: [Alerts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.get(
   "/notifications",
   authenticateMiddleware,
@@ -49,6 +61,24 @@ router.get(
   alertController.getNotifications.bind(alertController)
 );
 
+/**
+ * @swagger
+ * /notifications/{id}/read:
+ *   put:
+ *     summary: PUT /notifications/:id/read
+ *     tags: [Alerts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.put(
   "/notifications/:id/read",
   authenticateMiddleware,
@@ -56,6 +86,18 @@ router.put(
   alertController.markRead.bind(alertController)
 );
 
+/**
+ * @swagger
+ * /notifications/read-all:
+ *   put:
+ *     summary: PUT /notifications/read-all
+ *     tags: [Alerts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.put(
   "/notifications/read-all",
   authenticateMiddleware,

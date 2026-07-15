@@ -44,6 +44,18 @@ router.post(
   couponController.validateCoupon.bind(couponController)
 );
 
+/**
+ * @swagger
+ * /coupons/calculate:
+ *   post:
+ *     summary: POST /coupons/calculate
+ *     tags: [Coupons]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.post(
   "/coupons/calculate",
   authenticateMiddleware,
@@ -87,6 +99,24 @@ router.put(
   couponController.update.bind(couponController)
 );
 
+/**
+ * @swagger
+ * /coupons/{id}/status:
+ *   put:
+ *     summary: PUT /coupons/:id/status
+ *     tags: [Coupons]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.put(
   "/coupons/:id/status",
   authenticateMiddleware,

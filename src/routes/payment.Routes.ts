@@ -44,6 +44,18 @@ router.get(
   paymentController.getAll.bind(paymentController)
 );
 
+/**
+ * @swagger
+ * /payments/razorpay/create-order:
+ *   post:
+ *     summary: POST /payments/razorpay/create-order
+ *     tags: [Payment]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.post(
   "/payments/razorpay/create-order",
   authenticateMiddleware,
@@ -53,6 +65,18 @@ router.post(
   paymentController.createRazorpayOrder.bind(paymentController)
 );
 
+/**
+ * @swagger
+ * /payments/razorpay/verify:
+ *   post:
+ *     summary: POST /payments/razorpay/verify
+ *     tags: [Payment]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.post(
   "/payments/razorpay/verify",
   authenticateMiddleware,

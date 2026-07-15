@@ -309,6 +309,24 @@ router.delete(
   authController.deleteUser.bind(authController)
 );
 
+/**
+ * @swagger
+ * /auth/admin-set-password/{userId}:
+ *   put:
+ *     summary: PUT /auth/admin-set-password/:userId
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.put(
   "/auth/admin-set-password/:userId",
   authenticateMiddleware,

@@ -81,6 +81,62 @@ router.post(
   )
 );
 
+// =======================================
+// BATCH / SYNC ROLE ACCESS
+// =======================================
+
+router.post(
+  "/role-access/batch",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
+  roleAccessController.batch.bind(
+    roleAccessController
+  )
+);
+
+/**
+ * @swagger
+ * /role-access/batch:
+ *   put:
+ *     summary: PUT /role-access/batch
+ *     tags: [RoleAccess]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.put(
+  "/role-access/batch",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
+  roleAccessController.batch.bind(
+    roleAccessController
+  )
+);
+
+/**
+ * @swagger
+ * /role-access/sync:
+ *   post:
+ *     summary: POST /role-access/sync
+ *     tags: [RoleAccess]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
+router.post(
+  "/role-access/sync",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN] }),
+  roleAccessController.batch.bind(
+    roleAccessController
+  )
+);
+
+
 
 // =======================================
 // UPDATE ROLE ACCESS

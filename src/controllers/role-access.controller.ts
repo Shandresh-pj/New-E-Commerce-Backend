@@ -83,6 +83,15 @@ export class RoleAccessController {
   @Middleware([authenticateMiddleware])
   async create(req: any, res: any) {
 
+    if (
+      Array.isArray(req.body) ||
+      Array.isArray(req.body.grants) ||
+      Array.isArray(req.body.revokes) ||
+      Array.isArray(req.body.permissions)
+    ) {
+      return this.batch(req, res);
+    }
+
     const { role_id, permission_id, canApprove } = req.body;
 
     if (!role_id || !permission_id) {
@@ -480,4 +489,173 @@ data:record
 });
 
 }
+
+  // =====================================================
+  // BATCH ASSIGN / UPDATE / REVOKE ROLE ACCESS
+  // =====================================================
+  @Post("/batch")
+  @Middleware([authenticateMiddleware])
+  async batch(req: any, res: any) {
+    const queryRunner = dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const body = req.body;
+      const u = req.user;
+
+      let grants: any[] = [];
+      let revokes: any[] = [];
+      let scope: { company_id: number | null; branch_id: number | null; user_id: number | null } | string = { company_id: null, branch_id: null, user_id: null };
+      let role_id: number | null = null;
+
+      if (Array.isArray(body)) {
+        grants = body;
+      } else {
+        grants = Array.isArray(body.grants) ? body.grants : (Array.isArray(body.add) ? body.add : (Array.isArray(body.permissions) ? body.permissions : []));
+        revokes = Array.isArray(body.revokes) ? body.revokes : (Array.isArray(body.delete) ? body.delete : (Array.isArray(body.remove) ? body.remove : []));
+        role_id = body.role_id ? Number(body.role_id) : null;
+        scope = parseScope(body);
+        if (typeof scope === "string") {
+          await queryRunner.rollbackTransaction();
+          return res.status(400).json({ success: false, message: scope });
+        }
+      }
+
+      const repo = queryRunner.manager.getRepository(RolePermission);
+      const notifyScopes = new Set<string>();
+      const createdRecords: RolePermission[] = [];
+      const removedIds: number[] = [];
+
+      // 1. Process Revokes / Deletions
+      for (const item of revokes) {
+        let record: RolePermission | null = null;
+        const id = typeof item === "number" ? item : (item && item.id ? Number(item.id) : null);
+        const permission_id = typeof item === "object" && item && item.permission_id ? Number(item.permission_id) : null;
+
+        if (id) {
+          record = await repo.findOne({ where: { id } });
+        } else if (permission_id && role_id != null && typeof scope !== "string") {
+          record = await repo.findOne({
+            where: { role_id, permission_id, ...scopeWhere(scope) }
+          });
+        }
+
+        if (record) {
+          if (!u.isSuperAdmin && u.userType !== UserType.SUPER_ADMIN) {
+            const companyMismatch = record.company_id != null && record.company_id !== u.companyId;
+            const branchMismatch  = record.branch_id  != null && record.branch_id  !== u.branchId;
+            if (companyMismatch || branchMismatch) {
+              await queryRunner.rollbackTransaction();
+              return res.status(403).json({ success: false, message: "Access denied to delete permission ID " + record.id });
+            }
+          }
+
+          notifyScopes.add(JSON.stringify({
+            role_id: record.role_id,
+            company_id: record.company_id,
+            branch_id: record.branch_id,
+            user_id: record.user_id,
+          }));
+
+          removedIds.push(record.id);
+          await repo.remove(record);
+        }
+      }
+
+      // 2. Process Grants / Additions
+      for (const item of grants) {
+        const itemRole = item.role_id ? Number(item.role_id) : role_id;
+        const itemPermId = item.permission_id ? Number(item.permission_id) : (typeof item === "number" ? item : null);
+        if (!itemRole || !itemPermId) {
+          continue;
+        }
+
+        const itemScope = item.company_id !== undefined || item.branch_id !== undefined || item.user_id !== undefined
+          ? parseScope(item)
+          : scope;
+
+        if (typeof itemScope === "string") {
+          await queryRunner.rollbackTransaction();
+          return res.status(400).json({ success: false, message: itemScope });
+        }
+
+        if (!u.isSuperAdmin && u.userType !== UserType.SUPER_ADMIN) {
+          if (itemScope.company_id != null && itemScope.company_id !== u.companyId) {
+            await queryRunner.rollbackTransaction();
+            return res.status(403).json({ success: false, message: "Access denied to assign company_id " + itemScope.company_id });
+          }
+          if (itemScope.branch_id != null && itemScope.branch_id !== u.branchId) {
+            await queryRunner.rollbackTransaction();
+            return res.status(403).json({ success: false, message: "Access denied to assign branch_id " + itemScope.branch_id });
+          }
+        }
+
+        const exists = await repo.findOne({
+          where: { role_id: itemRole, permission_id: itemPermId, ...scopeWhere(itemScope) }
+        });
+
+        if (!exists) {
+          const data = repo.create({
+            role_id: itemRole,
+            permission_id: itemPermId,
+            company_id: itemScope.company_id,
+            branch_id: itemScope.branch_id,
+            user_id: itemScope.user_id,
+            canApprove: !!item.canApprove,
+            status: StatusType.ACTIVE
+          } as Partial<RolePermission>);
+
+          const saved = await repo.save(data);
+          createdRecords.push(saved);
+
+          notifyScopes.add(JSON.stringify({
+            role_id: saved.role_id,
+            company_id: saved.company_id,
+            branch_id: saved.branch_id,
+            user_id: saved.user_id,
+          }));
+        } else if (item.canApprove !== undefined && exists.canApprove !== !!item.canApprove) {
+          exists.canApprove = !!item.canApprove;
+          const updated = await repo.save(exists);
+          createdRecords.push(updated);
+
+          notifyScopes.add(JSON.stringify({
+            role_id: updated.role_id,
+            company_id: updated.company_id,
+            branch_id: updated.branch_id,
+            user_id: updated.user_id,
+          }));
+        }
+      }
+
+      await queryRunner.commitTransaction();
+
+      for (const scopeStr of notifyScopes) {
+        try {
+          const sc = JSON.parse(scopeStr);
+          await notifyAffectedUsers(sc);
+        } catch (e) {
+          console.error("Error notifying scope:", e);
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Role access updated successfully",
+        data: {
+          created: createdRecords,
+          removedIds
+        }
+      });
+    } catch (error: any) {
+      await queryRunner.rollbackTransaction();
+      return res.status(500).json({
+        success: false,
+        message: error?.message || "Batch update failed"
+      });
+    } finally {
+      await queryRunner.release();
+    }
+  }
 }

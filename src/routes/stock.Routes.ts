@@ -44,6 +44,24 @@ router.get(
   stockController.logs.bind(stockController)
 );
 
+/**
+ * @swagger
+ * /stock/logs/{id}/approve:
+ *   put:
+ *     summary: PUT /stock/logs/:id/approve
+ *     tags: [Stock]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.put(
   "/stock/logs/:id/approve",
   authenticateMiddleware,

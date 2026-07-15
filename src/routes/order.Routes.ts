@@ -283,6 +283,24 @@ router.get(
   orderController.getInvoicePdf.bind(orderController)
 );
 
+/**
+ * @swagger
+ * /orders/invoice/{id}:
+ *   get:
+ *     summary: GET /orders/invoice/:id
+ *     tags: [Order]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.get(
   "/orders/invoice/:id",
   authenticateMiddleware,

@@ -36,6 +36,7 @@ import { ApprovalsController } from "./approvals.Controller";
 import { AiController } from "./ai.Controller";
 import { ContactController } from "./contact.Controller";
 import { ProfitLossController } from "./profitLoss.controller";
+import { SubscriptionController } from "./subscription.Controller";
 
 
 export const authController = new AuthController();
@@ -110,4 +111,7 @@ export const approvalsController          = new ApprovalsController();
 export const aiController                 = new AiController();
 export const contactController            = new ContactController();
 export const profitLossController          = new ProfitLossController();
+
+// ── Subscription & Billing ────────────────────────────────────────────────
+export const subscriptionController       = new SubscriptionController();
 

@@ -52,11 +52,35 @@ router.get(
   productController.getAll.bind(productController)
 );
 
+/**
+ * @swagger
+ * /products/export:
+ *   get:
+ *     summary: GET /products/export
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.get(
   "/products/export",
   productController.exportProducts.bind(productController)
 );
 
+/**
+ * @swagger
+ * /products/import:
+ *   post:
+ *     summary: POST /products/import
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.post(
   "/products/import",
   authenticateMiddleware,
@@ -305,6 +329,24 @@ router.delete(
   productController.delete.bind(productController)
 );
 
+/**
+ * @swagger
+ * /products/{id}/restore:
+ *   put:
+ *     summary: PUT /products/:id/restore
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.put(
   "/products/:id/restore",
   authenticateMiddleware,
@@ -315,6 +357,24 @@ router.put(
   productController.restore.bind(productController)
 );
 
+/**
+ * @swagger
+ * /products/{id}/status:
+ *   put:
+ *     summary: PUT /products/:id/status
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.put(
   "/products/:id/status",
   authenticateMiddleware,
@@ -347,6 +407,24 @@ router.put(
  */
 router.get("/barcode", productController.scan.bind(productController));
 
+/**
+ * @swagger
+ * /products/{id}/approve:
+ *   put:
+ *     summary: PUT /products/:id/approve
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.put(
   "/products/:id/approve",
   authenticateMiddleware,

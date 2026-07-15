@@ -90,6 +90,24 @@ router.post("/attendance/check-out/:id",    authenticateMiddleware, authorize({ 
 
 // Legacy aliases (backwards compat)
 router.post("/attendance/checkin",          authenticateMiddleware, authorize({ roles: allRoles }),   attendanceController.checkIn.bind(attendanceController));
+/**
+ * @swagger
+ * /attendance/checkout/{id}:
+ *   post:
+ *     summary: POST /attendance/checkout/:id
+ *     tags: [Attendance]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.post("/attendance/checkout/:id",     authenticateMiddleware, authorize({ roles: allRoles }),   attendanceController.checkOut.bind(attendanceController));
 
 /**

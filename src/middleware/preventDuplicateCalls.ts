@@ -43,13 +43,25 @@ export const preventDuplicateCalls = (
     // Hash the key to cap memory usage regardless of body size.
     // A raw serialized key for a large upload could be tens of KB;
     // the SHA-1 hash is always exactly 40 characters.
+    // Fingerprint req.body safely so distinct payloads of identical length
+    // are NOT falsely treated as duplicate requests. Since rawKey is hashed with
+    // SHA-1 below, key size is capped at 40 characters without memory issues.
+    let bodyFingerprint: any = req.headers["content-length"] ?? 0;
+    if (req.body && typeof req.body === "object") {
+      try {
+        bodyFingerprint = JSON.stringify(req.body);
+      } catch (e) {
+        bodyFingerprint = String(req.body);
+      }
+    } else if (req.body !== undefined && req.body !== null) {
+      bodyFingerprint = String(req.body);
+    }
+
     const rawKey = JSON.stringify({
       url: req.originalUrl,
       ip: req.ip,
       method: req.method,
-      // Only include a content-length fingerprint of the body, not the full body,
-      // to prevent large payloads from bloating the cache key.
-      bodyLength: req.headers["content-length"] ?? 0,
+      bodyFingerprint,
       params: req.params,
     });
 

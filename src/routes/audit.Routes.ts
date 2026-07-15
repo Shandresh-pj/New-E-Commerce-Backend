@@ -6,6 +6,18 @@ import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
+/**
+ * @swagger
+ * /audit:
+ *   get:
+ *     summary: GET /audit
+ *     tags: [Audit]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.get(
   "/audit",
   authenticateMiddleware,
@@ -13,6 +25,24 @@ router.get(
   auditLogsController.getLogs.bind(auditLogsController)
 );
 
+/**
+ * @swagger
+ * /audit/{id}:
+ *   delete:
+ *     summary: DELETE /audit/:id
+ *     tags: [Audit]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 router.delete(
   "/audit/:id",
   authenticateMiddleware,

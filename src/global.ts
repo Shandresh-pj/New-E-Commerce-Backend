@@ -81,6 +81,12 @@ import { PasswordReset }                               from "./entities/password
 // Misc
 import { Status }                                      from "./entities/status.entity";
 
+// Subscriptions
+import { SubscriptionPlan }                            from "./entities/subscription-plan.entity";
+import { UserSubscription }                            from "./entities/user-subscription.entity";
+import { SubscriptionInvoice }                         from "./entities/subscription-invoice.entity";
+import { WebhookLog }                                  from "./entities/webhook-log.entity";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ALL_ENTITIES — the authoritative list registered with TypeORM.
 // Add any new entity class here; database.ts will pick it up automatically.
@@ -169,6 +175,12 @@ export const ALL_ENTITIES = [
 
   // Misc
   Status,
+
+  // Subscriptions
+  SubscriptionPlan,
+  UserSubscription,
+  SubscriptionInvoice,
+  WebhookLog,
 ] as const;
 
 /* ============================================================
