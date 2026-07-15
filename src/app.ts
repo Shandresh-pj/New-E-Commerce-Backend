@@ -27,6 +27,7 @@ const app = express();
 app.disable("x-powered-by");
 app.use(helmet({
   contentSecurityPolicy: false, // Swagger and custom frontends might load inline scripts/assets
+  crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
 app.use(hpp());
 app.use(xssSanitizer);
@@ -68,7 +69,16 @@ app.use(
 app.use(compression());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/uploads", (req, res, next) => {
+  const cleanPath = req.path.replace(/^\/+/, "");
+  if (!cleanPath.startsWith("images/") && !cleanPath.startsWith("videos/") && !cleanPath.startsWith("audios/") && !cleanPath.startsWith("documents/")) {
+    const imgPath = path.join(process.cwd(), "uploads", "images", cleanPath);
+    if (fs.existsSync(imgPath) && fs.statSync(imgPath).isFile()) {
+      req.url = `/images/${cleanPath}`;
+    }
+  }
+  next();
+}, express.static(path.join(process.cwd(), "uploads")));
 
 app.use(
   rateLimit({

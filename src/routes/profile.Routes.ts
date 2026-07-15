@@ -123,7 +123,12 @@ router.post(
   "/profile/add",
   authenticateMiddleware,
   authorize(),
-  uploadImage.upload.single("image"), uploadImage.compressor,
+  uploadImage.upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "profile_image", maxCount: 1 },
+    { name: "background_image", maxCount: 1 },
+    { name: "cover_image", maxCount: 1 }
+  ]), uploadImage.compressor,
   profileController.create.bind(profileController)
 );
 
@@ -164,7 +169,12 @@ router.put(
   "/profile/:id",
   authenticateMiddleware,
   authorize(),
-  uploadImage.upload.single("image"), uploadImage.compressor,
+  uploadImage.upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "profile_image", maxCount: 1 },
+    { name: "background_image", maxCount: 1 },
+    { name: "cover_image", maxCount: 1 }
+  ]), uploadImage.compressor,
   profileController.update.bind(profileController)
 );
 

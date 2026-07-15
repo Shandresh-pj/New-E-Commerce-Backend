@@ -46,6 +46,14 @@ async function initDatabase() {
     console.log("✅ Database connection established.");
   }
 
+  // Pre-synchronization cleanup to prevent unique index creation failures from duplicate/empty records
+  try {
+    await dataSource.query("DELETE FROM `roles` WHERE `name` = '' OR `name` IS NULL");
+    await dataSource.query("DELETE r1 FROM `roles` r1 INNER JOIN `roles` r2 WHERE r1.id > r2.id AND r1.name = r2.name");
+  } catch (cleanErr: any) {
+    // Ignore if table does not exist yet on fresh install
+  }
+
   // Always run synchronize in development so new entity fields are picked up.
   // In production, DB_SYNC must be explicitly set to "true" in the dashboard.
   const shouldSync =

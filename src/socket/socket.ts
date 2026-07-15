@@ -13,6 +13,17 @@ const allowedOrigins = (
 export let io: Server;
 
 export const initializeSocket = (server: any) => {
+  // Normalize both HTTP request and upgrade URLs so `/ws/?...` and `/ws?...` both work seamlessly
+  server.on("request", (req: any) => {
+    if (req.url && req.url.startsWith("/ws/?")) {
+      req.url = req.url.replace("/ws/?", "/ws?");
+    }
+  });
+  server.on("upgrade", (req: any, socket: any, head: any) => {
+    if (req.url && req.url.startsWith("/ws/?")) {
+      req.url = req.url.replace("/ws/?", "/ws?");
+    }
+  });
 
   io = new Server(server, {
     cors: {
@@ -28,6 +39,7 @@ export const initializeSocket = (server: any) => {
       credentials: true,
     },
     path: "/ws",
+    addTrailingSlash: false,
     pingInterval: 25000,
     pingTimeout:  60000,
     // Explicitly allow both transports — on Render, the WebSocket

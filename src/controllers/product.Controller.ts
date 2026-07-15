@@ -266,8 +266,73 @@ const validateAttributeReferencePairs = async (
   return errors;
 };
 
-const validateVariantReferences = (manager: any, variants: any[]) =>
-  validateAttributeReferencePairs(manager, variants, "variants");
+const checkBarcodeUniqueness = async (
+  manager: any,
+  barcode: string | undefined | null,
+  excludeProductId?: number,
+  excludeVariantId?: number
+): Promise<boolean> => {
+  if (!barcode || !String(barcode).trim()) return true;
+  const bc = String(barcode).trim();
+
+  const productRepo = manager.getRepository(Product);
+  const qbProd = productRepo.createQueryBuilder("p").where("p.barcode = :bc", { bc });
+  if (excludeProductId) {
+    qbProd.andWhere("p.id != :id", { id: excludeProductId });
+  }
+  const prodExists = await qbProd.getOne();
+  if (prodExists) return false;
+
+  const variantRepo = manager.getRepository(ProductVariant);
+  const qbVar = variantRepo.createQueryBuilder("v").where("v.Barcode = :bc", { bc });
+  if (excludeVariantId) {
+    qbVar.andWhere("v.Id != :id", { id: excludeVariantId });
+  }
+  const varExists = await qbVar.getOne();
+  if (varExists) return false;
+
+  return true;
+};
+
+const validateVariantReferences = async (
+  manager: any,
+  variants: any[],
+  productId?: number
+): Promise<Record<string, string[]>> => {
+  const errors = await validateAttributeReferencePairs(manager, variants, "variants");
+  const seenPairs = new Set<string>();
+  const seenBarcodes = new Set<string>();
+
+  for (let i = 0; i < variants.length; i++) {
+    const v = coerceNumbers(variants[i], ["ProductAttributeId", "ProductAttributeValueId", "Id"]);
+    const pairKey = `${v.ProductAttributeId}_${v.ProductAttributeValueId}`;
+    if (seenPairs.has(pairKey)) {
+      errors[`variants[${i}]`] = (errors[`variants[${i}]`] || []).concat([
+        "Duplicate attribute/value combination in variants list",
+      ]);
+    }
+    seenPairs.add(pairKey);
+
+    if (v.Barcode && String(v.Barcode).trim()) {
+      const bc = String(v.Barcode).trim();
+      if (seenBarcodes.has(bc)) {
+        errors[`variants[${i}].Barcode`] = (errors[`variants[${i}].Barcode`] || []).concat([
+          `Duplicate barcode '${bc}' inside request body`,
+        ]);
+      } else {
+        seenBarcodes.add(bc);
+        const isUnique = await checkBarcodeUniqueness(manager, bc, productId, v.Id);
+        if (!isUnique) {
+          errors[`variants[${i}].Barcode`] = (errors[`variants[${i}].Barcode`] || []).concat([
+            `Barcode '${bc}' is already used by another product or variant`,
+          ]);
+        }
+      }
+    }
+  }
+
+  return errors;
+};
 
 const validateAttributeValueReferences = (manager: any, items: any[]) =>
   validateAttributeReferencePairs(manager, items, "attribute_values");
@@ -436,6 +501,13 @@ export class ProductController {
         low_stock_threshold,
         critical_stock_threshold,
       } = body;
+
+      if (barcode) {
+        const bcUnique = await checkBarcodeUniqueness(qr.manager, barcode);
+        if (!bcUnique) {
+          throw new ApiError(400, `Barcode '${barcode}' is already in use by another product or variant`);
+        }
+      }
 
       const { image, video, images } = extractUploadedFiles(req);
 
@@ -746,6 +818,12 @@ export class ProductController {
         });
       }
 
+      if (req.query.is_deleted === "true") {
+        qb.andWhere("product.is_deleted = :is_deleted", { is_deleted: true });
+      } else if (req.query.is_deleted !== "all") {
+        qb.andWhere("product.is_deleted = :is_deleted", { is_deleted: false });
+      }
+
       if (req.query.status) {
         const statusVal = req.query.status as string;
         if (Object.values(ProductApprovalStatus).includes(statusVal as any)) {
@@ -768,9 +846,11 @@ export class ProductController {
       }
 
       if (req.query.search) {
-        qb.andWhere("product.name LIKE :search", {
-          search: `%${req.query.search}%`,
-        });
+        const searchStr = `%${String(req.query.search).trim()}%`;
+        qb.andWhere(
+          "(LOWER(product.name) LIKE LOWER(:search) OR LOWER(product.barcode) LIKE LOWER(:search))",
+          { search: searchStr }
+        );
       }
 
       const total = await qb.getCount();
@@ -910,10 +990,18 @@ export class ProductController {
         throw new ApiError(422, "Validation Failed", combinedErrors);
       }
 
+      if (body.barcode !== undefined && body.barcode !== product.barcode) {
+        const isUnique = await checkBarcodeUniqueness(qr.manager, body.barcode, productId);
+        if (!isUnique) {
+          throw new ApiError(400, `Barcode '${body.barcode}' is already in use by another product or variant`);
+        }
+      }
+
       if (hasVariantsField && variantsInput.length > 0) {
         const refErrors = await validateVariantReferences(
           qr.manager,
-          variantsInput
+          variantsInput,
+          productId
         );
 
         if (Object.keys(refErrors).length > 0) {
@@ -1204,39 +1292,229 @@ export class ProductController {
   // ================= DELETE =================
   @Delete("/:id")
   async delete(req: Request, res: Response, next: NextFunction) {
-
     const qr = dataSource.createQueryRunner();
     await qr.connect();
     await qr.startTransaction();
 
     try {
       const productId = Number(req.params.id);
-
       const repo = qr.manager.getRepository(Product);
-
       const product = await repo.findOneBy({ id: productId });
 
       if (!product) {
         throw new ApiError(404, "Product not found");
       }
 
-      await qr.manager
-        .getRepository(ProductVariant)
-        .delete({ ProductId: productId });
+      const permanent = req.query.permanent === "true";
+      if (permanent) {
+        await qr.manager
+          .getRepository(ProductVariant)
+          .delete({ ProductId: productId });
 
-      await qr.manager
-        .getRepository(ProductAttributeValueProduct)
-        .delete({ ProductId: productId });
+        await qr.manager
+          .getRepository(ProductAttributeValueProduct)
+          .delete({ ProductId: productId });
 
-      await repo.delete(productId);
+        await repo.delete(productId);
+      } else {
+        product.is_deleted = true;
+        product.deleted_at = new Date();
+        await repo.save(product);
+      }
 
       await qr.commitTransaction();
 
-      io.emit("product-deleted", { id: productId });
+      io.emit("product-deleted", { id: productId, permanent });
 
       return res.json({
         success: true,
-        message: "Deleted",
+        message: permanent ? "Product permanently deleted" : "Product soft deleted successfully",
+      });
+    } catch (err) {
+      await qr.rollbackTransaction();
+      next(err);
+    } finally {
+      await qr.release();
+    }
+  }
+
+  // ================= RESTORE =================
+  @Put("/:id/restore")
+  async restore(req: Request, res: Response, next: NextFunction) {
+    try {
+      const productId = Number(req.params.id);
+      const repo = dataSource.getRepository(Product);
+      const product = await repo.findOneBy({ id: productId });
+
+      if (!product) {
+        throw new ApiError(404, "Product not found");
+      }
+
+      product.is_deleted = false;
+      product.deleted_at = null;
+      await repo.save(product);
+
+      io.emit("product-restored", { id: productId });
+
+      return res.json({
+        success: true,
+        message: "Product restored successfully",
+        data: sanitizeProduct(product),
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ================= TOGGLE STATUS =================
+  @Put("/:id/status")
+  async toggleStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const productId = Number(req.params.id);
+      const repo = dataSource.getRepository(Product);
+      const product = await repo.findOneBy({ id: productId });
+
+      if (!product) {
+        throw new ApiError(404, "Product not found");
+      }
+
+      if (req.body.status) {
+        product.status = req.body.status;
+      } else {
+        product.status =
+          product.status === "active" ? ("inactive" as any) : ("active" as any);
+      }
+
+      await repo.save(product);
+      io.emit("product-updated", sanitizeProduct(product));
+
+      return res.json({
+        success: true,
+        message: `Product status updated to ${product.status}`,
+        data: sanitizeProduct(product),
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ================= EXPORT PRODUCTS =================
+  @Get("/export")
+  async exportProducts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const repo = dataSource.getRepository(Product);
+      const products = await repo.find({
+        where: { is_deleted: false },
+        relations: {
+          variants: {
+            ProductAttribute: true,
+            ProductAttributeValue: true,
+          },
+        },
+        order: { id: "DESC" },
+      });
+
+      const format = String(req.query.format || "json").toLowerCase();
+      if (format === "csv") {
+        const csvRows = [
+          [
+            "ID",
+            "Name",
+            "Barcode",
+            "Price",
+            "Stock",
+            "Category",
+            "Product Type",
+            "Status",
+            "Approval Status",
+          ],
+        ];
+        for (const p of products) {
+          csvRows.push([
+            String(p.id),
+            `"${(p.name || "").replace(/"/g, '""')}"`,
+            `"${(p.barcode || "").replace(/"/g, '""')}"`,
+            String(p.price),
+            String(p.stock),
+            `"${(p.category || "").replace(/"/g, '""')}"`,
+            p.product_type,
+            p.status,
+            p.approval_status,
+          ]);
+        }
+        res.header("Content-Type", "text/csv");
+        res.attachment("products.csv");
+        return res.send(csvRows.map((row) => row.join(",")).join("\n"));
+      }
+
+      return res.json({
+        success: true,
+        message: "Products exported successfully",
+        data: sanitizeProducts(products),
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // ================= IMPORT PRODUCTS =================
+  @Post("/import")
+  async importProducts(req: Request, res: Response, next: NextFunction) {
+    const qr = dataSource.createQueryRunner();
+    await qr.connect();
+    await qr.startTransaction();
+    try {
+      const productsData = Array.isArray(req.body.products)
+        ? req.body.products
+        : typeof req.body.products === "string"
+        ? JSON.parse(req.body.products)
+        : [];
+
+      if (!Array.isArray(productsData) || productsData.length === 0) {
+        throw new ApiError(400, "No products provided for import");
+      }
+
+      const repo = qr.manager.getRepository(Product);
+      const createdProducts: any[] = [];
+
+      for (const item of productsData) {
+        if (!item.name || item.price === undefined) {
+          continue;
+        }
+        if (item.barcode) {
+          const bcUnique = await checkBarcodeUniqueness(
+            qr.manager,
+            String(item.barcode).trim()
+          );
+          if (!bcUnique) {
+            throw new ApiError(
+              400,
+              `Product with barcode '${item.barcode}' already exists.`
+            );
+          }
+        }
+        const product = repo.create({
+          name: String(item.name).trim(),
+          description: item.description ? String(item.description).trim() : null,
+          price: Number(item.price) || 0,
+          stock: Number(item.stock) || 0,
+          stock_in_hand: Number(item.stock) || 0,
+          barcode: item.barcode ? String(item.barcode).trim() : null,
+          category: item.category ? String(item.category).trim() : null,
+          product_type: item.product_type || "single",
+          status: item.status || "active",
+          approval_status: item.approval_status || "published",
+          registration_id: Number(req.body.registration_id || item.registration_id || 1),
+        });
+        await repo.save(product);
+        createdProducts.push(product);
+      }
+
+      await qr.commitTransaction();
+      return res.json({
+        success: true,
+        message: `Successfully imported ${createdProducts.length} product(s)`,
+        data: sanitizeProducts(createdProducts),
       });
     } catch (err) {
       await qr.rollbackTransaction();

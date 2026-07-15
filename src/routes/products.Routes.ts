@@ -52,6 +52,20 @@ router.get(
   productController.getAll.bind(productController)
 );
 
+router.get(
+  "/products/export",
+  productController.exportProducts.bind(productController)
+);
+
+router.post(
+  "/products/import",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
+  }),
+  auditMiddleware("PRODUCT"),
+  productController.importProducts.bind(productController)
+);
 
 // ================= GET PRODUCT BY ID =================
 
@@ -291,7 +305,25 @@ router.delete(
   productController.delete.bind(productController)
 );
 
+router.put(
+  "/products/:id/restore",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
+  }),
+  auditMiddleware("PRODUCT"),
+  productController.restore.bind(productController)
+);
 
+router.put(
+  "/products/:id/status",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER],
+  }),
+  auditMiddleware("PRODUCT"),
+  productController.toggleStatus.bind(productController)
+);
 
 // BarCode Routes
 /**

@@ -81,10 +81,11 @@ req.body.password,
 12
 );
 
-const image=
-req.file
-? `/uploads/${req.file.filename}`
-: undefined;
+const imgFile = req.files && !Array.isArray(req.files) ? ((req.files as any)['image']?.[0] || (req.files as any)['profile_image']?.[0]) : req.file;
+const bgFile = req.files && !Array.isArray(req.files) ? ((req.files as any)['background_image']?.[0] || (req.files as any)['cover_image']?.[0]) : undefined;
+
+const image = imgFile ? `/uploads/images/${imgFile.filename}` : undefined;
+const background_image = bgFile ? `/uploads/images/${bgFile.filename}` : req.body.background_image;
 
 const user=
 repo.create({
@@ -101,7 +102,9 @@ address:req.body.address,
 
 status:req.body.status,
 
-image:image
+image:image,
+
+background_image:background_image
 
 });
 
@@ -454,10 +457,16 @@ message:"Email already exists"
 }
 
 
-const image=
-req.file
-? `/uploads/${req.file.filename}`
-: user.image;
+const imgFile = req.files && !Array.isArray(req.files) ? ((req.files as any)['image']?.[0] || (req.files as any)['profile_image']?.[0]) : req.file;
+const bgFile = req.files && !Array.isArray(req.files) ? ((req.files as any)['background_image']?.[0] || (req.files as any)['cover_image']?.[0]) : undefined;
+
+const image = imgFile
+? `/uploads/images/${imgFile.filename}`
+: (req.body.image !== undefined ? req.body.image : user.image);
+
+const background_image = bgFile
+? `/uploads/images/${bgFile.filename}`
+: (req.body.background_image !== undefined ? req.body.background_image : user.background_image);
 
 
 repo.merge(
@@ -476,7 +485,9 @@ address:req.body.address,
 
 status:req.body.status,
 
-image:image
+image:image,
+
+background_image:background_image
 
 }
 

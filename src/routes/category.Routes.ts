@@ -78,6 +78,21 @@ router.put(
 
 /**
  * @swagger
+ * /categories/{id}/status:
+ *   put:
+ *     summary: Toggle Category Status
+ *     tags: [Categories]
+ */
+router.put(
+  "/categories/:id/status",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
+  auditMiddleware("CATEGORY"),
+  categoryController.toggleStatus.bind(categoryController)
+);
+
+/**
+ * @swagger
  * /categories/{id}:
  *   delete:
  *     summary: Delete Category

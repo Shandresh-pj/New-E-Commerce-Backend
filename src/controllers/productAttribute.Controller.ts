@@ -3,6 +3,7 @@ import {
   Response,
   NextFunction,
 } from "express";
+import { Raw, Not } from "typeorm";
 
 import dataSource from "../config/database";
 import {
@@ -10,6 +11,7 @@ import {
   ProductAttributeValue,
   ProductAttributeValueProduct,
 } from "../entities/productAttribute";
+import { ProductVariant } from "../entities/productVariant";
 
 /**
  * Helpers to bridge the single stored `Name` column to/from the
@@ -70,11 +72,21 @@ export class ProductAttributeController {
   ) {
     try {
       const { currentPage, pageSize, skip } = getPaging(request);
+      const search = String(request.query.search || "").trim();
+      const sortBy = (request.query.sortBy as string) || "Id";
+      const sortOrder = ((request.query.sortOrder as string) || "DESC").toUpperCase() as "ASC" | "DESC";
+      const validColumns = ["Id", "AttributeNameCode", "Name", "CreatedAt"];
+      const orderColumn = validColumns.includes(sortBy) ? sortBy : "Id";
 
       const repo = dataSource.getRepository(ProductAttribute);
+      const where: any = {};
+      if (search) {
+        where.Name = Raw((alias) => `LOWER(${alias}) LIKE :search`, { search: `%${search.toLowerCase()}%` });
+      }
 
       const [rows, totalItems] = await repo.findAndCount({
-        order: { Id: "DESC" },
+        where,
+        order: { [orderColumn]: sortOrder },
         skip,
         take: pageSize,
       });
@@ -133,22 +145,46 @@ export class ProductAttributeController {
   ) {
     try {
       const CompanyId = Number(request.body.CompanyId) || 0;
-      const AttributeNameCode = request.body.AttributeNameCode;
+      const AttributeNameCode = String(request.body.AttributeNameCode || "").trim();
       const Name = nameFromTranslations(
         request.body.ProductAttributeTranslations,
         request.body.Name
-      );
+      ).trim();
+
+      if (!AttributeNameCode || !Name) {
+        return response.status(400).json({
+          success: false,
+          message: "Attribute code and name are required",
+        });
+      }
 
       const repo = dataSource.getRepository(ProductAttribute);
 
-      const existing = await repo.findOne({
-        where: { CompanyId, AttributeNameCode },
+      const existingCode = await repo.findOne({
+        where: {
+          CompanyId,
+          AttributeNameCode: Raw((alias) => `LOWER(${alias}) = :code`, { code: AttributeNameCode.toLowerCase() }),
+        },
       });
 
-      if (existing) {
+      if (existingCode) {
         return response.status(400).json({
           success: false,
-          message: "Product attribute already exists",
+          message: "Product attribute with this code already exists",
+        });
+      }
+
+      const existingName = await repo.findOne({
+        where: {
+          CompanyId,
+          Name: Raw((alias) => `LOWER(${alias}) = :name`, { name: Name.toLowerCase() }),
+        },
+      });
+
+      if (existingName) {
+        return response.status(400).json({
+          success: false,
+          message: "Product attribute with this name already exists",
         });
       }
 
@@ -190,12 +226,41 @@ export class ProductAttributeController {
       }
 
       if (request.body.AttributeNameCode !== undefined) {
-        attribute.AttributeNameCode = request.body.AttributeNameCode;
+        const code = String(request.body.AttributeNameCode).trim();
+        if (!code) {
+          return response.status(400).json({ success: false, message: "Attribute code cannot be empty" });
+        }
+        const existing = await repo.findOne({
+          where: {
+            CompanyId: attribute.CompanyId,
+            AttributeNameCode: Raw((alias) => `LOWER(${alias}) = :code`, { code: code.toLowerCase() }),
+            Id: Not(Id),
+          },
+        });
+        if (existing) {
+          return response.status(400).json({ success: false, message: "Product attribute with this code already exists" });
+        }
+        attribute.AttributeNameCode = code;
       }
-      attribute.Name = nameFromTranslations(
+
+      const newName = nameFromTranslations(
         request.body.ProductAttributeTranslations,
         request.body.Name ?? attribute.Name
-      );
+      ).trim();
+
+      if (newName !== attribute.Name) {
+        const existingName = await repo.findOne({
+          where: {
+            CompanyId: attribute.CompanyId,
+            Name: Raw((alias) => `LOWER(${alias}) = :name`, { name: newName.toLowerCase() }),
+            Id: Not(Id),
+          },
+        });
+        if (existingName) {
+          return response.status(400).json({ success: false, message: "Product attribute with this name already exists" });
+        }
+        attribute.Name = newName;
+      }
 
       await repo.save(attribute);
 
@@ -217,6 +282,28 @@ export class ProductAttributeController {
   ) {
     try {
       const Id = Number(request.params.Id);
+
+      const valueCount = await dataSource
+        .getRepository(ProductAttributeValue)
+        .count({ where: { ProductAttributeId: Id } });
+
+      if (valueCount > 0) {
+        return response.status(400).json({
+          success: false,
+          message: `Cannot delete attribute: ${valueCount} attribute value(s) are currently associated with it. Please delete the values first.`,
+        });
+      }
+
+      const variantCount = await dataSource
+        .getRepository(ProductVariant)
+        .count({ where: { ProductAttributeId: Id } });
+
+      if (variantCount > 0) {
+        return response.status(400).json({
+          success: false,
+          message: `Cannot delete attribute: ${variantCount} product variant(s) are currently using this attribute.`,
+        });
+      }
 
       await dataSource.getRepository(ProductAttribute).delete(Id);
 
@@ -240,6 +327,11 @@ export class ProductAttributeValueController {
   ) {
     try {
       const { currentPage, pageSize, skip } = getPaging(request);
+      const search = String(request.query.search || "").trim();
+      const sortBy = (request.query.sortBy as string) || "Id";
+      const sortOrder = ((request.query.sortOrder as string) || "DESC").toUpperCase() as "ASC" | "DESC";
+      const validColumns = ["Id", "AttributeValueCode", "Name", "CreatedAt"];
+      const orderColumn = validColumns.includes(sortBy) ? sortBy : "Id";
 
       const repo = dataSource.getRepository(ProductAttributeValue);
 
@@ -247,11 +339,14 @@ export class ProductAttributeValueController {
       if (request.query.ProductAttributeId) {
         where.ProductAttributeId = Number(request.query.ProductAttributeId);
       }
+      if (search) {
+        where.Name = Raw((alias) => `LOWER(${alias}) LIKE :search`, { search: `%${search.toLowerCase()}%` });
+      }
 
       const [rows, totalItems] = await repo.findAndCount({
         where,
         relations: { ProductLinks: true },
-        order: { Id: "DESC" },
+        order: { [orderColumn]: sortOrder },
         skip,
         take: pageSize,
       });
@@ -315,12 +410,20 @@ export class ProductAttributeValueController {
     try {
       const CompanyId = Number(request.body.CompanyId) || 0;
       const ProductAttributeId = Number(request.body.ProductAttributeId);
-      const AttributeValueCode = request.body.AttributeValueCode;
+      const AttributeValueCode = String(request.body.AttributeValueCode || "").trim();
       const Name = nameFromTranslations(
         request.body.ProductAttributeValueTranslations,
         request.body.Name
-      );
+      ).trim();
       const product_ids = request.body.product_ids;
+
+      if (!ProductAttributeId || !AttributeValueCode || !Name) {
+        await queryRunner.rollbackTransaction();
+        return response.status(400).json({
+          success: false,
+          message: "Attribute, value code, and name are required",
+        });
+      }
 
       const attributeRepo =
         queryRunner.manager.getRepository(ProductAttribute);
@@ -341,15 +444,35 @@ export class ProductAttributeValueController {
         });
       }
 
-      const existing = await valueRepo.findOne({
-        where: { CompanyId, ProductAttributeId, AttributeValueCode },
+      const existingCode = await valueRepo.findOne({
+        where: {
+          CompanyId,
+          ProductAttributeId,
+          AttributeValueCode: Raw((alias) => `LOWER(${alias}) = :code`, { code: AttributeValueCode.toLowerCase() }),
+        },
       });
 
-      if (existing) {
+      if (existingCode) {
         await queryRunner.rollbackTransaction();
         return response.status(400).json({
           success: false,
-          message: "Product attribute value already exists",
+          message: "Product attribute value with this code already exists for this attribute",
+        });
+      }
+
+      const existingName = await valueRepo.findOne({
+        where: {
+          CompanyId,
+          ProductAttributeId,
+          Name: Raw((alias) => `LOWER(${alias}) = :name`, { name: Name.toLowerCase() }),
+        },
+      });
+
+      if (existingName) {
+        await queryRunner.rollbackTransaction();
+        return response.status(400).json({
+          success: false,
+          message: "Product attribute value with this name already exists for this attribute",
         });
       }
 
@@ -416,16 +539,51 @@ export class ProductAttributeValueController {
         });
       }
 
-      if (request.body.AttributeValueCode !== undefined) {
-        value.AttributeValueCode = request.body.AttributeValueCode;
-      }
       if (request.body.ProductAttributeId !== undefined) {
         value.ProductAttributeId = Number(request.body.ProductAttributeId);
       }
-      value.Name = nameFromTranslations(
+
+      if (request.body.AttributeValueCode !== undefined) {
+        const code = String(request.body.AttributeValueCode).trim();
+        if (!code) {
+          await queryRunner.rollbackTransaction();
+          return response.status(400).json({ success: false, message: "Value code cannot be empty" });
+        }
+        const existing = await valueRepo.findOne({
+          where: {
+            CompanyId: value.CompanyId,
+            ProductAttributeId: value.ProductAttributeId,
+            AttributeValueCode: Raw((alias) => `LOWER(${alias}) = :code`, { code: code.toLowerCase() }),
+            Id: Not(Id),
+          },
+        });
+        if (existing) {
+          await queryRunner.rollbackTransaction();
+          return response.status(400).json({ success: false, message: "Product attribute value with this code already exists" });
+        }
+        value.AttributeValueCode = code;
+      }
+
+      const newName = nameFromTranslations(
         request.body.ProductAttributeValueTranslations,
         request.body.Name ?? value.Name
-      );
+      ).trim();
+
+      if (newName !== value.Name) {
+        const existingName = await valueRepo.findOne({
+          where: {
+            CompanyId: value.CompanyId,
+            ProductAttributeId: value.ProductAttributeId,
+            Name: Raw((alias) => `LOWER(${alias}) = :name`, { name: newName.toLowerCase() }),
+            Id: Not(Id),
+          },
+        });
+        if (existingName) {
+          await queryRunner.rollbackTransaction();
+          return response.status(400).json({ success: false, message: "Product attribute value with this name already exists" });
+        }
+        value.Name = newName;
+      }
 
       await valueRepo.save(value);
 
@@ -465,6 +623,28 @@ export class ProductAttributeValueController {
   ) {
     try {
       const Id = Number(request.params.Id);
+
+      const variantCount = await dataSource
+        .getRepository(ProductVariant)
+        .count({ where: { ProductAttributeValueId: Id } });
+
+      if (variantCount > 0) {
+        return response.status(400).json({
+          success: false,
+          message: `Cannot delete value: ${variantCount} product variant(s) are currently using this attribute value.`,
+        });
+      }
+
+      const productLinksCount = await dataSource
+        .getRepository(ProductAttributeValueProduct)
+        .count({ where: { ProductAttributeValueId: Id } });
+
+      if (productLinksCount > 0) {
+        return response.status(400).json({
+          success: false,
+          message: `Cannot delete value: It is currently linked to ${productLinksCount} product(s). Please remove the product links first.`,
+        });
+      }
 
       await dataSource
         .getRepository(ProductAttributeValueProduct)

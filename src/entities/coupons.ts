@@ -46,8 +46,14 @@ export class Coupon {
   @Column({ type: "timestamp", nullable: true })
   expiry_date!: Date | null;
 
+  @Column({ type: "timestamp", nullable: true })
+  start_date!: Date | null;
+
   @Column({ type: "int", nullable: true })
   usage_limit!: number | null;
+
+  @Column({ type: "int", nullable: true })
+  per_user_limit!: number | null;
 
   @Column({ default: 0 })
   usage_count!: number;

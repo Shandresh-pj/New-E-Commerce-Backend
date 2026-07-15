@@ -52,6 +52,9 @@ export class User extends AbstractBaseEntity {
   @Column({ type: "varchar", length: 500, nullable: true })
   image!: string | null;
 
+  @Column({ type: "varchar", length: 500, nullable: true })
+  background_image!: string | null;
+
   @Column({ type: "text", nullable: true })
   address!: string | null;
 

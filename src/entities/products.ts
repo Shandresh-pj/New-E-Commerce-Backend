@@ -66,6 +66,12 @@ export class Product {
   @Column({ type: "int", default: 2 })
   critical_stock_threshold!: number;
 
+  @Column({ type: "boolean", default: false })
+  is_deleted!: boolean;
+
+  @Column({ type: "timestamp", nullable: true })
+  deleted_at!: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 

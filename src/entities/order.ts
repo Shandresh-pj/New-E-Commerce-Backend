@@ -67,6 +67,12 @@ export class Order {
   @Column({ type: "int" })
   company_id!: number;
 
+  @Column({ type: "int", nullable: true })
+  coupon_id!: number | null;
+
+  @Column({ type: "varchar", length: 50, nullable: true })
+  coupon_code!: string | null;
+
   @Column({ type: "text", nullable: true })
   qr_code!: string | null;
 

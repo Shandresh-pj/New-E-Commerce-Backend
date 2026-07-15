@@ -44,6 +44,12 @@ router.post(
   couponController.validateCoupon.bind(couponController)
 );
 
+router.post(
+  "/coupons/calculate",
+  authenticateMiddleware,
+  couponController.calculate.bind(couponController)
+);
+
 /**
  * @swagger
  * /coupons:
@@ -79,6 +85,16 @@ router.put(
   }),
   auditMiddleware("COUPON_UPDATE"),
   couponController.update.bind(couponController)
+);
+
+router.put(
+  "/coupons/:id/status",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER],
+  }),
+  auditMiddleware("COUPON_STATUS"),
+  couponController.toggleStatus.bind(couponController)
 );
 
 /**

@@ -52,9 +52,18 @@ export class CreateCouponDto {
   expiry_date?: string;   // ISO 8601
 
   @IsOptional()
+  @IsDateString()
+  start_date?: string;    // ISO 8601
+
+  @IsOptional()
   @IsNumber()
   @Min(1)
   usage_limit?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  per_user_limit?: number;
 
   @IsOptional()
   @IsNumber()
@@ -88,7 +97,16 @@ export class UpdateCouponDto {
   expiry_date?: string;
 
   @IsOptional()
+  @IsDateString()
+  start_date?: string;
+
+  @IsOptional()
   @IsNumber()
   @Min(1)
   usage_limit?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  per_user_limit?: number;
 }

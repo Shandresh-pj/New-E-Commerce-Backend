@@ -188,20 +188,44 @@ export class OrderController {
       );
 
       let discount = 0;
+      let appliedCoupon: Coupon | null = null;
 
       if (coupon_code) {
         const coupon = await couponRepo.findOne({
-          where: { code: coupon_code, is_active: true },
+          where: { code: coupon_code },
         });
 
-        if (coupon) {
-          const mappings = await cpRepo.find({
-            where: { coupon_id: coupon.id },
-          });
-
-          const allowedIds = mappings.map(m => m.product_id);
-          discount = this.calculateDiscount(coupon, items, allowedIds);
+        if (!coupon) {
+          throw new Error("Invalid coupon code");
         }
+        if (!coupon.is_active) {
+          throw new Error("Coupon is no longer active");
+        }
+        if (coupon.start_date && new Date() < coupon.start_date) {
+          throw new Error("Coupon is not yet active");
+        }
+        if (coupon.expiry_date && new Date() > coupon.expiry_date) {
+          throw new Error("Coupon has expired");
+        }
+        if (coupon.usage_limit && coupon.usage_count >= coupon.usage_limit) {
+          throw new Error("Coupon usage limit reached");
+        }
+        if (coupon.per_user_limit && coupon.per_user_limit > 0) {
+          const userUsage = await orderRepo.count({
+            where: { user_id: finalUserId, coupon_id: coupon.id }
+          });
+          if (userUsage >= coupon.per_user_limit) {
+            throw new Error("You have reached your usage limit for this coupon");
+          }
+        }
+
+        const mappings = await cpRepo.find({
+          where: { coupon_id: coupon.id },
+        });
+
+        const allowedIds = mappings.map(m => m.product_id);
+        discount = this.calculateDiscount(coupon, items, allowedIds);
+        appliedCoupon = coupon;
       }
 
       const total = Math.max(0, subtotal - discount);
@@ -220,9 +244,16 @@ export class OrderController {
         payment_status: payment?.status,
         transaction_id: payment?.transaction_id,
         payment_gateway: payment?.gateway,
+        coupon_id: appliedCoupon ? appliedCoupon.id : null,
+        coupon_code: appliedCoupon ? appliedCoupon.code : null,
       });
 
       await orderRepo.save(order);
+
+      if (appliedCoupon) {
+        appliedCoupon.usage_count = (appliedCoupon.usage_count || 0) + 1;
+        await couponRepo.save(appliedCoupon);
+      }
 
       const stockUpdate: any[] = [];
 

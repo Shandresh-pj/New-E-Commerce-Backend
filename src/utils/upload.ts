@@ -226,14 +226,23 @@ export const createUploader = (
         }
       }
 
-      if (req.files && Array.isArray(req.files)) {
-        for (const file of req.files) {
-          if (
-            FILE_TYPES.IMAGES.includes(
-              file.mimetype
-            )
-          ) {
-            await compressImage(file.path);
+      if (req.files) {
+        if (Array.isArray(req.files)) {
+          for (const file of req.files) {
+            if (FILE_TYPES.IMAGES.includes(file.mimetype)) {
+              await compressImage(file.path);
+            }
+          }
+        } else {
+          for (const fieldName of Object.keys(req.files)) {
+            const fileList = (req.files as any)[fieldName];
+            if (Array.isArray(fileList)) {
+              for (const file of fileList) {
+                if (FILE_TYPES.IMAGES.includes(file.mimetype)) {
+                  await compressImage(file.path);
+                }
+              }
+            }
           }
         }
       }
