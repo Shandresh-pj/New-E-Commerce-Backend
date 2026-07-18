@@ -28,9 +28,7 @@ function getClient(): Resend | null {
 // ─── Sender address ───────────────────────────────────────────────────────
 // Use your verified domain on Resend, e.g: "SVK E-Com <noreply@svkdthworld.shop>"
 // Until domain is verified, use: "SVK E-Com <onboarding@resend.dev>"
-const FROM_ADDRESS =
-  process.env.EMAIL_FROM ||
-  `SVK E-Com <onboarding@resend.dev>`;
+const FROM_ADDRESS = "SVK E-Com <noreply@svkdthworld.shop>";
 
 export class EmailProvider {
   private static MAX_RETRIES = 3;
@@ -122,6 +120,12 @@ export class EmailProvider {
           to: recipients,
           subject: mailOptions.subject,
           html: mailOptions.html,
+          replyTo: "noreply@svkdthworld.shop",
+          headers: {
+            "X-No-Forward": "true",
+            "Sensitivity": "Private",
+            "X-Auto-Response-Suppress": "All"
+          },
           attachments: mailOptions.attachments?.map((a) => ({
             filename: a.filename,
             content: a.content || (a.path ? fs.readFileSync(a.path) : Buffer.from("")),

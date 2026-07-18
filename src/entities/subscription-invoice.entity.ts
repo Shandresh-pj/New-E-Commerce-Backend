@@ -7,6 +7,9 @@ export class SubscriptionInvoice {
   @PrimaryGeneratedColumn()
   id!: number;
 
+  @Column({ type: "varchar", length: 50, unique: true, nullable: true })
+  invoice_number!: string | null;
+
   @Column({ type: "int" })
   subscription_id!: number;
 
@@ -15,6 +18,27 @@ export class SubscriptionInvoice {
 
   @Column("decimal", { precision: 10, scale: 2 })
   amount!: number;
+
+  @Column("decimal", { precision: 10, scale: 2, default: 0 })
+  gst_amount!: number;
+
+  @Column("decimal", { precision: 10, scale: 2, default: 0 })
+  discount_amount!: number;
+
+  @Column("decimal", { precision: 10, scale: 2, default: 0 })
+  subtotal!: number;
+
+  @Column({ type: "json", nullable: true })
+  company_details!: any | null;
+
+  @Column({ type: "json", nullable: true })
+  customer_details!: any | null;
+
+  @Column({ type: "json", nullable: true })
+  plan_details!: any | null;
+
+  @Column({ type: "json", nullable: true })
+  coupon_applied!: any | null;
 
   @Column({ type: "varchar", length: 10, default: "INR" })
   currency!: string;

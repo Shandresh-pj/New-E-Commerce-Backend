@@ -95,8 +95,8 @@ export class EmailService {
     static async sendTrialApproval(email: string, ownerName: string, preferredPlan: string, setupUrl: string) {
         const html = TemplateRenderer.renderTemplate('trial-started', {
             user_name: ownerName,
-            trial_end_date: '30 Days',
-            features_url: setupUrl
+            preferred_plan: preferredPlan,
+            setup_url: setupUrl
         });
 
         EmailProvider.sendWithRetry({
@@ -148,7 +148,7 @@ export class EmailService {
             user_name: name,
             amount: amount,
             transaction_id: transactionId,
-            dashboard_url: process.env.FRONTEND_URL || 'http://localhost:4200'
+            receipt_url: process.env.FRONTEND_URL || 'http://localhost:4200'
         });
 
         EmailProvider.sendWithRetry({
@@ -161,7 +161,8 @@ export class EmailService {
 
     static async sendContactFormConfirmation(email: string, name: string) {
         const html = TemplateRenderer.renderTemplate('contact-form-confirmation', {
-            user_name: name
+            user_name: name,
+            message_url: process.env.FRONTEND_URL || 'http://localhost:4200'
         });
 
         EmailProvider.sendWithRetry({

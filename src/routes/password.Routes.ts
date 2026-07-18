@@ -91,11 +91,15 @@ router.post(
  *             required:
  *               - email
  *               - newPassword
+ *               - confirmPassword
  *             properties:
  *               email:
  *                 type: string
  *                 example: admin@gmail.com
  *               newPassword:
+ *                 type: string
+ *                 example: Admin@123
+ *               confirmPassword:
  *                 type: string
  *                 example: Admin@123
  *     responses:

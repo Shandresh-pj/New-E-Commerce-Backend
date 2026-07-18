@@ -102,6 +102,42 @@ router.put(
 
 /**
  * @swagger
+ * /subscriptions/start-trial:
+ *   post:
+ *     summary: Start 14-Day Free Trial
+ *     tags: [Subscriptions]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - plan_id
+ *               - billing_cycle
+ *             properties:
+ *               plan_id:
+ *                 type: integer
+ *               billing_cycle:
+ *                 type: string
+ *                 enum: [monthly, yearly]
+ *               company_id:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Trial activated successfully
+ */
+router.post(
+  "/subscriptions/start-trial",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH] }),
+  subscriptionController.startTrial.bind(subscriptionController)
+);
+
+/**
+ * @swagger
  * /subscriptions/subscribe:
  *   post:
  *     summary: Subscribe to Plan

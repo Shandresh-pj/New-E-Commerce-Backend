@@ -20,20 +20,35 @@ export class UserSubscription {
   @Column({ type: "enum", enum: ["monthly", "yearly"] })
   billing_cycle!: string;
 
-  @Column({ type: "timestamp", nullable: true })
+  @Column({ type: "datetime", nullable: true })
   start_date!: Date | null;
 
-  @Column({ type: "timestamp", nullable: true })
+  @Column({ type: "datetime", nullable: true })
   end_date!: Date | null;
 
-  @Column({ type: "timestamp", nullable: true })
+  @Column({ type: "datetime", nullable: true })
   trial_end!: Date | null;
 
   @Column({ type: "boolean", default: true })
   auto_renew!: boolean;
 
-  @Column({ type: "timestamp", nullable: true })
+  @Column({ type: "datetime", nullable: true })
   canceled_at!: Date | null;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  cancellation_reason!: string | null;
+
+  @Column({ type: "datetime", nullable: true })
+  upgraded_at!: Date | null;
+
+  @Column({ type: "datetime", nullable: true })
+  downgraded_at!: Date | null;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  razorpay_subscription_id!: string | null;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  razorpay_customer_id!: string | null;
 
   @CreateDateColumn()
   created_at!: Date;

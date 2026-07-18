@@ -190,15 +190,18 @@ export class VerifyPasswordOtpDto {
   otp!: string;
 }
 
-/** Step 3 — submit new password with reset token */
+/** Step 3 — submit new password */
 export class ResetPasswordDto {
-  @IsString()
-  @IsNotEmpty()
-  reset_token!: string;
+  @IsEmail()
+  email!: string;
 
   @IsString()
   @MinLength(6)
   newPassword!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  confirmPassword!: string;
 }
 
 /** In-app change password (must know current password) */

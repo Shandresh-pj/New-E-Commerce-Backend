@@ -117,3 +117,14 @@ export class VerifySubscriptionPaymentDto {
   @IsNotEmpty()
   razorpay_signature!: string;
 }
+
+export class StartTrialDto {
+  @IsNumber()
+  @IsNotEmpty()
+  @Type(() => Number)
+  plan_id!: number;
+
+  @IsEnum(["monthly", "yearly"])
+  @IsNotEmpty()
+  billing_cycle!: "monthly" | "yearly";
+}

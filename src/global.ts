@@ -81,11 +81,16 @@ import { PasswordReset }                               from "./entities/password
 // Misc
 import { Status }                                      from "./entities/status.entity";
 
-// Subscriptions
+// Subscriptions & Billing
 import { SubscriptionPlan }                            from "./entities/subscription-plan.entity";
 import { UserSubscription }                            from "./entities/user-subscription.entity";
 import { SubscriptionInvoice }                         from "./entities/subscription-invoice.entity";
 import { WebhookLog }                                  from "./entities/webhook-log.entity";
+import { SubscriptionCoupon }                          from "./entities/subscription-coupon.entity";
+import { PaymentTransaction }                          from "./entities/payment-transaction.entity";
+import { Refund }                                      from "./entities/refund.entity";
+import { PaymentLog }                                  from "./entities/payment-log.entity";
+import { BillingHistory }                              from "./entities/billing-history.entity";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ALL_ENTITIES — the authoritative list registered with TypeORM.
@@ -176,11 +181,16 @@ export const ALL_ENTITIES = [
   // Misc
   Status,
 
-  // Subscriptions
+  // Subscriptions & Billing
   SubscriptionPlan,
   UserSubscription,
   SubscriptionInvoice,
   WebhookLog,
+  SubscriptionCoupon,
+  PaymentTransaction,
+  Refund,
+  PaymentLog,
+  BillingHistory,
 ] as const;
 
 /* ============================================================

@@ -37,6 +37,11 @@ import { AiController } from "./ai.Controller";
 import { ContactController } from "./contact.Controller";
 import { ProfitLossController } from "./profitLoss.controller";
 import { SubscriptionController } from "./subscription.Controller";
+import { WebhookController } from "./webhook.Controller";
+import { SubscriptionCouponController } from "./subscriptionCoupon.Controller";
+import { BillingController } from "./billing.Controller";
+import { SubscriptionInvoiceController } from "./subscriptionInvoice.Controller";
+import { PaymentCheckoutController } from "./paymentCheckout.Controller";
 
 
 export const authController = new AuthController();
@@ -114,4 +119,10 @@ export const profitLossController          = new ProfitLossController();
 
 // ── Subscription & Billing ────────────────────────────────────────────────
 export const subscriptionController       = new SubscriptionController();
-
+export const webhookController            = new WebhookController();
+export const subscriptionCouponController = new SubscriptionCouponController();
+export const billingController            = new BillingController();
+export const subscriptionInvoiceController = new SubscriptionInvoiceController();
+export const paymentCheckoutController    = new PaymentCheckoutController();
+
+
