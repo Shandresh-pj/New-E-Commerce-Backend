@@ -189,7 +189,7 @@ export class ContactController {
       });
 
       // Send Verification Email
-      const appUrl = process.env.APP_URL || "http://localhost:4200";
+      const appUrl = process.env.FRONTEND_URL || "http://localhost:4200";
       const verifyUrl = `${appUrl}/authentication/verify-email?token=${verifyToken}`;
       
       EmailService.sendRegistrationVerification(email, ownerName, verifyUrl).catch((mailErr) => {
@@ -259,7 +259,7 @@ export class ContactController {
 
       if (autoApproved) {
         // Send password setup link
-        const appUrl = process.env.APP_URL || "http://localhost:4200";
+        const appUrl = process.env.FRONTEND_URL || "http://localhost:4200";
         const setupUrl = `${appUrl}/authentication/setup-password?token=${contact.verificationToken}`;
         
         EmailService.sendTrialApproval(contact.email, contact.ownerName, contact.preferredPlan, setupUrl).catch((mailErr) => {
@@ -535,7 +535,7 @@ export class ContactController {
         module: "CONTACT",
         action: "UPDATE",
         recordId: contact.id,
-        userId: req.user.id,
+        userId: req.user.userId,
         roleId: req.user.roleId || 0,
         companyId: req.user.companyId || null,
         ip: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.ip,
@@ -579,7 +579,7 @@ export class ContactController {
         module: "CONTACT",
         action: "APPROVE",
         recordId: contact.id,
-        userId: req.user.id,
+        userId: req.user.userId,
         roleId: req.user.roleId || 0,
         companyId: req.user.companyId || null,
         ip: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.ip,
@@ -588,7 +588,7 @@ export class ContactController {
       });
 
       // Send password setup email
-      const appUrl = process.env.APP_URL || "http://localhost:4200";
+      const appUrl = process.env.FRONTEND_URL || "http://localhost:4200";
       const setupUrl = `${appUrl}/authentication/setup-password?token=${contact.verificationToken}`;
       
       EmailService.sendTrialApproval(contact.email, contact.ownerName, contact.preferredPlan, setupUrl).catch((mailErr) => {
@@ -628,7 +628,7 @@ export class ContactController {
         module: "CONTACT",
         action: "REJECT",
         recordId: contact.id,
-        userId: req.user.id,
+        userId: req.user.userId,
         roleId: req.user.roleId || 0,
         companyId: req.user.companyId || null,
         ip: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.ip,
@@ -693,7 +693,7 @@ export class ContactController {
         module: "CONTACT",
         action: "SOFT_DELETE",
         recordId: contact.id,
-        userId: req.user.id,
+        userId: req.user.userId,
         roleId: req.user.roleId || 0,
         companyId: req.user.companyId || null,
         ip: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.ip,
@@ -730,7 +730,7 @@ export class ContactController {
         module: "CONTACT",
         action: "RESTORE",
         recordId: contact.id,
-        userId: req.user.id,
+        userId: req.user.userId,
         roleId: req.user.roleId || 0,
         companyId: req.user.companyId || null,
         ip: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.ip,
