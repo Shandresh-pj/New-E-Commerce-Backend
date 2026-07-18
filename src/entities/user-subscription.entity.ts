@@ -20,28 +20,28 @@ export class UserSubscription {
   @Column({ type: "enum", enum: ["monthly", "yearly"] })
   billing_cycle!: string;
 
-  @Column({ type: "datetime", nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   start_date!: Date | null;
 
-  @Column({ type: "datetime", nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   end_date!: Date | null;
 
-  @Column({ type: "datetime", nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   trial_end!: Date | null;
 
   @Column({ type: "boolean", default: true })
   auto_renew!: boolean;
 
-  @Column({ type: "datetime", nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   canceled_at!: Date | null;
 
   @Column({ type: "varchar", length: 255, nullable: true })
   cancellation_reason!: string | null;
 
-  @Column({ type: "datetime", nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   upgraded_at!: Date | null;
 
-  @Column({ type: "datetime", nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   downgraded_at!: Date | null;
 
   @Column({ type: "varchar", length: 100, nullable: true })
