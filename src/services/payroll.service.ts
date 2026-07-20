@@ -15,6 +15,40 @@ const TAX_SLABS = [
   { upTo: Infinity, rate: 0.30 },
 ];
 
+// ─── Attendance Date Parser ─────────────────────────────────────────────────
+// Supports both DD:MM:YYYY (legacy) and YYYY-MM-DD (ISO) formats.
+// Returns { month: number (1-12), year: number } or null on failure.
+function parseAttendanceDate(dateStr: string): { day: number; month: number; year: number } | null {
+  if (!dateStr) return null;
+
+  // DD:MM:YYYY  e.g. "21:07:2026"
+  if (/^\d{2}:\d{2}:\d{4}$/.test(dateStr)) {
+    const [dd, mm, yyyy] = dateStr.split(":");
+    return { day: Number(dd), month: Number(mm), year: Number(yyyy) };
+  }
+
+  // YYYY-MM-DD  e.g. "2026-07-21"
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [yyyy, mm, dd] = dateStr.split("-");
+    return { day: Number(dd), month: Number(mm), year: Number(yyyy) };
+  }
+
+  // DD-MM-YYYY  e.g. "21-07-2026"
+  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+    const [dd, mm, yyyy] = dateStr.split("-");
+    return { day: Number(dd), month: Number(mm), year: Number(yyyy) };
+  }
+
+  // DD/MM/YYYY  e.g. "21/07/2026"
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+    const [dd, mm, yyyy] = dateStr.split("/");
+    return { day: Number(dd), month: Number(mm), year: Number(yyyy) };
+  }
+
+  console.warn(`[PayrollService] Unrecognised attendance_date format: "${dateStr}"`);
+  return null;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // PAYROLL SERVICE
 // ═══════════════════════════════════════════════════════════════════════════
@@ -36,6 +70,15 @@ export class PayrollService {
     const employee = await empRepo.findOne({ where: { id: input.employee_id } });
     if (!employee) throw new Error("Employee not found");
 
+    // ── Validate salary is configured ───────────────────────────────────
+    const basicSalary = Number(employee.salary) || 0;
+    if (basicSalary <= 0) {
+      throw new Error(`Employee "${employee.name}" has no salary configured. Please set a base salary before generating payroll.`);
+    }
+
+    // ── Validate working_hours to prevent division-by-zero ──────────────
+    const workingHoursPerDay = Number(employee.working_hours) > 0 ? Number(employee.working_hours) : 8;
+
     // ── Check for duplicate payroll ─────────────────────────────────────
     const existing = await salaryRepo.findOne({
       where: {
@@ -44,7 +87,7 @@ export class PayrollService {
         year:        input.year,
       },
     });
-    if (existing) throw new Error(`Payroll for ${input.month} ${input.year} already generated`);
+    if (existing) throw new Error(`Payroll for ${input.month} ${input.year} already generated for this employee`);
 
     // ── Month bounds ────────────────────────────────────────────────────
     const monthIndex   = moment().month(input.month).month();
@@ -52,29 +95,35 @@ export class PayrollService {
     const endOfMonth   = startOfMonth.clone().endOf("month");
     const workingDays  = this.countWorkingDays(startOfMonth, endOfMonth);
 
+    // Guard: workingDays should never be zero for a valid month
+    if (workingDays <= 0) {
+      throw new Error(`Could not compute working days for ${input.month} ${input.year}. Please check the month/year values.`);
+    }
+
     // ── Fetch attendance records ────────────────────────────────────────
     const allAttendance = await attRepo.find({ where: { employee_id: input.employee_id } });
 
-    // Filter to the target month
+    // Filter to the target month — supports DD:MM:YYYY, YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY
     const monthAttendance = allAttendance.filter((a) => {
-      const [, mm, yyyy] = a.attendance_date.split(":");
-      return Number(mm) === (monthIndex + 1) && Number(yyyy) === input.year;
+      const parsed = parseAttendanceDate(a.attendance_date);
+      if (!parsed) return false;
+      return parsed.month === (monthIndex + 1) && parsed.year === input.year;
     });
 
-    const presentDays    = monthAttendance.filter((a) => a.status === AttendanceStatus.PRESENT).length;
-    const lateDays       = monthAttendance.filter((a) => a.status === AttendanceStatus.LATE).length;
-    const halfDays       = monthAttendance.filter((a) => a.status === AttendanceStatus.HALF_DAY).length;
-    const absentDays     = Math.max(0, workingDays - presentDays - lateDays - halfDays);
+    const presentDays     = monthAttendance.filter((a) => a.status === AttendanceStatus.PRESENT).length;
+    const lateDays        = monthAttendance.filter((a) => a.status === AttendanceStatus.LATE).length;
+    const halfDays        = monthAttendance.filter((a) => a.status === AttendanceStatus.HALF_DAY).length;
+    const absentDays      = Math.max(0, workingDays - presentDays - lateDays - halfDays);
     const overtimeMinutes = monthAttendance.reduce((s, a) => s + (a.overtime_minutes || 0), 0);
 
     // ── Approved leaves ─────────────────────────────────────────────────
-    const leaves = await leaveRepo.find({ where: { employee_id: input.employee_id, status: "APPROVED" } });
-    const leaveDays = leaves.reduce((s, l) => s + l.total_days, 0);
+    const leaves    = await leaveRepo.find({ where: { employee_id: input.employee_id, status: "APPROVED" } });
+    const leaveDays = leaves.reduce((s, l) => s + (l.total_days || 0), 0);
 
-    // ── Salary Calculations ─────────────────────────────────────────────
-    const basicSalary    = Number(employee.salary);
-    const perDaySalary   = basicSalary / workingDays;
-    const perMinuteSalary = basicSalary / (workingDays * (employee.working_hours * 60));
+    // ── Salary Calculations (safe division) ─────────────────────────────
+    const perDaySalary    = basicSalary / workingDays;
+    const minutesPerDay   = workingHoursPerDay * 60;
+    const perMinuteSalary = minutesPerDay > 0 ? basicSalary / (workingDays * minutesPerDay) : 0;
 
     // Allowances
     const allowances = {
@@ -104,27 +153,29 @@ export class PayrollService {
     const totalDeductions = absentDeduction + halfDayDeduction + breakDeduction + lateDeduction + taxDeduction;
 
     const overtimeHours  = overtimeMinutes / 60;
-    const overtimeAmount = Math.round(overtimeHours * (perDaySalary / employee.working_hours) * 1.5);
+    const overtimeAmount = Math.round(overtimeHours * (perDaySalary / workingHoursPerDay) * 1.5);
 
-    const netSalary = Math.max(0, grossSalary - totalDeductions + overtimeAmount);
+    // Ensure netSalary is a valid, non-negative finite number
+    const rawNet   = grossSalary - totalDeductions + overtimeAmount;
+    const netSalary = isFinite(rawNet) ? Math.max(0, Math.round(rawNet)) : 0;
 
     const payroll = salaryRepo.create({
-      employee_id:     input.employee_id,
-      company_id:      employee.company_id,
-      branch_id:       employee.branch_id,
-      month:           input.month,
-      year:            input.year,
-      basic_salary:    basicSalary,
-      working_days:    workingDays,
-      present_days:    presentDays + lateDays,
-      absent_days:     absentDays,
-      leave_days:      leaveDays,
-      half_days:       halfDays,
-      late_days:       lateDays,
-      overtime_minutes: overtimeMinutes,
-      allowances:      allowances as any,
-      total_allowances: totalAllowances,
-      gross_salary:    grossSalary,
+      employee_id:        input.employee_id,
+      company_id:         employee.company_id,
+      branch_id:          employee.branch_id,
+      month:              input.month,
+      year:               input.year,
+      basic_salary:       basicSalary,
+      working_days:       workingDays,
+      present_days:       presentDays + lateDays,
+      absent_days:        absentDays,
+      leave_days:         leaveDays,
+      half_days:          halfDays,
+      late_days:          lateDays,
+      overtime_minutes:   overtimeMinutes,
+      allowances:         allowances as any,
+      total_allowances:   totalAllowances,
+      gross_salary:       grossSalary,
       absent_deduction:   absentDeduction,
       half_day_deduction: halfDayDeduction,
       break_deduction:    breakDeduction,

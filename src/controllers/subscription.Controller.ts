@@ -273,7 +273,11 @@ export class SubscriptionController {
         amount: Number(amount),
         gst_amount: gstAmount,
         subtotal: subtotal,
-        discount_amount: (plan?.yearly_price || amount) - amount,
+        // discount_amount = original price minus what the customer actually pays
+        // Only non-zero when a coupon was actually applied
+        discount_amount: applied_coupon_id
+          ? Math.max(0, (billing_cycle === "yearly" ? (plan?.yearly_price ?? amount) : (plan?.monthly_price ?? amount)) - amount)
+          : 0,
         plan_details: plan,
         coupon_applied: couponDetails,
         customer_details: {
@@ -476,7 +480,41 @@ export class SubscriptionController {
   @Swagger("Razorpay Webhook", "Idempotent handler for Razorpay subscription events.")
   async webhook(req: Request, res: Response) {
     try {
-      const payload = req.body;
+      // ── HMAC Signature Verification ──────────────────────────────────
+      // Razorpay sends X-Razorpay-Signature with every webhook request.
+      // We MUST verify it to prevent spoofed event injection.
+      const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+      const signature     = req.headers["x-razorpay-signature"] as string | undefined;
+
+      if (webhookSecret && webhookSecret !== "YourWebhookSecretHere") {
+        if (!signature) {
+          console.warn("[Webhook] Missing X-Razorpay-Signature header — request rejected");
+          return res.status(401).json({ success: false, message: "Missing webhook signature" });
+        }
+
+        const crypto = require("crypto");
+        // The raw body must be used for HMAC — Express json() parses it so we
+        // re-serialize the already-parsed body. In production, prefer raw body middleware.
+        const rawBody = JSON.stringify(req.body);
+        const expectedSignature = crypto
+          .createHmac("sha256", webhookSecret)
+          .update(rawBody)
+          .digest("hex");
+
+        if (expectedSignature !== signature) {
+          console.warn("[Webhook] Invalid signature — request rejected");
+          return res.status(401).json({ success: false, message: "Invalid webhook signature" });
+        }
+      } else {
+        // Webhook secret is not configured — log a warning but continue in dev mode
+        if (process.env.NODE_ENV === "production") {
+          console.error("[Webhook] RAZORPAY_WEBHOOK_SECRET is not set. Webhook verification is DISABLED in production!");
+        } else {
+          console.warn("[Webhook] Signature verification skipped (development mode or secret not configured)");
+        }
+      }
+
+      const payload   = req.body;
       const eventType = payload?.event;
       
       const eventId = req.headers["x-razorpay-event-id"] as string || payload?.id;

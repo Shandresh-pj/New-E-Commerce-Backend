@@ -1581,59 +1581,72 @@ public async deleteUser( req:any, res:any ){
         return res.status(401).json({ success: false, message: "Refresh token is required" });
       }
 
-      const userRepo = dataSource.getRepository(User);
+      const userRepo     = dataSource.getRepository(User);
       const userRoleRepo = dataSource.getRepository(UserRole);
 
-      // Verify the token format and expiry
+      // Verify the refresh token using the dedicated refresh secret
       let decoded: any;
       try {
-        decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || "fallback_refresh_secret");
+        const refreshSecret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || "";
+        decoded = jwt.verify(refreshToken, refreshSecret);
       } catch (err) {
         return res.status(403).json({ success: false, message: "Invalid or expired refresh token" });
       }
 
       const user = await userRepo.findOne({ where: { id: decoded.userId } });
-      if (!user || !user.isActive || !user.refreshToken) {
-        return res.status(403).json({ success: false, message: "Invalid session" });
+      if (!user || !user.isActive) {
+        return res.status(403).json({ success: false, message: "User not found or account disabled" });
       }
 
-      // Verify the hashed refresh token
-      const isMatch = await bcrypt.compare(refreshToken, user.refreshToken);
-      if (!isMatch) {
-        return res.status(403).json({ success: false, message: "Invalid refresh token" });
+      // Verify the hashed refresh token stored in DB
+      if (user.refreshToken) {
+        const isMatch = await bcrypt.compare(refreshToken, user.refreshToken);
+        if (!isMatch) {
+          return res.status(403).json({ success: false, message: "Refresh token mismatch. Please log in again." });
+        }
       }
 
-      // Get roles
+      // Fetch current roles
       const userRoles = await userRoleRepo.find({
         where: { user: { id: user.id } },
         relations: { role: true, company: true, branch: true }
       });
 
-      // Generate new access token
+      // Build the same payload shape as /auth/login
       const payload = {
-        userId:      user.id,
-        email:       user.email,
-        userType:    user.userType,
+        userId:       user.id,
+        email:        user.email,
+        userType:     user.userType,
         isSuperAdmin: user.isSuperAdmin,
-        company_id:  userRoles[0]?.company?.id ?? userRoles[0]?.company_id ?? null,
-        branch_id:   userRoles[0]?.branch?.id ?? userRoles[0]?.branch_id ?? null,
+        company_id:   userRoles[0]?.company?.id ?? userRoles[0]?.company_id ?? null,
+        branch_id:    userRoles[0]?.branch?.id  ?? userRoles[0]?.branch_id  ?? null,
         roles: userRoles.map(x => ({
           roleId: x.role.id,
           name:   x.role.name
         })),
       };
 
-      const newAccessToken = generateToken(payload, "15m");
+      // Issue a new access token (1d — same lifetime as login)
+      const newAccessToken  = generateToken(payload, "1d");
 
+      // Rotate the refresh token on every use (refresh token rotation)
+      const newRefreshToken = generateRefreshToken({ userId: user.id }, "7d");
+      const hashedNew       = await bcrypt.hash(newRefreshToken, 10);
+      user.refreshToken     = hashedNew;
+      await userRepo.save(user);
+
+      // Return `accessToken` — this is what the Angular RefreshService expects
       return res.status(200).json({
-        success: true,
-        message: "Token refreshed successfully",
-        token: newAccessToken
+        success:      true,
+        message:      "Token refreshed successfully",
+        accessToken:  newAccessToken,
+        refreshToken: newRefreshToken,
       });
     } catch (error: any) {
+      console.error("[Auth] refresh error:", error.message);
       return res.status(500).json({
         success: false,
-        message: error.message
+        message: error.message || "Failed to refresh token"
       });
     }
   }
