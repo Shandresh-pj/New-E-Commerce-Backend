@@ -8,6 +8,7 @@ import { AttendanceService } from "../services/attendance.service";
 import { Attendance, AttendanceStatus, AttendanceSource, BreakType, AttendanceBreakLog } from "../entities/attendance.entity";
 import { TenantService } from "../middleware/tenantFilter.middleware";
 import { nowDate, nowTime } from "../utils/dateTime";
+import moment from "moment";
 
 const attendanceService = new AttendanceService();
 
@@ -277,8 +278,8 @@ export class AttendanceController {
 
     let total_minutes = 0;
     if (check_out) {
-      const { default: moment } = await import("moment");
       total_minutes = moment(check_out, "HH:mm:ss").diff(moment(check_in, "HH:mm:ss"), "minutes");
+      if (total_minutes < 0) total_minutes += 24 * 60;
     }
 
     const record = repo.create({
@@ -320,8 +321,8 @@ export class AttendanceController {
     if (check_out) record.check_out = check_out;
 
     if (check_in && check_out) {
-      const { default: moment } = await import("moment");
       record.total_minutes = moment(check_out, "HH:mm:ss").diff(moment(check_in, "HH:mm:ss"), "minutes");
+      if (record.total_minutes < 0) record.total_minutes += 24 * 60;
       record.net_worked_minutes = record.total_minutes - (record.break_minutes || 0);
     }
 
@@ -370,8 +371,8 @@ export class AttendanceController {
     allowed.forEach((f) => { if (req.body[f] !== undefined) (record as any)[f] = req.body[f]; });
 
     if (record.check_in && record.check_out) {
-      const { default: moment } = await import("moment");
-      record.total_minutes       = moment(record.check_out, "HH:mm:ss").diff(moment(record.check_in, "HH:mm:ss"), "minutes");
+      record.total_minutes = moment(record.check_out, "HH:mm:ss").diff(moment(record.check_in, "HH:mm:ss"), "minutes");
+      if (record.total_minutes < 0) record.total_minutes += 24 * 60;
       record.net_worked_minutes  = record.total_minutes - (record.break_minutes || 0);
     }
 

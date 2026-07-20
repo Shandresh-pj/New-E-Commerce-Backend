@@ -2,9 +2,18 @@ import jwt, { JwtPayload, SignOptions, Secret } from "jsonwebtoken";
 
 export const generateToken = (
   payload: string | object | Buffer,
-  expiresIn: string | number = "1d"
+  expiresIn: string | number = "1d" // Short-lived access token
 ): string => {
   const secret: Secret = (process.env.JWT_SECRET || "") as Secret;
+  const options: SignOptions = { expiresIn } as SignOptions;
+  return jwt.sign(payload as any, secret, options);
+};
+
+export const generateRefreshToken = (
+  payload: string | object | Buffer,
+  expiresIn: string | number = "7d" // Long-lived refresh token
+): string => {
+  const secret: Secret = (process.env.JWT_REFRESH_SECRET || "fallback_refresh_secret") as Secret;
   const options: SignOptions = { expiresIn } as SignOptions;
   return jwt.sign(payload as any, secret, options);
 };
@@ -13,6 +22,13 @@ export const verifyToken = (
   token: string
 ): JwtPayload | string => {
   const secret: Secret = (process.env.JWT_SECRET || "") as Secret;
+  return jwt.verify(token, secret) as JwtPayload | string;
+};
+
+export const verifyRefreshToken = (
+  token: string
+): JwtPayload | string => {
+  const secret: Secret = (process.env.JWT_REFRESH_SECRET || "fallback_refresh_secret") as Secret;
   return jwt.verify(token, secret) as JwtPayload | string;
 };
 

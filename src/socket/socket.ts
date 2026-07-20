@@ -154,3 +154,8 @@ export const emitToUser = (userId: number, event: string, data: any) => {
 // attendance.biometric.failed  → fired on failed biometric auth
 // notification.created       → fired when notification is generated
 // dashboard.metrics.update   → fired after any attendance event
+//
+// ── Subscription Events ────────────────────────────────────────────────────
+// subscription.trial.started   → fired after a free trial is activated
+// subscription.activated       → fired after Razorpay payment is verified
+// subscription.invoice.created → fired after a paid invoice is generated

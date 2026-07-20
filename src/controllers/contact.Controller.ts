@@ -7,6 +7,8 @@ import { Role } from "../entities/roles";
 import { AuditLog } from "../entities/auditLogs";
 import { EmailService } from "../utils/sendEmailOtp";
 import { UserType } from "../utils/Role-Access";
+import { UserSubscription } from "../entities/user-subscription.entity";
+import { SubscriptionPlan } from "../entities/subscription-plan.entity";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import PDFDocument from "pdfkit";
@@ -373,6 +375,32 @@ export class ContactController {
         role_id: adminRole.id,
         company_id: savedCompany.id
       });
+
+      // Provision 14-Day Free Trial
+      const planRepo = qr.manager.getRepository(SubscriptionPlan);
+      const subscriptionRepo = qr.manager.getRepository(UserSubscription);
+      
+      // Attempt to find the plan requested by the user, or fallback to the first active plan
+      let selectedPlan = await planRepo.findOne({ where: { name: contact.preferredPlan, is_active: true } });
+      if (!selectedPlan) {
+        selectedPlan = await planRepo.findOne({ where: { is_active: true } });
+      }
+
+      if (selectedPlan) {
+        const trialEndDate = new Date();
+        trialEndDate.setDate(trialEndDate.getDate() + 14);
+
+        const subscription = subscriptionRepo.create({
+          company_id: savedCompany.id,
+          plan_id: selectedPlan.id,
+          status: "trialing",
+          billing_cycle: contact.billingCycle === "Yearly" ? "yearly" : "monthly",
+          start_date: new Date(),
+          trial_end: trialEndDate,
+          auto_renew: false
+        });
+        await subscriptionRepo.save(subscription);
+      }
 
       // Update Contact state
       contact.status = ContactStatus.CONVERTED;

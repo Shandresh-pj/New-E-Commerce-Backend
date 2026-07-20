@@ -6,6 +6,8 @@ import {
 
 import bcrypt from "bcrypt";
 import path from "path";
+import jwt from "jsonwebtoken";
+import { generateToken, generateRefreshToken } from "../utils/jwt";
 
 import {
   Controller,
@@ -19,13 +21,11 @@ import {
 import validate from "../middleware/validate";
 
 import dataSource from "../config/database";
-import jwt from "jsonwebtoken";
 
 import { Register } from "../entities/register";
 import { CreateProfileDto, LoginDto, RegisterDto, UpdateProfileDto } from "../dto/register.dto";
 import { Put } from "../decorators/put";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
-import { generateToken } from "../utils/jwt";
 // import { permissionGuard } from "../middleware/permissionGuard.middleware";
 import { User, UserRole } from "../entities/user";
 import { RolePermission } from "../entities/role-access";
@@ -497,32 +497,30 @@ message:
 // immediately after login and on every socket "permissions-updated" event,
 // so embedding them in the token provides zero benefit.
 
-const jwtSecret = process.env.JWT_SECRET!;
-const token = jwt.sign({
+    // Permissions and menus are intentionally omitted from the JWT...
 
+const payload = {
   userId:      user.id,
   email:       user.email,
   userType:    user.userType,
   isSuperAdmin: user.isSuperAdmin,
-
   company_id:
     userRoles[0]?.company?.id ?? userRoles[0]?.company_id ?? null,
-
   branch_id:
     userRoles[0]?.branch?.id ?? userRoles[0]?.branch_id ?? null,
-
   roles: userRoles.map(x => ({
     roleId: x.role.id,
     name:   x.role.name
   })),
+};
 
-},
+const token = generateToken(payload, "1d");
+const refreshToken = generateRefreshToken({ userId: user.id }, "7d");
 
-jwtSecret,
-
-{ expiresIn: "1d" }
-
-);
+// Hash refresh token for security and save
+const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+user.refreshToken = hashedRefreshToken;
+await userRepo.save(user);
 
 
 // =====================================
@@ -552,6 +550,7 @@ message:
 "Login successful",
 
 token,
+refreshToken,
 
 user:safeUser,
 
@@ -1571,6 +1570,108 @@ public async deleteUser( req:any, res:any ){
       });
     } catch (error: any) {
       return res.status(404).json({ success: false, message: error.message });
+    }
+  }
+  @Post("/refresh")
+  @Swagger("Refresh Token", "Get a new access token using a valid refresh token")
+  public async refresh(req: Request, res: Response) {
+    try {
+      const { refreshToken } = req.body;
+      if (!refreshToken) {
+        return res.status(401).json({ success: false, message: "Refresh token is required" });
+      }
+
+      const userRepo = dataSource.getRepository(User);
+      const userRoleRepo = dataSource.getRepository(UserRole);
+
+      // Verify the token format and expiry
+      let decoded: any;
+      try {
+        decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || "fallback_refresh_secret");
+      } catch (err) {
+        return res.status(403).json({ success: false, message: "Invalid or expired refresh token" });
+      }
+
+      const user = await userRepo.findOne({ where: { id: decoded.userId } });
+      if (!user || !user.isActive || !user.refreshToken) {
+        return res.status(403).json({ success: false, message: "Invalid session" });
+      }
+
+      // Verify the hashed refresh token
+      const isMatch = await bcrypt.compare(refreshToken, user.refreshToken);
+      if (!isMatch) {
+        return res.status(403).json({ success: false, message: "Invalid refresh token" });
+      }
+
+      // Get roles
+      const userRoles = await userRoleRepo.find({
+        where: { user: { id: user.id } },
+        relations: { role: true, company: true, branch: true }
+      });
+
+      // Generate new access token
+      const payload = {
+        userId:      user.id,
+        email:       user.email,
+        userType:    user.userType,
+        isSuperAdmin: user.isSuperAdmin,
+        company_id:  userRoles[0]?.company?.id ?? userRoles[0]?.company_id ?? null,
+        branch_id:   userRoles[0]?.branch?.id ?? userRoles[0]?.branch_id ?? null,
+        roles: userRoles.map(x => ({
+          roleId: x.role.id,
+          name:   x.role.name
+        })),
+      };
+
+      const newAccessToken = generateToken(payload, "15m");
+
+      return res.status(200).json({
+        success: true,
+        message: "Token refreshed successfully",
+        token: newAccessToken
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  @Get("/verify/:token")
+  @Swagger("Verify Email", "Verify user email using token")
+  public async verifyEmail(req: Request, res: Response) {
+    try {
+      const token = req.params.token as string;
+      if (!token) {
+        return res.status(400).json({ success: false, message: "Verification token is required" });
+      }
+
+      const userRepo = dataSource.getRepository(User);
+      const user = await userRepo.findOne({ where: { verificationToken: token } });
+
+      if (!user) {
+        return res.status(404).json({ success: false, message: "Invalid verification token" });
+      }
+
+      if (user.verificationTokenExpires && user.verificationTokenExpires < new Date()) {
+        return res.status(400).json({ success: false, message: "Verification token has expired" });
+      }
+
+      user.emailVerified = true;
+      user.verificationToken = null;
+      user.verificationTokenExpires = null;
+      await userRepo.save(user);
+
+      return res.status(200).json({
+        success: true,
+        message: "Email verified successfully"
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message
+      });
     }
   }
 }

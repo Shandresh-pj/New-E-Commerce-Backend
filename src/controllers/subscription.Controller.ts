@@ -16,6 +16,8 @@ import {
   VerifySubscriptionPaymentDto,
   StartTrialDto,
 } from "../dto/subscription.dto";
+import { UserType } from "../utils/Role-Access";
+import { emitToCompany } from "../socket/socket";
 
 @Controller("/subscriptions")
 export class SubscriptionController {
@@ -72,6 +74,31 @@ export class SubscriptionController {
     }
   }
 
+  @Get("/current")
+  @Swagger("Get Current Subscription", "Returns the active or trialing subscription for the logged-in company.")
+  async getCurrentSubscription(req: any, res: Response) {
+    try {
+      const company_id = req.user?.companyId ?? req.user?.company_id;
+      if (!company_id) {
+        return res.json({ success: true, data: null, message: "No company context found in user session" });
+      }
+
+      const subscription = await dataSource.getRepository(UserSubscription).findOne({
+        where: { company_id },
+        relations: { plan: true },
+        order: { created_at: "DESC" }
+      });
+
+      if (!subscription) {
+        return res.json({ success: true, data: null, message: "No subscription found" });
+      }
+
+      return res.json({ success: true, data: subscription });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
+
   // ─── SUBSCRIPTION & BILLING ──────────────────────────────────────────
 
   @Post("/start-trial")
@@ -80,7 +107,26 @@ export class SubscriptionController {
   async startTrial(req: any, res: Response) {
     try {
       const { plan_id, billing_cycle } = req.body;
-      const company_id = req.user?.company_id || req.body.company_id || 1; // Fallback for test
+      const company_id = req.user?.companyId || req.user?.company_id || req.body.company_id || 1; // Fallback for test
+
+      // Duplicate Trial Prevention: Check if company already used a trial or has active subscription
+      const userSubRepo = dataSource.getRepository(UserSubscription);
+      const existingSub = await userSubRepo.findOne({
+        where: { company_id },
+        order: { created_at: "DESC" }
+      });
+
+      const isSuperAdmin = req.user?.isSuperAdmin === true || req.user?.userType === UserType.SUPER_ADMIN;
+
+      if (existingSub && !isSuperAdmin) {
+        if (existingSub.status === "trialing" || existingSub.status === "active" || existingSub.trial_end) {
+          return res.status(400).json({
+            success: false,
+            code: "TRIAL_ALREADY_USED",
+            message: "A free trial has already been activated for this company/account. Please purchase a subscription plan to continue."
+          });
+        }
+      }
 
       const plan = await dataSource.getRepository(SubscriptionPlan).findOne({ where: { id: plan_id, is_active: true } });
       if (!plan) return res.status(404).json({ success: false, message: "Active plan not found" });
@@ -88,29 +134,38 @@ export class SubscriptionController {
       const expiryDate = new Date();
       expiryDate.setDate(expiryDate.getDate() + (plan.trial_days || 14));
 
-      // In real scenario, create UserSubscription record here
-      const userSubRepo = dataSource.getRepository(UserSubscription);
-      
-      const newSub = userSubRepo.create({
-        company_id,
-        plan_id,
-        status: "trialing",
-        billing_cycle,
-        start_date: new Date(),
-        end_date: expiryDate,
-      });
+      const newSub = existingSub || userSubRepo.create({ company_id });
+      newSub.company_id = company_id;
+      newSub.plan_id = plan_id;
+      newSub.status = "trialing";
+      newSub.billing_cycle = billing_cycle || "yearly";
+      newSub.start_date = new Date();
+      newSub.end_date = expiryDate;
+      newSub.trial_end = expiryDate;
+
       await userSubRepo.save(newSub);
+
+      // Emit real-time socket event for trial start
+      emitToCompany(company_id, "subscription.trial.started", {
+        subscription_id: newSub.id,
+        company_id,
+        status:        "trialing",
+        plan_id,
+        trial_end:     expiryDate,
+        billing_cycle: billing_cycle || "yearly"
+      });
 
       return res.json({
         success: true,
         message: `14-Day Free Trial successfully activated`,
-        trialId: `trial_${Date.now()}`,
+        trialId: `trial_${newSub.id}_${Date.now()}`,
         planId: plan_id,
-        expiryDate: expiryDate.toISOString()
+        expiryDate: expiryDate.toISOString(),
+        data: newSub
       });
     } catch (err: any) {
       console.error("Start Trial Error:", err);
-      return res.status(500).json({ success: false, message: "Internal server error" });
+      return res.status(500).json({ success: false, message: err.message || "Internal server error" });
     }
   }
 
@@ -120,11 +175,7 @@ export class SubscriptionController {
   async subscribe(req: any, res: Response) {
     try {
       const { plan_id, billing_cycle, coupon_code } = req.body;
-      const company_id = req.user?.company_id || req.body.company_id; // Support auth middleware or manual body for testing
-
-      if (!company_id) {
-        return res.status(400).json({ success: false, message: "Company ID is required" });
-      }
+      const company_id = req.user?.company_id || req.user?.companyId || req.body.company_id || 1;
 
       const plan = await dataSource.getRepository(SubscriptionPlan).findOne({ where: { id: plan_id, is_active: true } });
       if (!plan) return res.status(404).json({ success: false, message: "Active plan not found" });
@@ -171,22 +222,30 @@ export class SubscriptionController {
       const rzpKeyId = company?.razorpay_key_id || process.env.RAZORPAY_KEY_ID!;
       const rzpKeySecret = company?.razorpay_key_secret || process.env.RAZORPAY_KEY_SECRET!;
 
-      // Create a "pending" subscription
+      // Create or update subscription record
       const subRepo = dataSource.getRepository(UserSubscription);
-      let subscription = await subRepo.findOne({ where: { company_id, plan_id, status: "pending" } });
+      let subscription = await subRepo.findOne({
+        where: { company_id },
+        order: { created_at: "DESC" }
+      });
       
       if (!subscription) {
         subscription = subRepo.create({
           company_id,
           plan_id,
           billing_cycle,
-          status: "pending",
+          status: "trialing",
           auto_renew: true
         });
         await subRepo.save(subscription);
       } else {
+        subscription.plan_id = plan_id;
         subscription.billing_cycle = billing_cycle;
         await subRepo.save(subscription);
+      }
+
+      if (amount < 1) {
+        return res.status(400).json({ success: false, message: "Minimum amount for Razorpay is 1 INR (100 paise)" });
       }
 
       // 1. Create Razorpay Order
@@ -214,9 +273,20 @@ export class SubscriptionController {
         amount: Number(amount),
         gst_amount: gstAmount,
         subtotal: subtotal,
-        discount_amount: (plan?.yearly_price || amount) - amount, // Roughly total discount
+        discount_amount: (plan?.yearly_price || amount) - amount,
         plan_details: plan,
         coupon_applied: couponDetails,
+        customer_details: {
+          name:    req.body.name    || null,
+          email:   req.body.email   || null,
+          phone:   req.body.phone   || null,
+          company: req.body.company || null,
+          gstin:   req.body.gstin   || null
+        },
+        company_details: company ? {
+          id:   company.id,
+          name: (company as any).name || null
+        } : null,
         currency: plan?.currency || "INR",
         status: "pending",
         razorpay_order_id: orderResult.order_id
@@ -231,13 +301,17 @@ export class SubscriptionController {
           razorpay_order_id: orderResult.order_id,
           amount: amount,
           currency: orderResult.currency,
-          razorpay_key_id: rzpKeyId
+          razorpay_key_id: orderResult.key_id
         }
       });
 
     } catch (err: any) {
       console.error("Subscription Order Creation Error:", err);
-      return res.status(500).json({ success: false, message: err.message || "Failed to create subscription order" });
+      const errorMessage = err?.error?.description || err.message || "Failed to create subscription order";
+      if (errorMessage.includes("401 Unauthorized") || err?.statusCode === 401) {
+         return res.status(401).json({ success: false, message: errorMessage });
+      }
+      return res.status(500).json({ success: false, message: errorMessage });
     }
   }
 
@@ -333,19 +407,32 @@ export class SubscriptionController {
       subscription.status = "active";
       subscription.start_date = startDate;
       subscription.end_date = endDate;
-      
-      if (trialDays > 0) {
-         subscription.status = "trialing";
-         const trialEnd = new Date();
-         trialEnd.setDate(trialEnd.getDate() + trialDays + extraDays);
-         subscription.trial_end = trialEnd;
-      }
 
       await subRepo.save(subscription);
 
+      // ── Reload invoice with relations for the socket payload ──────────────
+      const fullInvoice = await invoiceRepo.findOne({
+        where: { id: invoice.id },
+        relations: { subscription: { plan: true } }
+      });
+
+      // ── Emit real-time socket events to the company room ─────────────────
+      const activationPayload = {
+        subscription_id: subscription.id,
+        company_id:      subscription.company_id,
+        status:          "active",
+        plan:            plan ? { id: plan.id, name: plan.name } : null,
+        billing_cycle:   subscription.billing_cycle,
+        start_date:      subscription.start_date,
+        end_date:        subscription.end_date,
+        razorpay_payment_id
+      };
+      emitToCompany(subscription.company_id, "subscription.activated",     activationPayload);
+      emitToCompany(subscription.company_id, "subscription.invoice.created", fullInvoice || invoice);
+
       return res.json({
         success: true,
-        message: "Subscription activated successfully",
+        message: "Payment verified successfully. Subscription activated!",
         data: subscription
       });
 
@@ -412,13 +499,50 @@ export class SubscriptionController {
 
       // Handle specific events
       if (eventType === "subscription.charged" || eventType === "payment.captured") {
-         const rzpSubscriptionId = payload?.payload?.subscription?.entity?.id;
+         const rzpSubscriptionId = payload?.payload?.subscription?.entity?.id || payload?.payload?.payment?.entity?.subscription_id;
          if (rzpSubscriptionId) {
             const subRepo = dataSource.getRepository(UserSubscription);
             const sub = await subRepo.findOne({ where: { razorpay_subscription_id: rzpSubscriptionId } });
-            if (sub && sub.status !== "active") {
-               sub.status = "active";
+            if (sub) {
+               // Update status if needed
+               if (sub.status !== "active") {
+                  sub.status = "active";
+               }
+
+               // Extend subscription end date by billing cycle
+               const newEndDate = new Date(sub.end_date || new Date());
+               if (sub.billing_cycle === "yearly") {
+                 newEndDate.setFullYear(newEndDate.getFullYear() + 1);
+               } else {
+                 newEndDate.setMonth(newEndDate.getMonth() + 1);
+               }
+               sub.end_date = newEndDate;
+
                await subRepo.save(sub);
+
+               // Generate an invoice for this charge
+               const paymentEntity = payload?.payload?.payment?.entity;
+               if (paymentEntity) {
+                 const invoiceRepo = dataSource.getRepository(SubscriptionInvoice);
+                 const invoiceNumber = `INV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                 const amount = (paymentEntity.amount || 0) / 100;
+                 const gstAmount = amount * 0.18;
+                 
+                 const invoice = invoiceRepo.create({
+                   invoice_number: invoiceNumber,
+                   subscription_id: sub.id,
+                   company_id: sub.company_id,
+                   amount: amount,
+                   gst_amount: gstAmount,
+                   subtotal: amount - gstAmount,
+                   discount_amount: 0,
+                   currency: paymentEntity.currency || "INR",
+                   status: "paid",
+                   razorpay_order_id: paymentEntity.order_id,
+                   razorpay_payment_id: paymentEntity.id
+                 });
+                 await invoiceRepo.save(invoice);
+               }
             }
          }
       } else if (eventType === "subscription.halted" || eventType === "subscription.cancelled") {

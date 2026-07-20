@@ -142,7 +142,8 @@ export class AttendanceService {
     // ── Compute total working time ──────────────────────────────────────
     const checkIn  = moment(attendance.check_in, "HH:mm:ss");
     const checkOut = moment(checkOutTime, "HH:mm:ss");
-    const totalMinutes = Math.max(0, checkOut.diff(checkIn, "minutes"));
+    let totalMinutes = checkOut.diff(checkIn, "minutes");
+    if (totalMinutes < 0) totalMinutes += 24 * 60;
     attendance.total_minutes = totalMinutes;
 
     // ── Compute total break time ────────────────────────────────────────
@@ -271,7 +272,9 @@ export class AttendanceService {
     // ── Compute break duration ──────────────────────────────────────────
     const start = moment(breakLog.start_time, "HH:mm:ss");
     const end   = moment(endTime, "HH:mm:ss");
-    breakLog.total_minutes = Math.max(0, end.diff(start, "minutes"));
+    let breakMinutes = end.diff(start, "minutes");
+    if (breakMinutes < 0) breakMinutes += 24 * 60;
+    breakLog.total_minutes = breakMinutes;
 
     await breakRepo.save(breakLog);
 

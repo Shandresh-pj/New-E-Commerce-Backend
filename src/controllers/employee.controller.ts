@@ -24,6 +24,8 @@ import authenticateMiddleware from "../middleware/authenticate.middleware";
 import { Company } from "../entities/company";
 import { Branch } from "../entities/branch";
 import { Role } from "../entities/roles";
+import { Employee } from "../entities/employee.entity";
+import { EmployeeType } from "../utils/Role-Access";
 import { auditMiddleware } from "../middleware/audit.Middleware";
 
 export class EmployeeController {
@@ -60,7 +62,14 @@ export class EmployeeController {
         company_id,
         branch_id,
         role_id,
-        userType
+        userType,
+        employee_code,
+        department,
+        designation,
+        salary,
+        working_hours,
+        joining_date,
+        address
       } = req.body;
 
       // ====================
@@ -143,6 +152,31 @@ export class EmployeeController {
       });
 
       await roleRepo.save(userRole);
+
+      // ====================
+      // Create HR Employee Record
+      // ====================
+      const hrEmployeeRepo = queryRunner.manager.getRepository(Employee);
+      
+      const hrEmployee = hrEmployeeRepo.create({
+        id: employee.id, // Explicitly link Employee to User via ID
+        company_id: company_id || 1, // Fallback if missing
+        branch_id: branch_id || 1,
+        employee_code: employee_code || `EMP-${employee.id}`,
+        name,
+        email,
+        mobile: mobilenumber,
+        address: address || null,
+        designation: designation || "Employee",
+        department: department || "General",
+        type: EmployeeType.SHOPKEEPER, // Using a valid fallback
+        salary: salary || 0,
+        working_hours: working_hours || 8,
+        joining_date: joining_date || new Date().toISOString().split("T")[0],
+        status: true
+      });
+
+      await hrEmployeeRepo.save(hrEmployee);
 
       await queryRunner.commitTransaction();
 
@@ -316,6 +350,18 @@ export class EmployeeController {
       repo.merge(employee, req.body);
       await repo.save(employee);
 
+      // Update HR Employee Record if exists
+      const hrRepo = dataSource.getRepository(Employee);
+      const hrEmployee = await hrRepo.findOne({ where: { id: employee.id } });
+      if (hrEmployee) {
+        const allowedHrFields = ["employee_code", "name", "email", "mobile", "address", "designation", "department", "salary", "working_hours", "joining_date", "status"];
+        allowedHrFields.forEach((f) => {
+          if (req.body[f] !== undefined) (hrEmployee as any)[f] = req.body[f];
+        });
+        if (req.body.mobilenumber !== undefined) hrEmployee.mobile = req.body.mobilenumber;
+        await hrRepo.save(hrEmployee);
+      }
+
       return res.json({
         success: true,
         message: "Employee updated",
@@ -356,6 +402,10 @@ export class EmployeeController {
       }
 
       await repo.delete(employee.id);
+
+      // Delete HR Employee Record
+      const hrRepo = dataSource.getRepository(Employee);
+      await hrRepo.delete(employee.id);
 
       return res.json({
         success: true,

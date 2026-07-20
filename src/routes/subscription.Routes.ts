@@ -30,6 +30,25 @@ router.get(
 
 /**
  * @swagger
+ * /subscriptions/current:
+ *   get:
+ *     summary: Get Current Subscription
+ *     tags: [Subscriptions]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Returns the current active/trialing subscription for logged-in company
+ */
+router.get(
+  "/subscriptions/current",
+  authenticateMiddleware,
+  subscriptionController.getCurrentSubscription.bind(subscriptionController)
+);
+
+
+/**
+ * @swagger
  * /subscriptions/plans:
  *   post:
  *     summary: Create Subscription Plan

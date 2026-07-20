@@ -49,6 +49,15 @@ export class User extends AbstractBaseEntity {
   @Column({ type: "timestamp", nullable: true })
   verificationTokenExpires!: Date | null;
 
+  @Column({ type: "varchar", length: 255, nullable: true })
+  resetPasswordToken!: string | null;
+
+  @Column({ type: "timestamp", nullable: true })
+  resetPasswordExpires!: Date | null;
+
+  @Column({ type: "varchar", length: 1000, nullable: true })
+  refreshToken!: string | null;
+
   @Column({ type: "varchar", length: 500, nullable: true })
   image!: string | null;
 

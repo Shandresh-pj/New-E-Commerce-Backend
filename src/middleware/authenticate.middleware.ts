@@ -26,10 +26,14 @@ const authenticateMiddleware = (req: any, res: any, next: any) => {
 
     req.user = {
       // handle both login JWT (userId) and select-context JWT (user_id)
-      userId:      decoded.userId    ?? decoded.user_id,
+      userId:      decoded.userId     ?? decoded.user_id,
+      user_id:     decoded.userId     ?? decoded.user_id,
       companyId:   decoded.company_id ?? decoded.companyId,
+      company_id:  decoded.company_id ?? decoded.companyId,
       branchId:    decoded.branch_id  ?? decoded.branchId,
+      branch_id:   decoded.branch_id  ?? decoded.branchId,
       roleId:      decoded.role_id    ?? decoded.roleId,
+      role_id:     decoded.role_id    ?? decoded.roleId,
       userType:    decoded.userType,
       roles:       decoded.roles       || [],
       permissions: decoded.permissions || [],

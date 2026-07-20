@@ -1,17 +1,17 @@
 import { Router } from "express";
-import { authController, passwordController } from "../controllers";
+import { passwordController } from "../controllers";
 
 const router = Router();
 
 
 /**
  * @swagger
- * /password/send-otp:
+ * /password/forgot-password:
  *   post:
  *     tags:
  *       - Password
- *     summary: Send OTP
- *     description: Send OTP to registered email for password reset
+ *     summary: Forgot Password
+ *     description: Generate a password reset token and send via email
  *     requestBody:
  *       required: true
  *       content:
@@ -26,50 +26,11 @@ const router = Router();
  *                 example: admin@gmail.com
  *     responses:
  *       200:
- *         description: OTP sent successfully
- *       404:
- *         description: User not found
+ *         description: Reset link sent
  */
 router.post(
-  "/password/send-otp",
-  passwordController.sendOtp.bind(
-    passwordController
-  )
-);
-
-/**
- * @swagger
- * /password/verify-otp:
- *   post:
- *     tags:
- *       - Password
- *     summary: Verify OTP
- *     description: Verify OTP sent to email
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - otp
- *             properties:
- *               email:
- *                 type: string
- *                 example: admin@gmail.com
- *               otp:
- *                 type: string
- *                 example: "123456"
- *     responses:
- *       200:
- *         description: OTP verified successfully
- *       400:
- *         description: Invalid OTP
- */
-router.post(
-  "/password/verify-otp",
-  passwordController.verifyOtp.bind(
+  "/password/forgot-password",
+  passwordController.forgotPassword.bind(
     passwordController
   )
 );
@@ -81,7 +42,7 @@ router.post(
  *     tags:
  *       - Password
  *     summary: Reset Password
- *     description: Reset password after successful OTP verification
+ *     description: Reset password using token
  *     requestBody:
  *       required: true
  *       content:
@@ -89,24 +50,16 @@ router.post(
  *           schema:
  *             type: object
  *             required:
- *               - email
- *               - newPassword
- *               - confirmPassword
+ *               - token
+ *               - password
  *             properties:
- *               email:
+ *               token:
  *                 type: string
- *                 example: admin@gmail.com
- *               newPassword:
+ *               password:
  *                 type: string
- *                 example: Admin@123
- *               confirmPassword:
- *                 type: string
- *                 example: Admin@123
  *     responses:
  *       200:
- *         description: Password updated successfully
- *       400:
- *         description: OTP verification required
+ *         description: Password reset successfully
  */
 router.post(
   "/password/reset-password",
@@ -115,39 +68,34 @@ router.post(
   )
 );
 
+/**
+ * @swagger
+ * /password/change-password:
+ *   post:
+ *     tags:
+ *       - Password
+ *     summary: Change Password (Admin)
+ *     description: Admin changes another user's password
+ */
+router.post(
+  "/password/change-password",
+  passwordController.changePassword.bind(
+    passwordController
+  )
+);
 
 /**
  * @swagger
- * /auth/change-temporary-password:
+ * /password/change-my-password:
  *   post:
  *     tags:
- *       - Auth
- *     summary: Change Temporary Password
- *     description: First login password change for Super Admin, Admin, Branch Manager, Employee and Customer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *               - confirmPassword
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *               confirmPassword:
- *                 type: string
- *     responses:
- *       200:
- *         description: Password changed successfully
+ *       - Password
+ *     summary: Change My Password
+ *     description: User changes their own password
  */
 router.post(
-  "/auth/change-temporary-password",
-  passwordController.changeTemporaryPassword.bind(
+  "/password/change-my-password",
+  passwordController.changeMyPassword.bind(
     passwordController
   )
 );
