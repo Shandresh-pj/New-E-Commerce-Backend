@@ -57,7 +57,7 @@ export class BreakPolicy {
 
   // ── Deduction Thresholds ──────────────────────────────────────────────
   // JSON: { warning: 15, salary_deduction: 30, half_day: 60, hr_review: 120 }
-  @Column({ type: "json" })
+  @Column({ type: "simple-json" })
   deduction_rules!: {
     warning: number;           // minutes over limit → WARNING
     salary_deduction: number;  // minutes over limit → SALARY DEDUCTION

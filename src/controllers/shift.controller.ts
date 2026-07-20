@@ -76,9 +76,13 @@ export class ShiftController {
     const allowed = [
       "name", "type", "start_time", "end_time", "grace_period_minutes",
       "min_work_minutes", "overtime_threshold_minutes", "late_threshold_minutes",
-      "half_day_threshold_minutes", "allowed_break_minutes", "weekend_days", "is_active",
+      "half_day_threshold_minutes", "allowed_break_minutes", "weekend_days"
     ];
     allowed.forEach((f) => { if (req.body[f] !== undefined) (shift as any)[f] = req.body[f]; });
+
+    if (req.body.is_active !== undefined) {
+      shift.is_active = req.body.is_active === true || req.body.is_active === "true" || req.body.is_active === 1 || req.body.is_active === "1";
+    }
 
     await repo.save(shift);
     return res.json({ success: true, message: "Shift updated", data: shift });

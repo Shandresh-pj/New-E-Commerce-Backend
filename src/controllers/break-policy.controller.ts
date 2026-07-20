@@ -28,8 +28,8 @@ export class BreakPolicyController {
       break_type:           break_type ?? "PERSONAL",
       max_duration_minutes: max_duration_minutes ?? 60,
       max_frequency:        max_frequency ?? 3,
-      allow_split:          allow_split ?? true,
-      is_paid:              is_paid ?? false,
+      allow_split:          allow_split === true || allow_split === "true" || allow_split === 1 || allow_split === "1",
+      is_paid:              is_paid === true || is_paid === "true" || is_paid === 1 || is_paid === "1",
       deduction_rules: deduction_rules ?? {
         warning:          15,
         salary_deduction: 30,
@@ -89,10 +89,19 @@ export class BreakPolicyController {
     if (!policy) return res.status(404).json({ success: false, message: "Policy not found" });
 
     const allowed = [
-      "name", "break_type", "max_duration_minutes", "max_frequency",
-      "allow_split", "is_paid", "deduction_rules", "is_active",
+      "name", "break_type", "max_duration_minutes", "max_frequency", "deduction_rules"
     ];
     allowed.forEach((f) => { if (req.body[f] !== undefined) (policy as any)[f] = req.body[f]; });
+
+    if (req.body.allow_split !== undefined) {
+      policy.allow_split = req.body.allow_split === true || req.body.allow_split === "true" || req.body.allow_split === 1 || req.body.allow_split === "1";
+    }
+    if (req.body.is_paid !== undefined) {
+      policy.is_paid = req.body.is_paid === true || req.body.is_paid === "true" || req.body.is_paid === 1 || req.body.is_paid === "1";
+    }
+    if (req.body.is_active !== undefined) {
+      policy.is_active = req.body.is_active === true || req.body.is_active === "true" || req.body.is_active === 1 || req.body.is_active === "1";
+    }
 
     await repo.save(policy);
     return res.json({ success: true, message: "Break policy updated", data: policy });

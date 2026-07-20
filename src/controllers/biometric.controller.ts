@@ -78,11 +78,15 @@ export class BiometricController {
     });
     if (!device) return res.status(404).json({ success: false, message: "Device not found" });
 
-    const allowed = ["device_name", "ip_address", "location", "is_whitelisted", "status", "firmware_version", "min_confidence_score"];
+    const allowed = ["device_name", "ip_address", "location", "status", "firmware_version", "min_confidence_score"];
     allowed.forEach((f) => { if (req.body[f] !== undefined) (device as any)[f] = req.body[f]; });
 
+    if (req.body.is_whitelisted !== undefined) {
+      device.is_whitelisted = req.body.is_whitelisted === true || req.body.is_whitelisted === "true" || req.body.is_whitelisted === 1 || req.body.is_whitelisted === "1";
+    }
+
     // If whitelisting, set to active
-    if (req.body.is_whitelisted === true && device.status === DeviceStatus.INACTIVE) {
+    if (device.is_whitelisted === true && device.status === DeviceStatus.INACTIVE) {
       device.status = DeviceStatus.ACTIVE;
     }
 

@@ -55,7 +55,7 @@ export class Shift {
   @Column({ type: "int", default: 60 })
   allowed_break_minutes!: number;
 
-  @Column({ type: "json", nullable: true })
+  @Column({ type: "simple-json", nullable: true })
   weekend_days!: number[] | null;  // [0=Sun, 6=Sat]
 
   @Column({ type: "boolean", default: true })
