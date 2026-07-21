@@ -69,8 +69,8 @@ app.use(
   })
 );
 
-// Handle OPTIONS preflight requests explicitly
-app.options("*", cors());
+// Handle OPTIONS preflight requests explicitly (compatible with path-to-regexp v6+)
+app.options(/(.*)/, cors());
 
 /* ================= PERFORMANCE & PARSING ================= */
 
