@@ -58,6 +58,9 @@ import { Salary }                                      from "./entities/salary";
 import { LeaveRequest }                                from "./entities/leave.entity";
 import { CompanyCalendar }                             from "./entities/company_calendar.entity";
 import { EmployeeDocument }                            from "./entities/employee_document.entity";
+import { Language }                            from "./entities/language.entity";
+import { TranslationKey }                      from "./entities/translation_key.entity";
+import { TranslationValue }                    from "./entities/translation_value.entity";
 
 // Attendance & Shifts
 import { Attendance, AttendanceBreakLog }              from "./entities/attendance.entity";
@@ -156,6 +159,9 @@ export const ALL_ENTITIES = [
   LeaveRequest,
   CompanyCalendar,
   EmployeeDocument,
+  Language,
+  TranslationKey,
+  TranslationValue,
 
   // Attendance & Shifts
   Attendance,

@@ -20,10 +20,10 @@ export class BillingHistory {
   @Column({ type: "varchar", length: 100 })
   billing_cycle!: string;
 
-  @Column({ type: "timestamptz" })
+  @Column({ type: "timestamp" })
   cycle_start!: Date;
 
-  @Column({ type: "timestamptz" })
+  @Column({ type: "timestamp" })
   cycle_end!: Date;
 
   @Column("decimal", { precision: 10, scale: 2 })

@@ -53,7 +53,7 @@ export class EmployeeDocument {
   @Column({ type: "int", nullable: true })
   verified_by?: number;
 
-  @Column({ type: "timestamptz", nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   verified_at?: Date;
 
 
