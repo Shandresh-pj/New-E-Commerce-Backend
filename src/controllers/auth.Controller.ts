@@ -1077,7 +1077,10 @@ public async selectContext(
         )
     );
 
-    // Create token
+    // Create token — permissions and menus are NOT included in the JWT payload.
+    // Embedding them causes tokens >8KB which Render's Nginx proxy rejects (431 error).
+    // The frontend receives them in the response body and stores in sessionStorage.
+    // On each API call the frontend sends only the compact token in Authorization header.
     const token = jwt.sign(
       {
         user_id,
@@ -1088,12 +1091,11 @@ public async selectContext(
         userType: user.userType,
         isSuperAdmin: user.isSuperAdmin,
 
-        permissions,
-        menus
+        // DO NOT include permissions or menus here — too large for HTTP headers
       },
       process.env.JWT_SECRET!,
       {
-        expiresIn: "7d"
+        expiresIn: "1d"  // Match the access token lifetime in /auth/login
       }
     );
 
@@ -1685,6 +1687,43 @@ public async deleteUser( req:any, res:any ){
         success: false,
         message: error.message
       });
+    }
+  }
+
+  // =====================================================
+  // LOGOUT — Revoke Refresh Token
+  // =====================================================
+  // The frontend calls this on every logout to invalidate the refresh token.
+  // Without this endpoint, every logout generates a 404 error on the client.
+  // Token invalidation means even if someone obtains the refresh token, they
+  // cannot use it after the user logs out.
+  @Post("/logout")
+  @Swagger("Logout / Revoke Token", "Invalidates the stored refresh token for the user")
+  public async logout(req: Request, res: Response) {
+    try {
+      const { refreshToken } = req.body;
+
+      if (refreshToken) {
+        // Verify the token to extract the userId — do not crash if invalid
+        try {
+          const refreshSecret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || "";
+          const decoded: any = jwt.verify(refreshToken, refreshSecret);
+          if (decoded?.userId) {
+            const userRepo = dataSource.getRepository(User);
+            const user = await userRepo.findOne({ where: { id: decoded.userId } });
+            if (user) {
+              user.refreshToken = null as any;
+              await userRepo.save(user);
+            }
+          }
+        } catch {
+          // Expired or invalid token — still return 200 so client-side logout completes
+        }
+      }
+
+      return res.status(200).json({ success: true, message: "Logged out successfully" });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, message: error.message });
     }
   }
 }

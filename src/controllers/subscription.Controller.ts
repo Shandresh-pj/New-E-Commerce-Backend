@@ -493,9 +493,11 @@ export class SubscriptionController {
         }
 
         const crypto = require("crypto");
-        // The raw body must be used for HMAC — Express json() parses it so we
-        // re-serialize the already-parsed body. In production, prefer raw body middleware.
-        const rawBody = JSON.stringify(req.body);
+        // CRITICAL: Use the raw request body bytes for HMAC, NOT re-serialized JSON.
+        // express.json() parses the body and re-serializing with JSON.stringify() produces
+        // different whitespace/key ordering, causing HMAC mismatch even with the correct secret.
+        // The app.ts middleware captures req.rawBody BEFORE express.json() processes it.
+        const rawBody = (req as any).rawBody || JSON.stringify(req.body);
         const expectedSignature = crypto
           .createHmac("sha256", webhookSecret)
           .update(rawBody)

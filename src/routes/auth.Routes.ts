@@ -359,9 +359,7 @@ router.get(
   authController.getMyPermissions.bind(authController)
 );
 
-
-
- /**
+/**
  * @swagger
  * /auth/verify/{token}:
  *   get:
@@ -412,6 +410,32 @@ router.get(
   "/auth/verify/:token",
   verifyEmailLimiter,
   companyController.verifyEmail.bind(companyController)
+);
+
+/**
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Refresh access token
+ *     description: Exchange valid refresh token for a new access token
+ */
+router.post(
+  "/auth/refresh",
+  authController.refresh.bind(authController)
+);
+
+/**
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Logout / Revoke token
+ *     description: Invalidate refresh token on logout
+ */
+router.post(
+  "/auth/logout",
+  authController.logout.bind(authController)
 );
 
 export default router;

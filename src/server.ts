@@ -14,12 +14,29 @@ import { redisClient } from "./config/redis";
 // ─── Critical Environment Validation ────────────────────────────────────────
 // Fail loudly at startup if critical vars are missing — far better than silent
 // failures that are hard to debug once deployed.
-const REQUIRED_ENV_VARS = ["JWT_SECRET"];
+const REQUIRED_ENV_VARS = ["JWT_SECRET", "JWT_REFRESH_SECRET"];
 const missing = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
 if (missing.length > 0) {
   console.error(`❌ [Startup] Missing required environment variables: ${missing.join(", ")}`);
   console.error("❌ [Startup] Server cannot start safely. Please set these variables in your Render dashboard.");
   process.exit(1);
+}
+
+// ─── Production Safety Checks ──────────────────────────────────────────────
+if (process.env.NODE_ENV === "production") {
+  if (!process.env.DATABASE_URL && !process.env.PRODUCTION_DB_URL) {
+    console.error("❌ [Startup] Production database URL is not set! Set DATABASE_URL or PRODUCTION_DB_URL in the Render dashboard.");
+    process.exit(1);
+  }
+  if (!process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_WEBHOOK_SECRET === "YourWebhookSecretHere") {
+    console.warn("⚠️ [Startup] RAZORPAY_WEBHOOK_SECRET is not set or is a placeholder. Webhook verification will be DISABLED. Set a real secret from the Razorpay Dashboard.");
+  }
+  if (process.env.RAZORPAY_KEY_ID?.startsWith("rzp_test_")) {
+    console.warn("⚠️ [Startup] RAZORPAY_KEY_ID is a TEST key. Live payments will fail. Use a live key (rzp_live_...) in production.");
+  }
+  if (String(process.env.DB_SYNC).toLowerCase() === "true") {
+    console.warn("⚠️ [Startup] DB_SYNC=true in production is dangerous! TypeORM synchronize can drop columns. Use migrations instead.");
+  }
 }
 
 // ─── Global Error Safety Net ────────────────────────────────────────────────
@@ -47,11 +64,30 @@ async function initDatabase() {
   }
 
   // Pre-synchronization cleanup to prevent unique index creation failures from duplicate/empty records
+  // Auto-detect the DB type so we use the correct SQL dialect (MySQL vs PostgreSQL)
+  const dbType = (dataSource.options as any).type as string;
   try {
-    await dataSource.query("DELETE FROM `roles` WHERE `name` = '' OR `name` IS NULL");
-    await dataSource.query("DELETE r1 FROM `roles` r1 INNER JOIN `roles` r2 WHERE r1.id > r2.id AND r1.name = r2.name");
+    if (dbType === "mysql" || dbType === "mariadb") {
+      // MySQL: backtick identifiers, multi-table DELETE
+      await dataSource.query("DELETE FROM `roles` WHERE `name` = '' OR `name` IS NULL");
+      await dataSource.query("DELETE r1 FROM `roles` r1 INNER JOIN `roles` r2 WHERE r1.id > r2.id AND r1.name = r2.name");
+    } else {
+      // PostgreSQL: double-quote identifiers, CTE-based dedup
+      await dataSource.query(`DELETE FROM "roles" WHERE "name" = '' OR "name" IS NULL`);
+      await dataSource.query(`
+        DELETE FROM "roles"
+        WHERE id IN (
+          SELECT id FROM (
+            SELECT id, ROW_NUMBER() OVER (PARTITION BY name ORDER BY id) AS rn
+            FROM "roles"
+          ) sub
+          WHERE rn > 1
+        )
+      `);
+    }
   } catch (cleanErr: any) {
     // Ignore if table does not exist yet on fresh install
+    console.warn("⚠️ [DB Cleanup] Roles dedup skipped:", cleanErr.message);
   }
 
   // Always run synchronize in development so new entity fields are picked up.

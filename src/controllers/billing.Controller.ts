@@ -17,12 +17,23 @@ export class BillingController {
   @Swagger("Get Billing History", "Returns the billing history and invoices for the authenticated company.")
   async getBillingHistory(req: any, res: Response) {
     try {
-      const company_id = req.user?.company_id;
-      if (!company_id) return res.status(400).json({ success: false, message: "Company ID missing in auth token" });
-
       const repo = dataSource.getRepository(SubscriptionInvoice);
+
+      if (req.user?.isSuperAdmin) {
+        const invoices = await repo.find({
+          relations: { subscription: { plan: true } },
+          order: { created_at: "DESC" }
+        });
+        return res.json({ success: true, data: invoices });
+      }
+
+      const company_id = req.user?.companyId || req.user?.company_id;
+      if (!company_id) {
+        return res.json({ success: true, data: [] });
+      }
+
       const invoices = await repo.find({
-        where: { company_id },
+        where: { company_id: Number(company_id) },
         relations: { subscription: { plan: true } },
         order: { created_at: "DESC" }
       });

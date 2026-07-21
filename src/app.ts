@@ -61,12 +61,44 @@ app.use(
         }
       : true, // Allow all origins in development
     credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+    exposedHeaders: ["X-Cache", "X-Total-Count"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   })
 );
+
+// Handle OPTIONS preflight requests explicitly
+app.options("*", cors());
 
 /* ================= PERFORMANCE & PARSING ================= */
 
 app.use(compression());
+
+// ─── Raw Body Capture for Razorpay Webhooks ──────────────────────────────
+// express.json() parses the body and discards the raw bytes. Razorpay HMAC
+// verification REQUIRES the exact raw bytes, so we capture them here BEFORE
+// express.json() processes them, and attach to req.rawBody.
+app.use((req: any, res: any, next: any) => {
+  if (req.url.includes('/webhook') || req.url.includes('/razorpay/webhook')) {
+    let data = '';
+    req.setEncoding('utf8');
+    req.on('data', (chunk: string) => { data += chunk; });
+    req.on('end', () => {
+      req.rawBody = data;
+      try {
+        req.body = JSON.parse(data);
+      } catch {
+        req.body = {};
+      }
+      next();
+    });
+  } else {
+    next();
+  }
+});
+
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/uploads", (req, res, next) => {

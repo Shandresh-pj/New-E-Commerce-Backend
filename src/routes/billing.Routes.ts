@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { billingController } from "../controllers";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
 
 const router = Router();
 
@@ -24,6 +25,7 @@ const router = Router();
  */
 router.get(
   "/billing/history",
+  authenticateMiddleware,
   billingController.getBillingHistory.bind(billingController)
 );
 
@@ -54,6 +56,7 @@ router.get(
  */
 router.post(
   "/billing/refund",
+  authenticateMiddleware,
   billingController.processRefund.bind(billingController)
 );
 
