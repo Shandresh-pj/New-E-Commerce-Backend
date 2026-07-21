@@ -19,8 +19,8 @@ import { StatusType, UserType } from "../utils/Role-Access";
 export class Register extends BaseEntity {
   @PrimaryGeneratedColumn()
   id!: number;
-  @Column()
-company_id: number;
+  @Column({ type: "int", nullable: true })
+  company_id!: number;
 
   @Column({ unique: true, nullable: true })
   email!: string;

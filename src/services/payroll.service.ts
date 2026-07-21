@@ -219,6 +219,14 @@ export class PayrollService {
     const where   = TenantService.scopeWhere(user, { id: payrollId });
     const payroll = await repo.findOne({ where });
     if (!payroll) throw new Error("Payroll record not found");
+
+    // Employee role authorization check: employee can only view their own payslip
+    const isEmployeeRole = user?.role === "EMPLOYEE" || user?.user_type === "EMPLOYEE" || user?.role === "employee";
+    const loggedInEmpId  = user?.employeeId || user?.employee_id || user?.userId;
+    if (isEmployeeRole && Number(payroll.employee_id) !== Number(loggedInEmpId)) {
+      throw new Error("Unauthorized: You are only allowed to view your own payslip");
+    }
+
     const employee = await empRepo.findOne({ where: { id: payroll.employee_id } });
     return { payroll, employee };
   }

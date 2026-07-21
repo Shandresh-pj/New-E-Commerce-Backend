@@ -22,7 +22,11 @@ export const redisCache = (ttl: number = 60) => {
       return next();
     }
 
-    const key = `cache:${req.originalUrl || req.url}`;
+    // Generate cache key incorporating authenticated user context if present to avoid cross-user data leakage
+    const userId = (req as any).user?.id || (req as any).user?.user_id || '';
+    const authHeader = req.headers.authorization ? req.headers.authorization.substring(req.headers.authorization.length - 16) : '';
+    const userScope = userId ? `user:${userId}` : authHeader ? `token:${authHeader}` : 'public';
+    const key = `cache:${userScope}:${req.originalUrl || req.url}`;
 
     try {
       if (!redisClient.isReady) {

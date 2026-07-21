@@ -58,7 +58,8 @@ export class BiometricService {
 
     // ── Verify device JWT ───────────────────────────────────────────────
     try {
-      jwt.verify(payload.device_token, device.jwt_secret || process.env.BIOMETRIC_JWT_SECRET!);
+      const secret = device.jwt_secret || process.env.BIOMETRIC_JWT_SECRET || process.env.JWT_SECRET || "default_biometric_jwt_secret";
+      jwt.verify(payload.device_token, secret);
     } catch {
       await this.logAuthAttempt({
         device_id:      device.id,

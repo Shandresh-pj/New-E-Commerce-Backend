@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { In } from "typeorm";
 import { Controller, Get, Post, Middleware, Swagger } from "../decorators";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
 import dataSource from "../config/database";
@@ -48,23 +49,25 @@ export class WorkforceDashboardController {
 
       const records = await repo.find({ where, order: { id: "DESC" } });
 
-      const enriched = await Promise.all(
-        records.map(async (r) => {
-          const emp = await empRepo.findOne({ where: { id: r.employee_id } });
-          return {
-            ...r,
-            employee: emp
-              ? {
-                  name:          emp.name,
-                  designation:   emp.designation,
-                  department:    emp.department,
-                  employee_code: emp.employee_code,
-                  profile_image: emp.profile_image,
-                }
-              : null,
-          };
-        })
-      );
+      const empIds = [...new Set(records.map((r) => r.employee_id))];
+      const employees = empIds.length > 0 ? await empRepo.find({ where: { id: In(empIds) } }) : [];
+      const empMap = new Map(employees.map((e) => [e.id, e]));
+
+      const enriched = records.map((r) => {
+        const emp = empMap.get(r.employee_id);
+        return {
+          ...r,
+          employee: emp
+            ? {
+                name:          emp.name,
+                designation:   emp.designation,
+                department:    emp.department,
+                employee_code: emp.employee_code,
+                profile_image: emp.profile_image,
+              }
+            : null,
+        };
+      });
 
       return res.json({ success: true, data: enriched, total: enriched.length });
     } catch (err: any) {
@@ -193,6 +196,12 @@ export class WorkforceDashboardController {
       const { month, year } = req.query;
       const empId = Number(req.params.employeeId);
       if (isNaN(empId)) return res.status(400).json({ success: false, message: "Invalid employee ID" });
+
+      const isEmpRole = req.user?.role === "EMPLOYEE" || req.user?.user_type === "EMPLOYEE" || req.user?.role === "employee";
+      const loggedInEmpId = req.user?.employeeId || req.user?.employee_id || req.user?.userId;
+      if (isEmpRole && Number(loggedInEmpId) !== empId) {
+        return res.status(403).json({ success: false, message: "Unauthorized: You can only view your own attendance report" });
+      }
 
       const repo    = dataSource.getRepository(Attendance);
       const empRepo = dataSource.getRepository(Employee);

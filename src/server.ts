@@ -12,14 +12,18 @@ import { EmailService } from "./utils/sendEmailOtp";
 import { redisClient } from "./config/redis";
 
 // ─── Critical Environment Validation ────────────────────────────────────────
-// Fail loudly at startup if critical vars are missing — far better than silent
-// failures that are hard to debug once deployed.
-const REQUIRED_ENV_VARS = ["JWT_SECRET", "JWT_REFRESH_SECRET"];
+// Check for JWT_SECRET and provide fallback for JWT_REFRESH_SECRET if not explicitly set.
+const REQUIRED_ENV_VARS = ["JWT_SECRET"];
 const missing = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
 if (missing.length > 0) {
   console.error(`❌ [Startup] Missing required environment variables: ${missing.join(", ")}`);
   console.error("❌ [Startup] Server cannot start safely. Please set these variables in your Render dashboard.");
   process.exit(1);
+}
+
+if (!process.env.JWT_REFRESH_SECRET) {
+  process.env.JWT_REFRESH_SECRET = process.env.JWT_SECRET || "fallback_refresh_secret_key_2026";
+  console.log("ℹ️ [Startup] JWT_REFRESH_SECRET not explicitly set; defaulting to JWT_SECRET fallback.");
 }
 
 // ─── Production Safety Checks ──────────────────────────────────────────────

@@ -226,6 +226,10 @@ export class BiometricController {
     try {
       const { device_serial, device_token, employee_id, attendance_id, break_type, confidence_score, auth_type } = req.body;
 
+      if (!device_serial || !device_token || !employee_id || !attendance_id) {
+        return res.status(400).json({ success: false, message: "device_serial, device_token, employee_id, and attendance_id are required" });
+      }
+
       await biometricService.authenticateBiometric({
         device_serial, device_token,
         employee_id: Number(employee_id),
@@ -256,6 +260,10 @@ export class BiometricController {
       const { device_serial, device_token, employee_id, confidence_score, auth_type } = req.body;
       const breakLogId = Number(req.params.breakLogId);
       if (isNaN(breakLogId)) return res.status(400).json({ success: false, message: "Invalid break log ID" });
+
+      if (!device_serial || !device_token || !employee_id) {
+        return res.status(400).json({ success: false, message: "device_serial, device_token, and employee_id are required" });
+      }
 
       await biometricService.authenticateBiometric({
         device_serial, device_token,

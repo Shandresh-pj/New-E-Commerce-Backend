@@ -56,6 +56,8 @@ import { Wishlist }                                    from "./entities/wishlist
 import { Employee }                                    from "./entities/employee.entity";
 import { Salary }                                      from "./entities/salary";
 import { LeaveRequest }                                from "./entities/leave.entity";
+import { CompanyCalendar }                             from "./entities/company_calendar.entity";
+import { EmployeeDocument }                            from "./entities/employee_document.entity";
 
 // Attendance & Shifts
 import { Attendance, AttendanceBreakLog }              from "./entities/attendance.entity";
@@ -152,6 +154,8 @@ export const ALL_ENTITIES = [
   Employee,
   Salary,
   LeaveRequest,
+  CompanyCalendar,
+  EmployeeDocument,
 
   // Attendance & Shifts
   Attendance,
