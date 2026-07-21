@@ -53,8 +53,9 @@ export class EmployeeDocument {
   @Column({ type: "int", nullable: true })
   verified_by?: number;
 
-  @Column({ type: "datetime", nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   verified_at?: Date;
+
 
   @CreateDateColumn()
   created_at!: Date;
