@@ -60,23 +60,58 @@ process.on("uncaughtException", (error: Error) => {
 // ─── Database Initialization ─────────────────────────────────────────────────
 // global.ts exports ALL_ENTITIES and database.ts registers them with TypeORM.
 // DB_SYNC=true  → TypeORM will create/alter tables on every startup (default in dev).
-// DB_SYNC=false → No auto-sync; use migrations (recommended for production).
+// DB_SYNC=false → Auto-detects missing tables and syncs if empty; otherwise skips sync for safety.
 async function initDatabase() {
   if (!dataSource.isInitialized) {
     await dataSource.initialize();
     console.log("✅ Database connection established.");
   }
 
-  // Pre-synchronization cleanup to prevent unique index creation failures from duplicate/empty records
-  // Auto-detect the DB type so we use the correct SQL dialect (MySQL vs PostgreSQL)
   const dbType = (dataSource.options as any).type as string;
+
+  // Check if core tables exist in the database
+  let tablesExist = false;
   try {
     if (dbType === "mysql" || dbType === "mariadb") {
-      // MySQL: backtick identifiers, multi-table DELETE
+      const result = await dataSource.query("SHOW TABLES LIKE 'roles'");
+      tablesExist = Array.isArray(result) && result.length > 0;
+    } else {
+      const result = await dataSource.query(
+        "SELECT to_regclass('public.roles') AS table_exists"
+      );
+      tablesExist = Boolean(result && result[0] && result[0].table_exists);
+    }
+  } catch (checkErr: any) {
+    console.warn("⚠️ [DB Check] Could not verify existing tables:", checkErr.message);
+    tablesExist = false;
+  }
+
+  const envSync = String(process.env.DB_SYNC ?? "true").toLowerCase().trim() === "true";
+  const shouldSync = envSync || !tablesExist;
+
+  if (shouldSync) {
+    try {
+      if (!tablesExist && !envSync) {
+        console.log("⚠️ [Startup] Core database tables missing! Auto-synchronizing schema for initial deployment...");
+      } else {
+        console.log("🔄 Synchronizing entity tables with database...");
+      }
+      await dataSource.synchronize(false); // false = don't drop existing data
+      console.log("✅ All entity tables are synchronized.");
+    } catch (syncErr: any) {
+      console.error("❌ Database synchronization failed:", syncErr.message);
+      throw syncErr;
+    }
+  } else {
+    console.log("ℹ️ [Startup] Database tables detected & DB_SYNC=false. Skipping auto-sync to protect production data.");
+  }
+
+  // Pre-synchronization cleanup to prevent duplicate index failures
+  try {
+    if (dbType === "mysql" || dbType === "mariadb") {
       await dataSource.query("DELETE FROM `roles` WHERE `name` = '' OR `name` IS NULL");
       await dataSource.query("DELETE r1 FROM `roles` r1 INNER JOIN `roles` r2 WHERE r1.id > r2.id AND r1.name = r2.name");
     } else {
-      // PostgreSQL: double-quote identifiers, CTE-based dedup
       await dataSource.query(`DELETE FROM "roles" WHERE "name" = '' OR "name" IS NULL`);
       await dataSource.query(`
         DELETE FROM "roles"
@@ -90,32 +125,7 @@ async function initDatabase() {
       `);
     }
   } catch (cleanErr: any) {
-    // Ignore if table does not exist yet on fresh install
     console.warn("⚠️ [DB Cleanup] Roles dedup skipped:", cleanErr.message);
-  }
-
-  // Always run synchronize in development so new entity fields are picked up.
-  // In production, DB_SYNC must be explicitly set to "true" in the dashboard.
-  const shouldSync =
-    String(process.env.DB_SYNC ?? "true").toLowerCase().trim() === "true";
-
-  if (shouldSync) {
-    try {
-      console.log("🔄 Synchronizing all entity tables with the database...");
-      await dataSource.synchronize(false); // false = don't drop existing data
-      console.log("✅ All entity tables are synchronized.");
-    } catch (syncErr: any) {
-      console.error("❌ Database synchronization failed:", syncErr.message);
-      throw syncErr; // crash fast so the problem is visible
-    }
-  } else {
-    // Even when sync is disabled, verify the DB is reachable
-    try {
-      await dataSource.query("SELECT 1");
-    } catch (pingErr: any) {
-      console.error("❌ Database ping failed:", pingErr.message);
-      throw pingErr;
-    }
   }
 
   await seedRoles();
