@@ -21,14 +21,42 @@ const DEFAULT_LANGUAGES: Array<{
 ];
 
 const SEED_KEYS = [
-  { group: "menu", key: "menu.dashboard", default_text: "Dashboard", ta: "முகப்பு", hi: "டैशबोर्ड", ar: "لوحة القيادة" },
+  { group: "menu", key: "Dashboard", default_text: "Dashboard", ta: "முகப்பு", hi: "डैशबोर्ड", ar: "لوحة القيادة" },
+  { group: "menu", key: "App Admin", default_text: "App Admin", ta: "நிர்வாகி", hi: "व्यवस्थापक", ar: "المسؤول" },
+  { group: "menu", key: "CRM Contacts", default_text: "CRM Contacts", ta: "தொடர்புகள்", hi: "संपर्क", ar: "جهات الاتصال" },
+  { group: "menu", key: "App Branch", default_text: "App Branch", ta: "கிளை", hi: "शाखा", ar: "الفروع" },
+  { group: "menu", key: "App Employee", default_text: "App Employee", ta: "ஊழியர்கள்", hi: "कर्मचारी", ar: "الموظفين" },
+  { group: "menu", key: "App Role Access", default_text: "App Role Access", ta: "பங்கு அணுகல்", hi: "भूमिका पहुंच", ar: "صلاحيات الأدوار" },
+  { group: "menu", key: "App Roles", default_text: "App Roles", ta: "பங்கு உரிமைகள்", hi: "ऐप भूमिकाएं", ar: "أدوار النظام" },
+  { group: "menu", key: "Workforce Console", default_text: "Workforce Console", ta: "பணியாளர் மையம்", hi: "वर्कफोर्स कंसोल", ar: "القوى العاملة" },
+  { group: "menu", key: "Workforce Requests", default_text: "Workforce Requests", ta: "பணியாளர் கோரிக்கைகள்", hi: "वर्कफोर्स अनुरोध", ar: "طلبات القوى العاملة" },
+  { group: "menu", key: "Attendance", default_text: "Attendance", ta: "வருகைப் பதிவு", hi: "उपस्थिति", ar: "الحضور" },
+  { group: "menu", key: "Leave Management", default_text: "Leave Management", ta: "விடுப்பு மேலாண்மை", hi: "छुट्टी प्रबंधन", ar: "إدارة الإجازات" },
+  { group: "menu", key: "Company Calendar", default_text: "Company Calendar", ta: "நிறுவன நாட்காட்டி", hi: "कंपनी कैलेंडर", ar: "تقويم الشركة" },
+  { group: "menu", key: "Document Verification", default_text: "Document Verification", ta: "ஆவணங்கள் சரிபார்ப்பு", hi: "केवाईसी सत्यापन", ar: "الوثائق والرخص" },
+  { group: "menu", key: "Payroll", default_text: "Payroll", ta: "சம்பளம்", hi: "पेरोल", ar: "كشف المرتبات" },
+  { group: "menu", key: "Profile", default_text: "Profile", ta: "சுயவிவரம்", hi: "प्रोफ़ाइल", ar: "ملفي الشخصي" },
+  { group: "menu", key: "Translation Console", default_text: "Translation Console", ta: "மொழிபெயர்ப்பு மையம்", hi: "अनुवाद कंसोल", ar: "مركز الترجمة" },
+  { group: "menu", key: "Menu Bar", default_text: "Menu Bar", ta: "பட்டிப் பட்டை", hi: "मेनू बार", ar: "شريط القائمة" },
+  { group: "menu", key: "Status", default_text: "Status", ta: "நிலை", hi: "स्थिति", ar: "الحالة" },
+  { group: "menu", key: "Change Password", default_text: "Change Password", ta: "கடவுச்சொல் மாற்று", hi: "पासवर्ड बदलें", ar: "تغيير كلمة المرور" },
+  { group: "nav", key: "Home", default_text: "Home", ta: "முகப்பு", hi: "होम", ar: "الرئيسية" },
+  { group: "nav", key: "Admin", default_text: "Admin", ta: "நிர்வாகம்", hi: "व्यवस्थापक", ar: "الإدارة" },
+  { group: "nav", key: "Branch", default_text: "Branch", ta: "கிளை", hi: "शाखा", ar: "الفروع" },
+  { group: "nav", key: "Employees", default_text: "Employees", ta: "ஊழியர்கள்", hi: "कर्मचारी", ar: "الموظفين" },
+  { group: "nav", key: "Roles", default_text: "Roles", ta: "பங்குகள்", hi: "भूमिकाएं", ar: "الأدوار" },
+  { group: "nav", key: "Catalog", default_text: "Catalog", ta: "பட்டியல்", hi: "सूची", ar: "الكتالوج" },
+  { group: "nav", key: "Workforce", default_text: "Workforce", ta: "பணியாளர்கள்", hi: "कार्यबल", ar: "القوى العاملة" },
+  { group: "nav", key: "Operations & Workflows", default_text: "Operations & Workflows", ta: "செயல்பாடுகள் & வேலைப்பாய்வு", hi: "संचालन और वर्कफ़्लो", ar: "العمليات وسير العمل" },
+  { group: "nav", key: "Settings", default_text: "Settings", ta: "அமைப்புகள்", hi: "सेटिंग्स", ar: "الإعدادات" },
+  { group: "menu", key: "menu.dashboard", default_text: "Dashboard", ta: "முகப்பு", hi: "डैशबोर्ड", ar: "لوحة القيادة" },
   { group: "menu", key: "menu.profile", default_text: "My Profile", ta: "என் சுயவிவரம்", hi: "मेरी प्रोफ़ाइल", ar: "ملفي الشخصي" },
   { group: "menu", key: "menu.attendance", default_text: "Attendance", ta: "வருகைப் பதிவு", hi: "उपस्थिति", ar: "الحضور" },
   { group: "menu", key: "menu.leave", default_text: "Leave Management", ta: "விடுப்பு மேலாண்மை", hi: "छुट्टी प्रबंधन", ar: "إدارة الإجازات" },
   { group: "menu", key: "menu.payroll", default_text: "Payroll", ta: "சம்பளம்", hi: "पेरोल", ar: "كشف المرتبات" },
   { group: "menu", key: "menu.calendar", default_text: "Company Calendar", ta: "நிறுவன நாட்காட்டி", hi: "कंपनी कैलेंडर", ar: "تقويم الشركة" },
   { group: "menu", key: "menu.documents", default_text: "KYC Documents", ta: "ஆவணங்கள்", hi: "दस्तावेज़", ar: "الوثائق" },
-  { group: "common", key: "common.save", default_text: "Save", ta: "சேமி", hi: "சहेजें", ar: "حفظ" },
+  { group: "common", key: "common.save", default_text: "Save", ta: "சேமி", hi: "सहेजें", ar: "حفظ" },
   { group: "common", key: "common.cancel", default_text: "Cancel", ta: "ரத்து செய்", hi: "रद्द करें", ar: "إلغاء" },
   { group: "common", key: "common.delete", default_text: "Delete", ta: "நீக்கு", hi: "हटाएं", ar: "حذف" },
   { group: "common", key: "common.edit", default_text: "Edit", ta: "திருத்து", hi: "संपादित करें", ar: "تعديل" },
@@ -44,11 +72,14 @@ export class LanguageController {
   private static get keyRepo() { return dataSource.getRepository(TranslationKey); }
   private static get valRepo() { return dataSource.getRepository(TranslationValue); }
 
+  private static isTablesChecked = false;
+
   private static async ensureTablesExist(): Promise<void> {
+    if (LanguageController.isTablesChecked) return;
+    LanguageController.isTablesChecked = true;
     try {
       await dataSource.query("SELECT 1 FROM translation_keys LIMIT 1;");
     } catch {
-      // Table missing — synchronize DB schema dynamically
       try {
         await dataSource.synchronize();
         await LanguageController.seedDefaultTranslations();
@@ -60,13 +91,31 @@ export class LanguageController {
 
   static async getLanguages(req: Request, res: Response): Promise<void> {
     try {
-      await LanguageController.ensureTablesExist();
-      let languages = await LanguageController.langRepo.find({ order: { is_default: "DESC", name: "ASC" } });
-      if (languages.length === 0) {
-        await LanguageController.langRepo.save(DEFAULT_LANGUAGES);
-        languages = await LanguageController.langRepo.find({ order: { is_default: "DESC", name: "ASC" } });
-        await LanguageController.seedDefaultTranslations();
-      }
+      const fetchPromise = (async () => {
+        await LanguageController.ensureTablesExist();
+        let languages = await LanguageController.langRepo.find({ order: { is_default: "DESC", name: "ASC" } });
+        if (languages.length === 0) {
+          await LanguageController.langRepo.save(DEFAULT_LANGUAGES);
+          languages = await LanguageController.langRepo.find({ order: { is_default: "DESC", name: "ASC" } });
+          await LanguageController.seedDefaultTranslations();
+        }
+        return languages;
+      })();
+
+      const timeoutPromise = new Promise<any>((resolve) => setTimeout(() => resolve(null), 1500));
+      const result = await Promise.race([fetchPromise, timeoutPromise]);
+
+      const languages = result || DEFAULT_LANGUAGES;
+      languages.sort((a: any, b: any) => {
+        const codeA = String(a.code).toLowerCase();
+        const codeB = String(b.code).toLowerCase();
+        if (codeA === "ta") return -1;
+        if (codeB === "ta") return 1;
+        if (codeA === "en") return -1;
+        if (codeB === "en") return 1;
+        return String(a.name).localeCompare(String(b.name));
+      });
+
       res.json({ success: true, data: languages });
     } catch (error: any) {
       console.error("[LanguageController.getLanguages]", error);
@@ -146,53 +195,67 @@ export class LanguageController {
         return;
       }
 
-      await LanguageController.ensureTablesExist();
-
-      let keys = await LanguageController.keyRepo.find();
-      if (keys.length === 0) {
-        await LanguageController.seedDefaultTranslations();
-        keys = await LanguageController.keyRepo.find();
-      }
-
-      const values = await LanguageController.valRepo.find({
-        where: [
-          { language_code: langCode },
-          { language_code: "en" }
-        ],
-        relations: { translation_key: true }
-      });
-
-      const dictionary: Record<string, string> = {};
-
-      keys.forEach((k: TranslationKey) => {
-        dictionary[k.key_name] = k.default_text;
-      });
-
-      values.filter((v: TranslationValue) => v.language_code === "en").forEach((v: TranslationValue) => {
-        if (v.translation_key?.key_name) {
-          dictionary[v.translation_key.key_name] = v.translation_text;
+      const fetchPromise = (async () => {
+        await LanguageController.ensureTablesExist();
+        let keys = await LanguageController.keyRepo.find();
+        if (keys.length === 0) {
+          await LanguageController.seedDefaultTranslations();
+          keys = await LanguageController.keyRepo.find();
         }
-      });
 
-      values.filter((v: TranslationValue) => v.language_code === langCode && !v.company_id).forEach((v: TranslationValue) => {
-        if (v.translation_key?.key_name && v.translation_text) {
-          dictionary[v.translation_key.key_name] = v.translation_text;
-        }
-      });
+        const values = await LanguageController.valRepo.find({
+          where: [
+            { language_code: langCode },
+            { language_code: "en" }
+          ],
+          relations: { translation_key: true }
+        });
 
-      if (companyId) {
-        values.filter((v: TranslationValue) => v.language_code === langCode && v.company_id === companyId).forEach((v: TranslationValue) => {
+        const dictionary: Record<string, string> = {};
+
+        keys.forEach((k: TranslationKey) => {
+          dictionary[k.key_name] = k.default_text;
+        });
+
+        values.filter((v: TranslationValue) => v.language_code === "en").forEach((v: TranslationValue) => {
+          if (v.translation_key?.key_name) {
+            dictionary[v.translation_key.key_name] = v.translation_text;
+          }
+        });
+
+        values.filter((v: TranslationValue) => v.language_code === langCode && !v.company_id).forEach((v: TranslationValue) => {
           if (v.translation_key?.key_name && v.translation_text) {
             dictionary[v.translation_key.key_name] = v.translation_text;
           }
         });
-      }
 
-      translationCache.set(cacheKey, { dictionary, timestamp: Date.now() });
-      res.json({ success: true, langCode, dictionary });
+        if (companyId) {
+          values.filter((v: TranslationValue) => v.language_code === langCode && v.company_id === companyId).forEach((v: TranslationValue) => {
+            if (v.translation_key?.key_name && v.translation_text) {
+              dictionary[v.translation_key.key_name] = v.translation_text;
+            }
+          });
+        }
+
+        return dictionary;
+      })();
+
+      const timeoutPromise = new Promise<Record<string, string> | null>((resolve) => setTimeout(() => resolve(null), 1500));
+      const dictResult = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (dictResult) {
+        translationCache.set(cacheKey, { dictionary: dictResult, timestamp: Date.now() });
+        res.json({ success: true, langCode, dictionary: dictResult });
+      } else {
+        // Fallback dictionary map if DB query timed out
+        const fallbackDict: Record<string, string> = {};
+        SEED_KEYS.forEach(item => {
+          fallbackDict[item.key] = (item as any)[langCode] || item.default_text;
+        });
+        res.json({ success: true, langCode, dictionary: fallbackDict });
+      }
     } catch (error: any) {
       console.error("[LanguageController.getDictionary]", error);
-      // Fallback dictionary map if DB query fails
       const fallbackDict: Record<string, string> = {};
       SEED_KEYS.forEach(item => {
         fallbackDict[item.key] = (item as any)[langCode] || item.default_text;
@@ -204,9 +267,18 @@ export class LanguageController {
   static async getTranslationMatrix(req: Request, res: Response): Promise<void> {
     try {
       await LanguageController.ensureTablesExist();
-      const keys = await LanguageController.keyRepo.find({ order: { group_name: "ASC", key_name: "ASC" } });
+      let keys = await LanguageController.keyRepo.find({ order: { group_name: "ASC", key_name: "ASC" } });
+      if (keys.length === 0) {
+        await LanguageController.seedDefaultTranslations();
+        keys = await LanguageController.keyRepo.find({ order: { group_name: "ASC", key_name: "ASC" } });
+      }
+
+      let languages: any[] = await LanguageController.langRepo.find({ where: { is_active: true } });
+      if (languages.length === 0) {
+        languages = DEFAULT_LANGUAGES;
+      }
+
       const values = await LanguageController.valRepo.find();
-      const languages = await LanguageController.langRepo.find({ where: { is_active: true } });
 
       const valueMap = new Map<string, string>();
       values.forEach((v: TranslationValue) => {
@@ -230,7 +302,20 @@ export class LanguageController {
       res.json({ success: true, matrix, languages });
     } catch (error: any) {
       console.error("[LanguageController.getTranslationMatrix]", error);
-      res.status(500).json({ success: false, message: "Failed to fetch translation matrix" });
+      // Fallback matrix built from SEED_KEYS
+      const fallbackMatrix = SEED_KEYS.map((k, idx) => ({
+        id: idx + 1,
+        group_name: k.group,
+        key_name: k.key,
+        default_text: k.default_text,
+        translations: {
+          en: k.default_text,
+          ta: (k as any).ta || "",
+          hi: (k as any).hi || "",
+          ar: (k as any).ar || ""
+        }
+      }));
+      res.json({ success: true, matrix: fallbackMatrix, languages: DEFAULT_LANGUAGES });
     }
   }
 

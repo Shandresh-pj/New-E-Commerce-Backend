@@ -6,7 +6,7 @@ const router = Router();
 
 // Public / Authenticated translation loading
 router.get("/languages", LanguageController.getLanguages);
-router.get("/translations/matrix", authenticateMiddleware, LanguageController.getTranslationMatrix);
+router.get("/translations/matrix", LanguageController.getTranslationMatrix);
 router.get("/translations/:langCode", LanguageController.getDictionary);
 
 // Admin Management
