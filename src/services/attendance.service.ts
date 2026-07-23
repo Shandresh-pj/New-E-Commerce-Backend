@@ -446,23 +446,23 @@ export class AttendanceService {
   }
 
   // ─── Live Dashboard Metrics ────────────────────────────────────────────
-  async getLiveDashboard(companyId: number, branchId?: number) {
+  async getLiveDashboard(companyId?: number, branchId?: number) {
     const repo = dataSource.getRepository(Attendance);
     const today = nowDate();
 
-    const where: any = { company_id: companyId, attendance_date: today };
+    const where: any = { attendance_date: today };
+    if (companyId) where.company_id = companyId;
     if (branchId) where.branch_id = branchId;
 
     const records = await repo.find({ where });
 
     const breakRepo = dataSource.getRepository(AttendanceBreakLog);
 
-    // Find employees currently on break (have active break log)
-    const activeBreaks = await breakRepo
-      .createQueryBuilder("b")
-      .where("b.company_id = :companyId", { companyId })
-      .andWhere("b.end_time IS NULL")
-      .getMany();
+    const qb = breakRepo.createQueryBuilder("b").where("b.end_time IS NULL");
+    if (companyId) {
+      qb.andWhere("b.company_id = :companyId", { companyId });
+    }
+    const activeBreaks = await qb.getMany();
 
     const onBreakIds = new Set(activeBreaks.map((b) => b.employee_id));
 

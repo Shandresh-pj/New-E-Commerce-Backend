@@ -139,25 +139,51 @@ export class MenuController {
   }
 
   // =====================================================
-  // GET ALL MENUS
+  // GET ALL MENUS (AUTO-ENSURING FULL PERMISSION ENTRIES)
   // =====================================================
   @Get("/")
   @Middleware([authenticateMiddleware])
   async getAll(req: any, res: any) {
+    try {
+      const menuRepo = dataSource.getRepository(Menu);
+      const permissionRepo = dataSource.getRepository(Permission);
+      const actions = Object.values(PermissionType);
 
-    const menus = await dataSource.getRepository(Menu).find({
-      relations: {
-        permissions: true
-      },
-      order: {
-        id: "DESC"
+      const menus = await menuRepo.find({
+        relations: {
+          permissions: true
+        },
+        order: {
+          id: "ASC"
+        }
+      });
+
+      for (const m of menus) {
+        if (!m.permissions || m.permissions.length === 0) {
+          const newPerms = actions.map(action => permissionRepo.create({ menu_id: m.id, action }));
+          await permissionRepo.save(newPerms);
+          m.permissions = newPerms;
+        } else if (m.permissions.length < actions.length) {
+          const existingActions = new Set(m.permissions.map(p => p.action));
+          const missingActions = actions.filter(act => !existingActions.has(act as any));
+          if (missingActions.length > 0) {
+            const addedPerms = missingActions.map(action => permissionRepo.create({ menu_id: m.id, action }));
+            await permissionRepo.save(addedPerms);
+            m.permissions.push(...addedPerms);
+          }
+        }
       }
-    });
 
-    return res.json({
-      success: true,
-      data: menus
-    });
+      return res.json({
+        success: true,
+        data: menus
+      });
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        message: err.message
+      });
+    }
   }
 
   // =====================================================

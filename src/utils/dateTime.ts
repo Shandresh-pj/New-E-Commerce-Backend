@@ -4,17 +4,15 @@ export const formatDate = (
   date: Date | string,
   timezone = "Asia/Kolkata"
 ): string => {
-
   return moment(date)
     .tz(timezone)
-    .format("DD:MM:YYYY");
+    .format("YYYY-MM-DD");
 };
 
 export const formatTime = (
   date: Date | string,
   timezone = "Asia/Kolkata"
 ): string => {
-
   return moment(date)
     .tz(timezone)
     .format("HH:mm:ss");
@@ -24,19 +22,17 @@ export const formatDateTime = (
   date: Date | string,
   timezone = "Asia/Kolkata"
 ): string => {
-
   return moment(date)
     .tz(timezone)
-    .format("DD:MM:YYYY HH:mm:ss");
+    .format("YYYY-MM-DD HH:mm:ss");
 };
 
 export const nowDate = (
   timezone = "Asia/Kolkata"
 ): string => {
-
   return moment()
     .tz(timezone)
-    .format("DD:MM:YYYY");
+    .format("YYYY-MM-DD");
 };
 
 export const nowTime = (
