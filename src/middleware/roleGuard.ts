@@ -8,7 +8,18 @@ export const roleGuard = (roles: UserType[]) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (!roles.includes(req.user.userType)) {
+    const isSuperAdmin = !!(
+      req.user.isSuperAdmin ||
+      req.user.userType === UserType.SUPER_ADMIN ||
+      req.user.user_type === UserType.SUPER_ADMIN
+    );
+
+    if (isSuperAdmin) {
+      return next();
+    }
+
+    const userType = req.user.userType || req.user.user_type;
+    if (!roles.includes(userType)) {
       return res.status(403).json({ message: "Access denied" });
     }
 

@@ -24,22 +24,27 @@ const authenticateMiddleware = (req: any, res: any, next: any) => {
       return res.status(401).json({ success: false, message: "Invalid token type" });
     }
 
+    const activeUserId = decoded.userId ?? decoded.user_id ?? decoded.id;
+    const activeUserType = decoded.userType ?? decoded.user_type;
+
     req.user = {
-      // handle both login JWT (userId) and select-context JWT (user_id)
-      userId:      decoded.userId     ?? decoded.user_id,
-      user_id:     decoded.userId     ?? decoded.user_id,
+      id:          activeUserId,
+      userId:      activeUserId,
+      user_id:     activeUserId,
       companyId:   decoded.company_id ?? decoded.companyId,
       company_id:  decoded.company_id ?? decoded.companyId,
       branchId:    decoded.branch_id  ?? decoded.branchId,
       branch_id:   decoded.branch_id  ?? decoded.branchId,
       roleId:      decoded.role_id    ?? decoded.roleId,
       role_id:     decoded.role_id    ?? decoded.roleId,
-      userType:    decoded.userType,
+      userType:    activeUserType,
+      user_type:   activeUserType,
+      email:       decoded.email,
       roles:       decoded.roles       || [],
       permissions: decoded.permissions || [],
       isSuperAdmin:
         decoded.isSuperAdmin === true ||
-        decoded.userType === UserType.SUPER_ADMIN,
+        activeUserType === UserType.SUPER_ADMIN,
     };
 
     next();

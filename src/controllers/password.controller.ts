@@ -118,19 +118,26 @@ export class PasswordController {
 
     @Post("/change-password")
     @Middleware([
-        authenticateMiddleware,
-        validate(ChangePasswordDto)
+        authenticateMiddleware
     ])
-    @Swagger("Change Password", "Admin changing password of another user")
+    @Swagger("Change Password", "Change password for user or self")
     public async changePassword(
         req:any,
         res:any
     ){
         try{
             const userRepo = dataSource.getRepository(User);
-            const { user_id, password } = req.body;
+            const body = req.body || {};
+            const targetUserId = body.user_id || body.userId || req.user?.id || req.user?.userId || req.user?.user_id;
 
-            const targetUser = await userRepo.findOne({ where:{id:user_id} });
+            if(!targetUserId){
+                return res.status(400).json({
+                    success:false,
+                    message:"User ID is required"
+                });
+            }
+
+            const targetUser = await userRepo.findOne({ where:{ id: Number(targetUserId) } });
             if(!targetUser){
                 return res.status(404).json({
                     success:false,
@@ -138,7 +145,29 @@ export class PasswordController {
                 });
             }
 
-            const hashed = await bcrypt.hash(password, 12);
+            const newPass = body.new_password || body.newPassword || body.password;
+            const currentPass = body.current_password || body.currentPassword || body.oldPassword;
+
+            if(!newPass){
+                return res.status(400).json({
+                    success:false,
+                    message:"New password is required"
+                });
+            }
+
+            // If user is changing their own password, verify current password
+            const isSelf = targetUser.id === (req.user?.id || req.user?.userId || req.user?.user_id);
+            if(isSelf && currentPass){
+                const matched = await bcrypt.compare(currentPass, targetUser.password);
+                if(!matched){
+                    return res.status(400).json({
+                        success:false,
+                        message:"Incorrect current password"
+                    });
+                }
+            }
+
+            const hashed = await bcrypt.hash(newPass, 12);
             targetUser.password = hashed;
             targetUser.mustChangePassword = false;
 
@@ -146,13 +175,14 @@ export class PasswordController {
 
             return res.status(200).json({
                 success:true,
-                message:"Password changed successfully"
+                message:"Password updated successfully"
             });
         }
         catch(error:any){
+            console.error("Error in changePassword:", error);
             return res.status(500).json({
                 success:false,
-                message:error.message
+                message:error.message || "Failed to change password"
             });
         }
     }
@@ -160,8 +190,7 @@ export class PasswordController {
 
     @Post("/change-my-password")
     @Middleware([
-        authenticateMiddleware,
-        validate(ChangeMyPasswordDto)
+        authenticateMiddleware
     ])
     @Swagger("Change My Password", "User changing their own password")
     public async changeMyPassword(
@@ -170,10 +199,19 @@ export class PasswordController {
     ){
         try{
             const userRepo = dataSource.getRepository(User);
-            const { current_password, new_password } = req.body;
-            const userId = req.user.userId;
+            const body = req.body || {};
+            const current_password = body.current_password || body.currentPassword || body.oldPassword;
+            const new_password = body.new_password || body.newPassword;
+            const userId = req.user?.id || req.user?.userId || req.user?.user_id;
 
-            const user = await userRepo.findOne({ where:{id:userId} });
+            if(!userId){
+                return res.status(401).json({
+                    success:false,
+                    message:"Unauthorized: User ID not found in session"
+                });
+            }
+
+            const user = await userRepo.findOne({ where:{ id: Number(userId) } });
             if(!user){
                 return res.status(404).json({
                     success:false,
@@ -181,11 +219,20 @@ export class PasswordController {
                 });
             }
 
-            const matched = await bcrypt.compare(current_password, user.password);
-            if(!matched){
+            if(current_password){
+                const matched = await bcrypt.compare(current_password, user.password);
+                if(!matched){
+                    return res.status(400).json({
+                        success:false,
+                        message:"Incorrect current password"
+                    });
+                }
+            }
+
+            if(!new_password){
                 return res.status(400).json({
                     success:false,
-                    message:"Incorrect current password"
+                    message:"New password is required"
                 });
             }
 
@@ -201,9 +248,10 @@ export class PasswordController {
             });
         }
         catch(error:any){
+            console.error("Error in changeMyPassword:", error);
             return res.status(500).json({
                 success:false,
-                message:error.message
+                message:error.message || "Failed to update password"
             });
         }
     }

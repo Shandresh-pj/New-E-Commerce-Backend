@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { Response } from "express";
 import dataSource from "../config/database";
-import { In } from "typeorm";
+import { In, Not } from "typeorm";
 import { User, UserRole } from "../entities/user";
 import { EmailService } from "../utils/sendEmailOtp";
 import { UserType, EmployeeType } from "../utils/Role-Access";
@@ -352,6 +352,26 @@ export class EmployeeController {
 
       const { name, email, mobilenumber, userType, company_id, branch_id, role_id, department, designation, employee_code, salary } = req.body;
 
+      // Validate email uniqueness if changing email
+      if (email && email !== user.email) {
+        const emailUser = await userRepo.findOne({ where: { email, id: Not(targetId) } });
+        if (emailUser) {
+          return res.status(409).json({ success: false, message: `Email '${email}' is already in use by another user.` });
+        }
+        const emailEmp = await hrRepo.findOne({ where: { email, id: Not(targetId) } });
+        if (emailEmp) {
+          return res.status(409).json({ success: false, message: `Email '${email}' is already in use by another employee.` });
+        }
+      }
+
+      // Validate employee_code uniqueness if changing code
+      if (employee_code) {
+        const codeEmp = await hrRepo.findOne({ where: { employee_code, id: Not(targetId) } });
+        if (codeEmp) {
+          return res.status(409).json({ success: false, message: `Employee code '${employee_code}' is already in use.` });
+        }
+      }
+
       if (name !== undefined) user.name = name;
       if (email !== undefined) user.email = email;
       if (mobilenumber !== undefined) user.mobilenumber = mobilenumber;
@@ -372,21 +392,27 @@ export class EmployeeController {
       // Update HR Employee record
       let hr: any = await hrRepo.findOne({ where: { id: user.id } });
       if (!hr) {
+        hr = await hrRepo.findOne({ where: { email: user.email } });
+      }
+
+      if (!hr) {
+        const defaultCode = employee_code || `EMP-${String(user.id).padStart(4, '0')}`;
         const hrPayload: any = {
           id: user.id,
           name: user.name,
           email: user.email,
-          mobile: user.mobilenumber,
+          mobile: user.mobilenumber || '',
           company_id: userRole.company_id || 1,
           branch_id: userRole.branch_id || 1,
-          employee_code: `EMP-${String(user.id).padStart(4, '0')}`,
-          designation: "Staff",
-          department: "General",
+          employee_code: defaultCode,
+          designation: designation || "Staff",
+          department: department || "General",
           type: EmployeeType.SHOPKEEPER,
-          salary: 50000
+          salary: salary ? Number(salary) : 50000
         };
         hr = hrRepo.create(hrPayload);
       }
+
       if (name !== undefined) hr.name = name;
       if (email !== undefined) hr.email = email;
       if (mobilenumber !== undefined) hr.mobile = mobilenumber;
@@ -414,7 +440,15 @@ export class EmployeeController {
 
     } catch (error: any) {
       console.error("Error in EmployeeController.update:", error);
-      return res.status(500).json({ success: false, message: error.message || "Failed to update employee" });
+      const isDuplicate = error.message?.includes("duplicate key") || error.code === "23505";
+      const userMessage = isDuplicate
+        ? "Email or Employee Code is already registered to another employee."
+        : (error.message || "Failed to update employee");
+
+      return res.status(isDuplicate ? 409 : 500).json({
+        success: false,
+        message: userMessage
+      });
     }
   }
 

@@ -10,6 +10,7 @@ import {
 import dataSource from "../config/database";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
 import { RolePermission } from "../entities/role-access";
+import { Menu, Permission } from "../entities/menu";
 import { UserRole } from "../entities/user";
 import { StatusType, UserType } from "../utils/Role-Access";
 import { approveGuard } from "../middleware/approve.middleware";
@@ -563,11 +564,56 @@ data:record
         }
       }
 
+      const dbPermRepo = queryRunner.manager.getRepository(Permission);
+      const dbMenuRepo = queryRunner.manager.getRepository(Menu);
+
       // 2. Process Grants / Additions
       for (const item of grants) {
         const itemRole = item.role_id ? Number(item.role_id) : role_id;
-        const itemPermId = item.permission_id ? Number(item.permission_id) : (typeof item === "number" ? item : null);
-        if (!itemRole || !itemPermId) {
+        let itemPermId = item.permission_id ? Number(item.permission_id) : (typeof item === "number" ? item : null);
+        
+        if (!itemRole) {
+          continue;
+        }
+
+        // Dynamically resolve real DB permission_id if itemPermId is missing or synthesized
+        let targetPerm: Permission | null = null;
+        if (itemPermId) {
+          targetPerm = await dbPermRepo.findOne({ where: { id: itemPermId } });
+        }
+
+        if (!targetPerm && (item.menu_path || item.menu_name || item.menu_id) && item.action) {
+          let targetMenu: Menu | null = null;
+          if (item.menu_id) {
+            targetMenu = await dbMenuRepo.findOne({ where: { id: Number(item.menu_id) } });
+          }
+          if (!targetMenu && item.menu_path) {
+            targetMenu = await dbMenuRepo.findOne({ where: { path: item.menu_path } });
+          }
+          if (!targetMenu && item.menu_name) {
+            targetMenu = await dbMenuRepo.findOne({ where: { name: item.menu_name } });
+          }
+
+          if (targetMenu) {
+            targetPerm = await dbPermRepo.findOne({
+              where: { menu_id: targetMenu.id, action: item.action }
+            });
+
+            if (!targetPerm) {
+              targetPerm = dbPermRepo.create({
+                menu_id: targetMenu.id,
+                action: item.action
+              });
+              targetPerm = await dbPermRepo.save(targetPerm);
+            }
+          }
+        }
+
+        if (targetPerm) {
+          itemPermId = targetPerm.id;
+        }
+
+        if (!itemPermId) {
           continue;
         }
 
