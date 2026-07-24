@@ -222,6 +222,19 @@ app.get("/health", async (req, res) => {
   }
 });
 
+/* ================= 404 NOT FOUND HANDLER ================= */
+// Must be registered AFTER all routes so it only catches truly unmatched requests
+
+app.use((req: any, res: any) => {
+  res.status(404).json({
+    success: false,
+    statusCode: 404,
+    message: `API Route ${req.method} ${req.originalUrl || req.url} Not Found`,
+    timestamp: new Date().toISOString(),
+    path: req.originalUrl,
+  });
+});
+
 /* ================= ERROR HANDLER ================= */
 
 app.use(errorHandler);

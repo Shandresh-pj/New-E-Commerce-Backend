@@ -77,7 +77,7 @@ const coerceNumbers = (
  * Treat blank optional string fields (common from HTML forms) as
  * "not provided" instead of failing format validators like @Matches.
  */
-const OPTIONAL_STRING_FIELDS = ["description", "barcode", "category"];
+const OPTIONAL_STRING_FIELDS = ["description", "barcode", "category", "manufacture_date", "expiry_date"];
 
 const normalizeEmptyStrings = (
   data: Record<string, any>
@@ -500,6 +500,8 @@ export class ProductController {
         status,
         low_stock_threshold,
         critical_stock_threshold,
+        manufacture_date,
+        expiry_date,
       } = body;
 
       if (barcode) {
@@ -599,6 +601,8 @@ export class ProductController {
         approval_status: ProductApprovalStatus.PUBLISHED,
         low_stock_threshold: low_stock_threshold !== undefined ? Number(low_stock_threshold) : 5,
         critical_stock_threshold: critical_stock_threshold !== undefined ? Number(critical_stock_threshold) : 2,
+        manufacture_date: manufacture_date || null,
+        expiry_date: expiry_date || null,
         image: image ?? images?.[0],
         images: images ?? [],
         video,
@@ -1151,6 +1155,8 @@ export class ProductController {
 
       product.low_stock_threshold = body.low_stock_threshold !== undefined ? Number(body.low_stock_threshold) : product.low_stock_threshold;
       product.critical_stock_threshold = body.critical_stock_threshold !== undefined ? Number(body.critical_stock_threshold) : product.critical_stock_threshold;
+      if (body.manufacture_date !== undefined) product.manufacture_date = body.manufacture_date || null;
+      if (body.expiry_date !== undefined) product.expiry_date = body.expiry_date || null;
 
       const { image, video, images } = extractUploadedFiles(req);
       const existingImagesProvided = req.body.existing_images !== undefined;

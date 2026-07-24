@@ -145,6 +145,14 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0)
   critical_stock_threshold?: number;
+
+  @IsOptional()
+  @IsString()
+  manufacture_date?: string;
+
+  @IsOptional()
+  @IsString()
+  expiry_date?: string;
 }
 
 export class UpdateProductDto {
@@ -219,6 +227,14 @@ export class UpdateProductDto {
   @IsNumber()
   @Min(0)
   critical_stock_threshold?: number;
+
+  @IsOptional()
+  @IsString()
+  manufacture_date?: string;
+
+  @IsOptional()
+  @IsString()
+  expiry_date?: string;
 }
 
 export class ScanProductDto {

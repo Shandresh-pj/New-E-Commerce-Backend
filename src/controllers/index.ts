@@ -42,7 +42,11 @@ import { SubscriptionCouponController } from "./subscriptionCoupon.Controller";
 import { BillingController } from "./billing.Controller";
 import { SubscriptionInvoiceController } from "./subscriptionInvoice.Controller";
 import { PaymentCheckoutController } from "./paymentCheckout.Controller";
+import { DeviceController } from "./device.Controller";
+import { PosBillingController } from "./posBilling.Controller";
 
+export const deviceController = new DeviceController();
+export const posBillingController = new PosBillingController();
 
 export const authController = new AuthController();
 

@@ -97,6 +97,10 @@ import { Refund }                                      from "./entities/refund.e
 import { PaymentLog }                                  from "./entities/payment-log.entity";
 import { BillingHistory }                              from "./entities/billing-history.entity";
 
+// Hardware Devices & POS Billing
+import { HardwareDeviceEntity }                        from "./entities/hardware_device.entity";
+import { PosOrderEntity }                              from "./entities/pos_order.entity";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ALL_ENTITIES — the authoritative list registered with TypeORM.
 // Add any new entity class here; database.ts will pick it up automatically.
@@ -201,6 +205,10 @@ export const ALL_ENTITIES = [
   Refund,
   PaymentLog,
   BillingHistory,
+
+  // Hardware Devices & POS Billing
+  HardwareDeviceEntity,
+  PosOrderEntity,
 ] as const;
 
 /* ============================================================

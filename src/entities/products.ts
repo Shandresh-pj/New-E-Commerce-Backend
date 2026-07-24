@@ -72,6 +72,13 @@ export class Product {
   @Column({ type: "timestamp", nullable: true })
   deleted_at!: Date | null;
 
+  // ── Manufacture & Expiry Dates ───────────────────────────────────────────
+  @Column({ type: "date", nullable: true })
+  manufacture_date!: string | null;
+
+  @Column({ type: "date", nullable: true })
+  expiry_date!: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 
