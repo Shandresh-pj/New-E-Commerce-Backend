@@ -356,7 +356,7 @@ const extractUploadedFiles = (req: Request) => {
 };
 
 
-const HIDDEN_RESPONSE_FIELDS = ["stock", "qr_code"];
+const HIDDEN_RESPONSE_FIELDS = ["qr_code"];
 
 
 const buildSimpleAttributeList = (
@@ -503,6 +503,15 @@ export class ProductController {
         manufacture_date,
         expiry_date,
       } = body;
+
+      if (name) {
+        const existingProd = await qr.manager.getRepository(Product).findOne({
+          where: { name: name.trim(), is_deleted: false }
+        });
+        if (existingProd) {
+          throw new ApiError(400, `A product with the name '${name.trim()}' already exists.`);
+        }
+      }
 
       if (barcode) {
         const bcUnique = await checkBarcodeUniqueness(qr.manager, barcode);

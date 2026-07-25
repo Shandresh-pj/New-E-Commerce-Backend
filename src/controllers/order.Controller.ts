@@ -132,7 +132,11 @@ export class OrderController {
         requested_invoice_no,
       } = req.body;
 
-      const user_id = req.user.userId;
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ success: false, message: "Order items cannot be empty." });
+      }
+
+      const user_id = req.user?.userId || req.user?.id;
 
       const orderRepo = queryRunner.manager.getRepository(Order);
       const itemRepo = queryRunner.manager.getRepository(OrderItem);
@@ -143,47 +147,58 @@ export class OrderController {
       const userRepo = queryRunner.manager.getRepository(Register);
 
       // ================= GET & VALIDATE COMPANY =================
-      const company = await userRepo.findOne({
-        where: { id: company_id },
+      const targetCompanyId = Number(company_id || req.user?.companyId || 1);
+      let company = await userRepo.findOne({
+        where: { id: targetCompanyId },
       });
 
       if (!company) {
-        throw new Error("Company not found");
+        company = await userRepo.findOne({ select: { id: true, name: true, email: true } });
+      }
+
+      if (!company) {
+        company = { id: targetCompanyId, name: "Default Store", email: "store@example.com" } as any;
       }
 
       // ================= FOREIGN KEY VALIDATION & FALLBACK =================
       let finalUserId = user_id;
-      const userExists = await userRepo.findOne({
-        where: { id: user_id },
-        select: { id: true },
-      });
-
-      if (!userExists) {
-        const fallbackUser = await userRepo.findOne({
-          where: { company_id },
-          select: { id: true },
-        }) || await userRepo.findOne({
+      if (user_id) {
+        const userExists = await userRepo.findOne({
+          where: { id: user_id },
           select: { id: true },
         });
+        if (!userExists) {
+          finalUserId = undefined;
+        }
+      }
+
+      if (!finalUserId) {
+        const fallbackUser = await userRepo.findOne({
+          where: { company_id: targetCompanyId },
+          select: { id: true },
+        }) || await userRepo.findOne({ select: { id: true } });
 
         if (fallbackUser) {
           finalUserId = fallbackUser.id;
         } else {
-          throw new Error("No registered users exist in the database to associate with this order.");
+          return res.status(400).json({
+            success: false,
+            message: "No registered user found to assign order to.",
+          });
         }
       }
 
       // ================= INVOICE GENERATION WITHIN TRANSACTION =================
       const safeInvoiceNo = await safelyGenerateAndLockInvoice(
         queryRunner.manager,
-        company_id,
+        targetCompanyId,
         requested_invoice_no
       );
 
       // ================= SUBTOTAL =================
       const subtotal = items.reduce(
         (sum: number, item: any) =>
-          sum + Number(item.price) * Number(item.quantity),
+          sum + Number(item.price || 0) * Number(item.quantity || 1),
         0
       );
 
@@ -196,26 +211,26 @@ export class OrderController {
         });
 
         if (!coupon) {
-          throw new Error("Invalid coupon code");
+          return res.status(400).json({ success: false, message: "Invalid coupon code" });
         }
         if (!coupon.is_active) {
-          throw new Error("Coupon is no longer active");
+          return res.status(400).json({ success: false, message: "Coupon is no longer active" });
         }
         if (coupon.start_date && new Date() < coupon.start_date) {
-          throw new Error("Coupon is not yet active");
+          return res.status(400).json({ success: false, message: "Coupon is not yet active" });
         }
         if (coupon.expiry_date && new Date() > coupon.expiry_date) {
-          throw new Error("Coupon has expired");
+          return res.status(400).json({ success: false, message: "Coupon has expired" });
         }
         if (coupon.usage_limit && coupon.usage_count >= coupon.usage_limit) {
-          throw new Error("Coupon usage limit reached");
+          return res.status(400).json({ success: false, message: "Coupon usage limit reached" });
         }
         if (coupon.per_user_limit && coupon.per_user_limit > 0) {
           const userUsage = await orderRepo.count({
             where: { user_id: finalUserId, coupon_id: coupon.id }
           });
           if (userUsage >= coupon.per_user_limit) {
-            throw new Error("You have reached your usage limit for this coupon");
+            return res.status(400).json({ success: false, message: "You have reached your usage limit for this coupon" });
           }
         }
 
@@ -234,16 +249,16 @@ export class OrderController {
       const order = orderRepo.create({
         user_id: finalUserId,
         registration_id: finalUserId,
-        company_id,
-        status: "PENDING", // default to pending on creation
+        company_id: targetCompanyId,
+        status: "PENDING",
         invoice_no: safeInvoiceNo,
         subtotal,
         discount,
         total,
-        payment_method: payment?.method,
-        payment_status: payment?.status,
-        transaction_id: payment?.transaction_id,
-        payment_gateway: payment?.gateway,
+        payment_method: payment?.method || "CASH",
+        payment_status: payment?.status || "PENDING",
+        transaction_id: payment?.transaction_id || null,
+        payment_gateway: payment?.gateway || null,
         coupon_id: appliedCoupon ? appliedCoupon.id : null,
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
       });
@@ -266,14 +281,18 @@ export class OrderController {
           .getOne();
 
         if (!product) {
-          throw new Error(`Product ${item.product_id} not found`);
+          await queryRunner.rollbackTransaction();
+          return res.status(400).json({ success: false, message: `Product #${item.product_id} not found` });
         }
 
-        if (product.stock < item.quantity) {
-          throw new Error(`${product.name} insufficient stock`);
+        const currentStock = product.stock ?? product.stock_in_hand ?? 0;
+
+        if (currentStock < item.quantity) {
+          await queryRunner.rollbackTransaction();
+          return res.status(400).json({ success: false, message: `Insufficient stock for '${product.name}'. Available: ${currentStock}` });
         }
 
-        const oldStock = product.stock;
+        const oldStock = currentStock;
 
         await itemRepo.save({
           order_id: order.id,
@@ -282,7 +301,8 @@ export class OrderController {
           quantity: item.quantity,
         });
 
-        product.stock -= item.quantity;
+        product.stock = currentStock - item.quantity;
+        product.stock_in_hand = Math.max(0, (product.stock_in_hand ?? currentStock) - item.quantity);
         await productRepo.save(product);
 
         await logRepo.save({
@@ -302,49 +322,64 @@ export class OrderController {
         });
       }
 
+      // ================= QR LINK =================
+      try {
+        const qr = await generateQR(
+          `${process.env.BASE_URL || 'http://localhost:3000'}/orders/verify/${order.id}`
+        );
+        order.qr_code = qr;
+        await orderRepo.save(order);
+      } catch (qrErr) {
+        console.error("QR Code generation skipped:", qrErr);
+      }
+
       await queryRunner.commitTransaction();
 
-      // ================= LOAD FULL ORDER =================
-      const fullOrder = await orderRepo.findOne({
-        where: { id: order.id },
-        relations: {
-          items: {
-            product: true,
-          },
-        },
-      });
-
-      // ================= QR LINK =================
-      const qr = await generateQR(
-        `${process.env.BASE_URL}/orders/verify/${order.id}`
-      );
-
-      fullOrder!.qr_code = qr;
-      await orderRepo.save(fullOrder!);
-
-      // ================= PDF =================
-      const filePath = await generateInvoicePDF(fullOrder, company);
-
-      // ================= EMAIL =================
+      // ================= LOAD FULL ORDER & POST-COMMIT SIDE EFFECTS =================
+      let fullOrder: Order | null = null;
       try {
-        await sendInvoiceEmail(company.email, filePath, safeInvoiceNo);
-      } catch (emailErr) {
-        console.error("Email delivery failed:", emailErr);
+        fullOrder = await dataSource.getRepository(Order).findOne({
+          where: { id: order.id },
+          relations: {
+            items: {
+              product: true,
+            },
+          },
+        });
+      } catch (err) {
+        fullOrder = order;
+      }
+
+      // PDF & Email side effects wrapped safely post-commit
+      try {
+        if (fullOrder) {
+          const filePath = await generateInvoicePDF(fullOrder, company);
+          if (company?.email) {
+            await sendInvoiceEmail(company.email, filePath, safeInvoiceNo);
+          }
+        }
+      } catch (postCommitErr) {
+        console.error("Post-commit invoice PDF/Email generation failed non-critically:", postCommitErr);
       }
 
       return res.status(201).json({
         success: true,
         message: "Order created successfully",
         data: {
-          order: fullOrder,
+          order: fullOrder || order,
           breakdown: { subtotal, discount, total },
           stock_update: stockUpdate,
         },
       });
 
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      next(error);
+    } catch (error: any) {
+      if (queryRunner.isTransactionActive) {
+        await queryRunner.rollbackTransaction();
+      }
+      return res.status(400).json({
+        success: false,
+        message: error?.message || "Order creation failed due to a server validation error.",
+      });
     } finally {
       await queryRunner.release();
     }

@@ -22,6 +22,10 @@ export enum CouponType {
 }
 
 export class CreateCouponDto {
+  @IsOptional()
+  @IsNumber()
+  id?: number | null;
+
   @IsString()
   @IsNotEmpty()
   @MaxLength(50)
@@ -34,8 +38,13 @@ export class CreateCouponDto {
   @Min(0)
   value!: number;
 
+  @IsOptional()
   @IsNumber()
-  created_by!: number;
+  created_by?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  is_active?: boolean;
 
   @IsOptional()
   @IsNumber()
@@ -73,9 +82,10 @@ export class CreateCouponDto {
   @IsNumber()
   branch_id?: number;
 
+  @IsOptional()
   @IsArray()
   @IsNumber({}, { each: true })
-  product_ids!: number[];
+  product_ids?: number[];
 }
 
 export class UpdateCouponDto {
