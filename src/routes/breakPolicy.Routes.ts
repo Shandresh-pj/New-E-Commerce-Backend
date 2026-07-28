@@ -8,6 +8,7 @@ const router = Router();
 const ctrl = new BreakPolicyController();
 
 const adminRoles = [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER];
+const allRoles   = [...adminRoles, UserType.EMPLOYEE, UserType.SHOPKEEPER, UserType.DELIVERY_BOY];
 
 /**
  * @swagger
