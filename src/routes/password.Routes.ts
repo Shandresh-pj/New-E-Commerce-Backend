@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { passwordController } from "../controllers";
+import authenticateMiddleware from "../middleware/authenticate.middleware";
 
 const router = Router();
 
@@ -79,6 +80,7 @@ router.post(
  */
 router.post(
   "/password/change-password",
+  authenticateMiddleware,
   passwordController.changePassword.bind(
     passwordController
   )
@@ -95,6 +97,7 @@ router.post(
  */
 router.post(
   "/password/change-my-password",
+  authenticateMiddleware,
   passwordController.changeMyPassword.bind(
     passwordController
   )
