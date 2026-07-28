@@ -73,10 +73,10 @@ export class Product {
   deleted_at!: Date | null;
 
   // ── Manufacture & Expiry Dates ───────────────────────────────────────────
-  @Column({ type: "date", nullable: true })
+  @Column({ type: "date", nullable: true, select: false })
   manufacture_date!: string | null;
 
-  @Column({ type: "date", nullable: true })
+  @Column({ type: "date", nullable: true, select: false })
   expiry_date!: string | null;
 
   @CreateDateColumn({ name: "created_at" })
