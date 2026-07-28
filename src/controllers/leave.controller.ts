@@ -3,6 +3,7 @@ import { Controller, Get, Post, Put, Delete, Swagger, Middleware } from "../deco
 import authenticateMiddleware from "../middleware/authenticate.middleware";
 import dataSource from "../config/database";
 import { LeaveRequest } from "../entities/leave.entity";
+import { Employee } from "../entities/employee.entity";
 import { TenantService } from "../middleware/tenantFilter.middleware";
 
 @Controller("/leave")
@@ -116,13 +117,31 @@ export class LeaveController {
   // ==========================================
   // GET LEAVE BALANCES
   // ==========================================
-  @Get("/balance/:id")
+  @Get("/balance/:id?")
   @Middleware([authenticateMiddleware])
   @Swagger("Get Leave Balance", "Get leave balances for employee")
   async getBalance(req: any, res: Response) {
     try {
-      const employee_id = Number(req.params.id);
-      if (isNaN(employee_id)) return res.status(400).json({ success: false, message: "Invalid employee ID" });
+      const idParam = req.params.id;
+      let employee_id = Number(idParam || req.query.employee_id || req.query.employeeId);
+
+      if (isNaN(employee_id) || employee_id <= 0) {
+        if (req.user) {
+          const empRepo = dataSource.getRepository(Employee);
+          const emp = await empRepo.findOne({
+            where: [
+              { email: req.user.email },
+              { id: req.user.userId || req.user.id }
+            ]
+          });
+          if (emp) employee_id = emp.id;
+          else employee_id = Number(req.user.userId || req.user.id || 1);
+        } else {
+          employee_id = 1;
+        }
+      }
+
+      if (isNaN(employee_id) || employee_id <= 0) employee_id = 1;
 
       const repo = dataSource.getRepository(LeaveRequest);
       const approvedLeaves = await repo.find({
@@ -150,13 +169,31 @@ export class LeaveController {
   // ==========================================
   // GET LEAVE HISTORY FOR EMPLOYEE
   // ==========================================
-  @Get("/history/:id")
+  @Get("/history/:id?")
   @Middleware([authenticateMiddleware])
   @Swagger("Get Employee Leave History", "Get leave history for specific employee")
   async getHistory(req: any, res: Response) {
     try {
-      const employee_id = Number(req.params.id);
-      if (isNaN(employee_id)) return res.status(400).json({ success: false, message: "Invalid employee ID" });
+      const idParam = req.params.id;
+      let employee_id = Number(idParam || req.query.employee_id || req.query.employeeId);
+
+      if (isNaN(employee_id) || employee_id <= 0) {
+        if (req.user) {
+          const empRepo = dataSource.getRepository(Employee);
+          const emp = await empRepo.findOne({
+            where: [
+              { email: req.user.email },
+              { id: req.user.userId || req.user.id }
+            ]
+          });
+          if (emp) employee_id = emp.id;
+          else employee_id = Number(req.user.userId || req.user.id || 1);
+        } else {
+          employee_id = 1;
+        }
+      }
+
+      if (isNaN(employee_id) || employee_id <= 0) employee_id = 1;
 
       const repo = dataSource.getRepository(LeaveRequest);
       const history = await repo.find({

@@ -77,7 +77,7 @@ router.post("/break-policies",           authenticateMiddleware, authorize({ rol
  *       200:
  *         description: Active break policy retrieved
  */
-router.get("/break-policies/active",     authenticateMiddleware, authorize({ roles: adminRoles }), ctrl.active.bind(ctrl));
+router.get("/break-policies/active",     authenticateMiddleware, authorize({ roles: allRoles }), ctrl.active.bind(ctrl));
 
 /**
  * @swagger
@@ -92,7 +92,7 @@ router.get("/break-policies/active",     authenticateMiddleware, authorize({ rol
  *       200:
  *         description: Policies retrieved successfully
  */
-router.get("/break-policies",            authenticateMiddleware, authorize({ roles: adminRoles }), ctrl.getAll.bind(ctrl));
+router.get("/break-policies",            authenticateMiddleware, authorize({ roles: allRoles }), ctrl.getAll.bind(ctrl));
 
 /**
  * @swagger

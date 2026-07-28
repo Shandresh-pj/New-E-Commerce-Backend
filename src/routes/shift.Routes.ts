@@ -179,7 +179,7 @@ router.get("/shifts/:id",                 authenticateMiddleware, authorize({ ro
  *       200:
  *         description: Shifts retrieved successfully
  */
-router.get("/shifts",                     authenticateMiddleware, authorize({ roles: adminRoles }), ctrl.getAll.bind(ctrl));
+router.get("/shifts",                     authenticateMiddleware, authorize({ roles: allRoles }), ctrl.getAll.bind(ctrl));
 
 /**
  * @swagger

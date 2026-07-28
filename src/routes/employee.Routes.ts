@@ -7,6 +7,11 @@ import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
+const allRoles = [
+  UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER,
+  UserType.SHOPKEEPER, UserType.DELIVERY_BOY, UserType.EMPLOYEE
+];
+
 /* =========================================================
    GET ALL EMPLOYEES
 ========================================================= */
@@ -36,7 +41,7 @@ const router = Router();
 router.get(
   "/employees",
   authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
+  authorize({ roles: allRoles }),
   employeeController.getAll.bind(employeeController)
 );
 
@@ -67,7 +72,7 @@ router.get(
 router.get(
   "/employees/:id",
   authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
+  authorize({ roles: allRoles }),
   employeeController.getOne.bind(employeeController)
 );
 

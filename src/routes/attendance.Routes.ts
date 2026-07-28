@@ -443,7 +443,7 @@ router.post("/attendance/approve/:id",      authenticateMiddleware, authorize({ 
  *       200:
  *         description: List retrieved
  */
-router.get("/attendance",                   authenticateMiddleware, authorize({ roles: adminRoles }), attendanceController.getAll.bind(attendanceController));
+router.get("/attendance",                   authenticateMiddleware, authorize({ roles: allRoles }), attendanceController.getAll.bind(attendanceController));
 
 /**
  * @swagger
@@ -463,7 +463,7 @@ router.get("/attendance",                   authenticateMiddleware, authorize({ 
  *       200:
  *         description: Record detail with break logs
  */
-router.get("/attendance/:id",               authenticateMiddleware, authorize({ roles: adminRoles }), attendanceController.getOne.bind(attendanceController));
+router.get("/attendance/:id",               authenticateMiddleware, authorize({ roles: allRoles }), attendanceController.getOne.bind(attendanceController));
 
 /**
  * @swagger

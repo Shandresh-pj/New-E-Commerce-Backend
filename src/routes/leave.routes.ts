@@ -7,6 +7,11 @@ import { UserType } from "../utils/Role-Access";
 
 const router = Router();
 
+const allRoles = [
+  UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER,
+  UserType.SHOPKEEPER, UserType.DELIVERY_BOY, UserType.EMPLOYEE
+];
+
 /**
  * @swagger
  * /leave/apply:
@@ -19,19 +24,14 @@ const router = Router();
 router.post(
   "/leave/apply",
   authenticateMiddleware,
-  authorize({
-    roles: [
-      UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER,
-      UserType.SHOPKEEPER, UserType.DELIVERY_BOY, UserType.EMPLOYEE
-    ],
-  }),
+  authorize({ roles: allRoles }),
   auditMiddleware("LEAVE_APPLY"),
   leaveController.apply.bind(leaveController)
 );
 
 /**
  * @swagger
- * /leave/balance/{id}:
+ * /leave/balance:
  *   get:
  *     summary: Get Leave Balances for Employee
  *     tags: [Leave]
@@ -39,14 +39,15 @@ router.post(
  *       - bearerAuth: []
  */
 router.get(
-  "/leave/balance/:id",
+  ["/leave/balance", "/leave/balance/:id"],
   authenticateMiddleware,
+  authorize({ roles: allRoles }),
   leaveController.getBalance.bind(leaveController)
 );
 
 /**
  * @swagger
- * /leave/history/{id}:
+ * /leave/history:
  *   get:
  *     summary: Get Leave History for Employee
  *     tags: [Leave]
@@ -54,8 +55,9 @@ router.get(
  *       - bearerAuth: []
  */
 router.get(
-  "/leave/history/:id",
+  ["/leave/history", "/leave/history/:id"],
   authenticateMiddleware,
+  authorize({ roles: allRoles }),
   leaveController.getHistory.bind(leaveController)
 );
 
@@ -71,9 +73,7 @@ router.get(
 router.get(
   "/leave",
   authenticateMiddleware,
-  authorize({
-    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.EMPLOYEE],
-  }),
+  authorize({ roles: allRoles }),
   leaveController.getAll.bind(leaveController)
 );
 
