@@ -13,8 +13,8 @@ from "../middleware/authenticate.middleware";
 
 import dataSource from "../config/database";
 
-import { Role }
-from "../entities/roles";
+import { ILike } from "typeorm";
+import { Role } from "../entities/roles";
 import { superAdminGuard } from "../services/Guard/superAdmin.Guard";
 
 @Controller("/roles")
@@ -42,7 +42,7 @@ const exists=
 await repo.findOne({
 
 where:{
-name:req.body.name.trim()
+name: ILike(req.body.name.trim())
 }
 
 });

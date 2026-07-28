@@ -5,6 +5,7 @@ import dataSource from "../config/database";
 import { PosOrderEntity } from "../entities/pos_order.entity";
 import { Product } from "../entities/products";
 import { Branch } from "../entities/branch";
+import { emitStockUpdate } from "../socket/stock.events";
 
 @Controller("/pos")
 export class PosBillingController {
@@ -69,15 +70,29 @@ export class PosBillingController {
 
       await posOrderRepo.save(newPosOrder);
 
-      // Deduct inventory stock for purchased products
+      // Deduct inventory stock for purchased products and broadcast socket stock updates
       for (const item of items) {
         if (item.product_id) {
           const prod = await productRepo.findOne({ where: { id: item.product_id } });
           if (prod) {
-            const currentStock = prod.stock_in_hand || 50;
+            const currentStock = prod.stock_in_hand ?? prod.stock ?? 50;
             const purchasedQty = Number(item.quantity || 1);
-            prod.stock_in_hand = Math.max(0, currentStock - purchasedQty);
+            const oldStock = currentStock;
+            const newStock = Math.max(0, currentStock - purchasedQty);
+            prod.stock_in_hand = newStock;
+            prod.stock = newStock;
             await productRepo.save(prod);
+            try {
+              emitStockUpdate({
+                company_id: activeCompanyId,
+                product_id: prod.id,
+                product_name: prod.name,
+                old_stock: oldStock,
+                new_stock: newStock
+              });
+            } catch (e) {
+              console.error("[POS Socket Stock Update Error]:", e);
+            }
           }
         }
       }

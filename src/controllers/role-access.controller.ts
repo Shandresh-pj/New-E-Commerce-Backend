@@ -23,6 +23,11 @@ import { emitToUser } from "../socket/socket";
 // or everyone holding that role at that company/branch scope otherwise.
 async function notifyAffectedUsers(record: Pick<RolePermission, "role_id" | "company_id" | "branch_id" | "user_id">) {
   try {
+    const { io } = require("../socket/socket");
+    if (io) {
+      io.emit("permissions-updated", { reason: "role-access-changed", role_id: record.role_id, user_id: record.user_id });
+    }
+
     if (record.user_id) {
       emitToUser(record.user_id, "permissions-updated", { reason: "role-access-changed" });
       return;
@@ -576,9 +581,9 @@ data:record
           continue;
         }
 
-        // Dynamically resolve real DB permission_id if itemPermId is missing or synthesized
+        // Dynamically resolve real DB permission_id if itemPermId is missing, out of range (> 2147483647), or synthesized
         let targetPerm: Permission | null = null;
-        if (itemPermId) {
+        if (itemPermId && Number.isInteger(itemPermId) && itemPermId > 0 && itemPermId <= 2147483647) {
           targetPerm = await dbPermRepo.findOne({ where: { id: itemPermId } });
         }
 

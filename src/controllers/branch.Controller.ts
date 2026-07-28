@@ -18,11 +18,9 @@ from "../middleware/validate";
 
 import dataSource from "../config/database";
 
-import { Branch }
-from "../entities/branch";
-
-import { Company }
-from "../entities/company";
+import { Branch } from "../entities/branch";
+import { Company } from "../entities/company";
+import { ILike } from "typeorm";
 
 import { CreateBranchDto }
 from "../dto/branch.dto";
@@ -75,7 +73,15 @@ public async create(req: any, res: any) {
       return res.status(404).json({ success: false, message: "Company not found" });
     }
 
-    // Email uniqueness check
+    // Branch Name & Email uniqueness check
+    const existingBranchName = await branchRepo.findOne({
+      where: { name: ILike(name.trim()), company: { id: company_id } }
+    });
+    if (existingBranchName) {
+      await queryRunner.rollbackTransaction();
+      return res.status(409).json({ success: false, message: `Branch with name '${name.trim()}' already exists for this company` });
+    }
+
     const existingUser = await userRepo.findOne({ where: { email } });
     if (existingUser) {
       await queryRunner.rollbackTransaction();

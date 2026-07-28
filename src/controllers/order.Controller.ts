@@ -153,7 +153,8 @@ export class OrderController {
       });
 
       if (!company) {
-        company = await userRepo.findOne({ select: { id: true, name: true, email: true } });
+        const allUsers = await userRepo.find({ take: 1, select: { id: true, name: true, email: true } });
+        company = allUsers[0] || null;
       }
 
       if (!company) {
@@ -173,10 +174,14 @@ export class OrderController {
       }
 
       if (!finalUserId) {
-        const fallbackUser = await userRepo.findOne({
+        let fallbackUser = await userRepo.findOne({
           where: { company_id: targetCompanyId },
           select: { id: true },
-        }) || await userRepo.findOne({ select: { id: true } });
+        });
+        if (!fallbackUser) {
+          const firstUsers = await userRepo.find({ take: 1, select: { id: true } });
+          fallbackUser = firstUsers[0] || null;
+        }
 
         if (fallbackUser) {
           finalUserId = fallbackUser.id;

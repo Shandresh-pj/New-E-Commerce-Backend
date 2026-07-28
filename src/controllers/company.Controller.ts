@@ -19,7 +19,7 @@ import dataSource from "../config/database";
 
 import { Company } from "../entities/company";
 import { User, UserRole } from "../entities/user";
-import { In } from "typeorm";
+import { In, ILike } from "typeorm";
 import { RolePermission } from "../entities/role-access";
 import { BranchStock } from "../entities/branch_stock";
 import { BiometricDevice, BiometricAuthLog } from "../entities/biometric_device.entity";
@@ -148,16 +148,26 @@ Role
 
 
 // =====================================
-// EMAIL EXIST CHECK
+// NAME & EMAIL EXIST CHECK
 // =====================================
+
+const existingCompanyByName = await companyRepo.findOne({
+  where: { name: ILike(name.trim()) }
+});
+
+if (existingCompanyByName) {
+  await queryRunner.rollbackTransaction();
+  return res.status(409).json({
+    success: false,
+    message: `Admin / Company with name '${name.trim()}' already exists`
+  });
+}
 
 const existingUser=
 await userRepo.findOne({
-
 where:{
 email
 }
-
 });
 
 if(existingUser){

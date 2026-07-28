@@ -62,23 +62,24 @@ export const getAvailableSuggestions = async (manager: EntityManager, company_id
  * Layer 4 & 5 Protection: Transactional lock + Auto-retry loop
  */
 export const safelyGenerateAndLockInvoice = async (manager: EntityManager, company_id: number, requested_invoice?: string): Promise<string> => {
+  const targetCompId = Number(company_id) || 1;
   const settingRepo = manager.getRepository(InvoiceSettings);
   const orderRepo = manager.getRepository(Order);
 
   // Pessimistic Write Lock: Prevents concurrent requests from reading the same sequence
   let setting = await settingRepo.findOne({ 
-    where: { company_id }, 
+    where: { company_id: targetCompId }, 
     lock: { mode: "pessimistic_write" } 
   });
 
   if (!setting) {
     // Auto-create default settings if not exists
-    const newSetting = settingRepo.create({ company_id });
+    const newSetting = settingRepo.create({ company_id: targetCompId });
     await settingRepo.save(newSetting);
 
     // Re-lock the freshly created row
     setting = await settingRepo.findOne({ 
-      where: { company_id }, 
+      where: { company_id: targetCompId }, 
       lock: { mode: "pessimistic_write" } 
     }) || newSetting;
   }
@@ -87,7 +88,7 @@ export const safelyGenerateAndLockInvoice = async (manager: EntityManager, compa
 
   // If user selected a specific suggestion, validate it hasn't been taken in the last millisecond
   if (requested_invoice) {
-    const exists = await orderRepo.findOne({ where: { company_id, invoice_no: requested_invoice }});
+    const exists = await orderRepo.findOne({ where: { company_id: targetCompId, invoice_no: requested_invoice }});
     if (!exists) {
       // Update sequence broadly based on the requested string to prevent future collisions
       setting.current_sequence++;
@@ -100,7 +101,7 @@ export const safelyGenerateAndLockInvoice = async (manager: EntityManager, compa
   let attemptSeq = setting.current_sequence + 1;
   while (true) {
     finalInvoiceNo = formatInvoiceString(setting, attemptSeq);
-    const exists = await orderRepo.findOne({ where: { company_id, invoice_no: finalInvoiceNo }});
+    const exists = await orderRepo.findOne({ where: { company_id: targetCompId, invoice_no: finalInvoiceNo }});
     
     if (!exists) break; // Found an empty slot!
     attemptSeq++; // Collision occurred, try next sequence

@@ -3,7 +3,8 @@ import {
   Response,
   NextFunction,
 } from "express";
-import { Raw, Not } from "typeorm";
+import { Raw, Not, In } from "typeorm";
+import { io } from "../socket/socket";
 
 import dataSource from "../config/database";
 import {
@@ -280,39 +281,57 @@ export class ProductAttributeController {
     response: Response,
     next: NextFunction
   ) {
+    const queryRunner = dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
       const Id = Number(request.params.Id);
 
-      const valueCount = await dataSource
-        .getRepository(ProductAttributeValue)
-        .count({ where: { ProductAttributeId: Id } });
-
-      if (valueCount > 0) {
-        return response.status(400).json({
-          success: false,
-          message: `Cannot delete attribute: ${valueCount} attribute value(s) are currently associated with it. Please delete the values first.`,
-        });
-      }
-
-      const variantCount = await dataSource
+      const variantCount = await queryRunner.manager
         .getRepository(ProductVariant)
         .count({ where: { ProductAttributeId: Id } });
 
       if (variantCount > 0) {
+        await queryRunner.rollbackTransaction();
         return response.status(400).json({
           success: false,
           message: `Cannot delete attribute: ${variantCount} product variant(s) are currently using this attribute.`,
         });
       }
 
-      await dataSource.getRepository(ProductAttribute).delete(Id);
+      // Auto-cascade delete associated attribute values and product links
+      const values = await queryRunner.manager
+        .getRepository(ProductAttributeValue)
+        .find({ where: { ProductAttributeId: Id } });
+
+      const valueIds = values.map(v => v.Id);
+      if (valueIds.length > 0) {
+        await queryRunner.manager
+          .getRepository(ProductAttributeValueProduct)
+          .delete({ ProductAttributeValueId: In(valueIds) });
+
+        await queryRunner.manager
+          .getRepository(ProductAttributeValue)
+          .delete({ ProductAttributeId: Id });
+      }
+
+      await queryRunner.manager.getRepository(ProductAttribute).delete(Id);
+      await queryRunner.commitTransaction();
+
+      if (io) {
+        io.emit("attribute-update", { action: "delete", attributeId: Id });
+      }
 
       return response.json({
         success: true,
-        message: "Product attribute deleted successfully",
+        message: "Product attribute and associated values deleted successfully",
       });
     } catch (error) {
+      await queryRunner.rollbackTransaction();
       next(error);
+    } finally {
+      await queryRunner.release();
     }
   }
 }
@@ -635,22 +654,15 @@ export class ProductAttributeValueController {
         });
       }
 
-      const productLinksCount = await dataSource
-        .getRepository(ProductAttributeValueProduct)
-        .count({ where: { ProductAttributeValueId: Id } });
-
-      if (productLinksCount > 0) {
-        return response.status(400).json({
-          success: false,
-          message: `Cannot delete value: It is currently linked to ${productLinksCount} product(s). Please remove the product links first.`,
-        });
-      }
-
       await dataSource
         .getRepository(ProductAttributeValueProduct)
         .delete({ ProductAttributeValueId: Id });
 
       await dataSource.getRepository(ProductAttributeValue).delete(Id);
+
+      if (io) {
+        io.emit("attribute-update", { action: "delete-value", valueId: Id });
+      }
 
       return response.json({
         success: true,

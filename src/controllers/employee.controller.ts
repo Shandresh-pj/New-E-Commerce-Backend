@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { Response } from "express";
 import dataSource from "../config/database";
-import { In, Not } from "typeorm";
+import { In, Not, ILike } from "typeorm";
 import { User, UserRole } from "../entities/user";
 import { EmailService } from "../utils/sendEmailOtp";
 import { UserType, EmployeeType } from "../utils/Role-Access";
@@ -59,7 +59,13 @@ export class EmployeeController {
         return res.status(400).json({ success: false, message: "name, email, and mobilenumber are required" });
       }
 
-      // Existing email check
+      // Existing name & email check
+      const nameExists = await userRepo.findOne({ where: { name: ILike(name.trim()) } });
+      if (nameExists) {
+        await queryRunner.rollbackTransaction();
+        return res.status(409).json({ success: false, message: `An employee with name '${name.trim()}' already exists` });
+      }
+
       const exists = await userRepo.findOne({ where: { email } });
       if (exists) {
         await queryRunner.rollbackTransaction();

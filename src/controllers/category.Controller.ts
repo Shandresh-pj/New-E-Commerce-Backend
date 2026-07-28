@@ -2,6 +2,7 @@ import {
   Request,
   Response,
 } from "express";
+import { io } from "../socket/socket";
 
 import {
   Controller,
@@ -77,6 +78,11 @@ export class CategoryController {
     });
 
     await repo.save(category);
+
+    if (io) {
+      const createdId = Array.isArray(category) ? category[0]?.id : (category as any)?.id;
+      io.emit("category-update", { action: "create", categoryId: createdId });
+    }
 
     return res.json({
       success: true,
@@ -236,6 +242,10 @@ export class CategoryController {
       }
     );
 
+    if (io) {
+      io.emit("category-update", { action: "update", categoryId: id });
+    }
+
     return res.json({
       success: true,
       message: "Category updated successfully",
@@ -336,6 +346,10 @@ export class CategoryController {
     }
 
     await repo.delete(id);
+
+    if (io) {
+      io.emit("category-update", { action: "delete", categoryId: id });
+    }
 
     return res.json({
       success: true,
