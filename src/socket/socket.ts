@@ -144,6 +144,31 @@ export const emitToUser = (userId: number, event: string, data: any) => {
   if (io) io.to(`user_${userId}`).emit(event, data);
 };
 
+export const emitProductChange = (companyId: number, action: 'created' | 'updated' | 'deleted', productData: any) => {
+  if (io) {
+    io.to(`company_${companyId}`).emit(`product.${action}`, productData);
+    io.to(`company_${companyId}`).emit('product.changed', { action, product: productData });
+  }
+};
+
+export const emitStockChange = (branchId: number, stockData: any) => {
+  if (io) {
+    io.to(`branch_${branchId}`).emit('stock.changed', stockData);
+  }
+};
+
+export const emitPOSSaleCompleted = (branchId: number, saleData: any) => {
+  if (io) {
+    io.to(`branch_${branchId}`).emit('pos.sale.completed', saleData);
+  }
+};
+
+export const emitDashboardUpdate = (companyId: number, metrics: any) => {
+  if (io) {
+    io.to(`company_${companyId}`).emit('dashboard.metrics.update', metrics);
+  }
+};
+
 // ── Standard Attendance Events ─────────────────────────────────────────────
 // attendance.checkin         → fired when employee checks in
 // attendance.checkout        → fired when employee checks out

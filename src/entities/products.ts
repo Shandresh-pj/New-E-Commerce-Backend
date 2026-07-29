@@ -8,6 +8,7 @@ import { CouponProduct } from "./coupons";
 import { ProductAttributeValueProduct } from "./productAttribute";
 import { ProductVariant } from "./productVariant";
 import { ProductApproval } from "./productApproval";
+import { ProductUnitConversion } from "./unit.entity";
 import { User }        from "./user";
 import { Category }    from "./category";
 import { ProductType, ProductStatus, ProductApprovalStatus } from "../dto/products.dto";
@@ -44,6 +45,9 @@ export class Product {
 
   @Column({ type: "int", default: 0 })
   stock!: number;
+
+  @Column({ type: "varchar", length: 50, default: "Piece" })
+  base_unit!: string;
 
   @Column({ type: "varchar", length: 100, nullable: true })
   category!: string | null;
@@ -113,6 +117,9 @@ export class Product {
 
   @OneToMany(() => ProductApproval, (pa) => pa.product)
   approvals!: ProductApproval[];
+
+  @OneToMany(() => ProductUnitConversion, (uc) => uc.product, { cascade: true })
+  unitConversions!: ProductUnitConversion[];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

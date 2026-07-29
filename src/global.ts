@@ -43,6 +43,8 @@ import { Coupon, CouponProduct }                       from "./entities/coupons"
 // Inventory & Stock
 import { StockLog }                                    from "./entities/stock";
 import { LowStockAlert }                               from "./entities/lowstock";
+import { ProductUnitConversion }                       from "./entities/unit.entity";
+import { StockLedger }                                 from "./entities/stock_ledger.entity";
 
 // Delivery
 import { DeliveryAssignment, DeliveryTracking }        from "./entities/delivery.entity";
@@ -147,6 +149,8 @@ export const ALL_ENTITIES = [
   // Inventory & Stock
   StockLog,
   LowStockAlert,
+  ProductUnitConversion,
+  StockLedger,
 
   // Delivery
   DeliveryAssignment,
