@@ -25,8 +25,20 @@ export class Product {
   @Column({ type: "text", nullable: true })
   description!: string | null;
 
-  @Column({ type: "decimal", precision: 10, scale: 2 })
+  @Column({ type: "decimal", precision: 12, scale: 2 })
   price!: number;
+
+  @Column({ type: "decimal", precision: 12, scale: 2, nullable: true })
+  purchase_cost!: number | null;
+
+  @Column({ type: "decimal", precision: 12, scale: 2, nullable: true })
+  retail_price!: number | null;
+
+  @Column({ type: "decimal", precision: 12, scale: 2, nullable: true })
+  wholesale_price!: number | null;
+
+  @Column({ type: "decimal", precision: 12, scale: 2, nullable: true })
+  dealer_price!: number | null;
 
   @Column({ type: "varchar", length: 100, nullable: true })
   barcode!: string | null;
@@ -77,10 +89,10 @@ export class Product {
   deleted_at!: Date | null;
 
   // ── Manufacture & Expiry Dates ───────────────────────────────────────────
-  @Column({ type: "date", nullable: true, select: false })
+  @Column({ type: "date", nullable: true })
   manufacture_date!: string | null;
 
-  @Column({ type: "date", nullable: true, select: false })
+  @Column({ type: "date", nullable: true })
   expiry_date!: string | null;
 
   @CreateDateColumn({ name: "created_at" })

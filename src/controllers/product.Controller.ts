@@ -19,6 +19,7 @@ import {
 import dataSource from "../config/database";
 import { uploadAny } from "../utils/upload";
 import { Product } from "../entities/products";
+import { ProductUnitConversion } from "../entities/unit.entity";
 import { ProductApproval, ApprovalStatus, ApprovalActionType } from "../entities/productApproval";
 import { ProductVariant } from "../entities/productVariant";
 import {
@@ -45,6 +46,7 @@ import { GlobalNotificationService } from "../services/global-notification.servi
 const PRODUCT_RELATIONS = {
   creator: true,
   couponProducts: true,
+  unitConversions: true,
   variants: {
     ProductAttribute: true,
     ProductAttributeValue: true,
@@ -67,7 +69,10 @@ const coerceNumbers = (
   const copy = { ...data };
   keys.forEach((key) => {
     if (copy[key] !== undefined && copy[key] !== null && copy[key] !== "") {
-      copy[key] = Number(copy[key]);
+      const num = Number(copy[key]);
+      copy[key] = isNaN(num) ? undefined : num;
+    } else if (copy[key] === "" || copy[key] === null) {
+      copy[key] = undefined;
     }
   });
   return copy;
@@ -122,6 +127,9 @@ const parseVariantsInput = (raw: any): any[] =>
 
 const parseAttributeValuesInput = (raw: any): any[] =>
   parseJsonArrayField(raw, "attribute_values");
+
+const parseUnitConversionsInput = (raw: any): any[] =>
+  parseJsonArrayField(raw, "unit_conversions");
 
 /**
  * New variant rows from the UI carry a blank Id/CompanyId (e.g. "")
@@ -431,6 +439,7 @@ export class ProductController {
 
       const variantsInput = normalizeVariantIds(parseVariantsInput(req.body.variants));
       const attributeValuesInput = parseAttributeValuesInput(req.body.attribute_values);
+      const unitConversionsInput = parseUnitConversionsInput(req.body.unit_conversions);
 
       const body = normalizeEmptyStrings(
         coerceNumbers(req.body, [
@@ -440,6 +449,13 @@ export class ProductController {
           "registration_id",
           "low_stock_threshold",
           "critical_stock_threshold",
+          "purchase_cost",
+          "retail_price",
+          "wholesale_price",
+          "dealer_price",
+          "user_id",
+          "company_id",
+          "branch_id",
         ])
       );
 
@@ -447,6 +463,7 @@ export class ProductController {
         ...body,
         variants: undefined,
         attribute_values: undefined,
+        unit_conversions: unitConversionsInput.length > 0 ? unitConversionsInput : undefined,
       });
 
       const variantShapeErrors = await validateVariantPayloads(variantsInput);
@@ -491,8 +508,13 @@ export class ProductController {
         name,
         description,
         price,
+        purchase_cost,
+        retail_price,
+        wholesale_price,
+        dealer_price,
         barcode,
         stock,
+        base_unit,
         category,
         registration_id,
         product_type,
@@ -600,7 +622,12 @@ export class ProductController {
         name,
         description,
         price,
+        purchase_cost: purchase_cost || null,
+        retail_price: retail_price || null,
+        wholesale_price: wholesale_price || null,
+        dealer_price: dealer_price || null,
         stock,
+        base_unit: base_unit || "Piece",
         barcode,
         category,
         registration_id: registration_id || user.userId,
@@ -671,12 +698,30 @@ export class ProductController {
         }));
       }
 
+      let savedUnitConversions: any[] = [];
+      if (unitConversionsInput.length > 0) {
+        const ucRepo = qr.manager.getRepository(ProductUnitConversion);
+        const ucEntities = unitConversionsInput.map((uc) =>
+          ucRepo.create({
+            product_id: product.id,
+            category: uc.category || "COUNT",
+            unit_name: uc.unit_name,
+            unit_symbol: uc.unit_symbol || uc.unit_name,
+            conversion_to_base: Number(uc.conversion_to_base) || 1.0,
+            is_sale_unit: uc.is_sale_unit !== false,
+            is_purchase_unit: uc.is_purchase_unit !== false,
+          })
+        );
+        savedUnitConversions = await ucRepo.save(ucEntities);
+      }
+
       await qr.commitTransaction();
 
       const createdProductData = {
         ...sanitizeProduct(product),
         variants: savedVariants,
         attribute_values: savedAttributeValues,
+        unit_conversions: savedUnitConversions,
       };
 
       // Emit realtime socket event
@@ -804,6 +849,8 @@ export class ProductController {
         .leftJoinAndSelect("linkValue.ProductAttribute", "linkValueAttr")
         .orderBy("product.id", "DESC");
 
+      const countQb = repo.createQueryBuilder("product");
+
       let showAll = false;
       const auth = req.headers.authorization;
       if (auth && auth.startsWith("Bearer ")) {
@@ -826,23 +873,26 @@ export class ProductController {
       }
 
       if (!showAll) {
-        qb.andWhere("product.status = :status", {
-          status: "active",
-        });
+        qb.andWhere("product.status = :status", { status: "active" });
+        countQb.andWhere("product.status = :status", { status: "active" });
       }
 
       if (req.query.is_deleted === "true") {
         qb.andWhere("product.is_deleted = :is_deleted", { is_deleted: true });
+        countQb.andWhere("product.is_deleted = :is_deleted", { is_deleted: true });
       } else if (req.query.is_deleted !== "all") {
         qb.andWhere("product.is_deleted = :is_deleted", { is_deleted: false });
+        countQb.andWhere("product.is_deleted = :is_deleted", { is_deleted: false });
       }
 
       if (req.query.status) {
         const statusVal = req.query.status as string;
         if (Object.values(ProductApprovalStatus).includes(statusVal as any)) {
           qb.andWhere("product.approval_status = :approval_status", { approval_status: statusVal });
+          countQb.andWhere("product.approval_status = :approval_status", { approval_status: statusVal });
         } else {
           qb.andWhere("product.status = :status", { status: statusVal });
+          countQb.andWhere("product.status = :status", { status: statusVal });
         }
       }
 
@@ -850,10 +900,16 @@ export class ProductController {
         qb.andWhere("product.product_type = :product_type", {
           product_type: req.query.product_type,
         });
+        countQb.andWhere("product.product_type = :product_type", {
+          product_type: req.query.product_type,
+        });
       }
 
       if (req.query.category) {
         qb.andWhere("product.category = :category", {
+          category: req.query.category,
+        });
+        countQb.andWhere("product.category = :category", {
           category: req.query.category,
         });
       }
@@ -864,9 +920,13 @@ export class ProductController {
           "(LOWER(product.name) LIKE LOWER(:search) OR LOWER(product.barcode) LIKE LOWER(:search))",
           { search: searchStr }
         );
+        countQb.andWhere(
+          "(LOWER(product.name) LIKE LOWER(:search) OR LOWER(product.barcode) LIKE LOWER(:search))",
+          { search: searchStr }
+        );
       }
 
-      const total = await qb.getCount();
+      const total = await countQb.getCount();
 
       applyPagination(qb, page, limit);
 
@@ -968,6 +1028,11 @@ export class ProductController {
         ? parseAttributeValuesInput(req.body.attribute_values)
         : [];
 
+      const hasUnitConversionsField = req.body.unit_conversions !== undefined;
+      const unitConversionsInput = hasUnitConversionsField
+        ? parseUnitConversionsInput(req.body.unit_conversions)
+        : [];
+
       const body = normalizeEmptyStrings(
         coerceNumbers(req.body, [
           "price",
@@ -976,6 +1041,13 @@ export class ProductController {
           "registration_id",
           "low_stock_threshold",
           "critical_stock_threshold",
+          "purchase_cost",
+          "retail_price",
+          "wholesale_price",
+          "dealer_price",
+          "user_id",
+          "company_id",
+          "branch_id",
         ])
       );
 
@@ -983,6 +1055,7 @@ export class ProductController {
         ...body,
         variants: undefined,
         attribute_values: undefined,
+        unit_conversions: hasUnitConversionsField && unitConversionsInput.length > 0 ? unitConversionsInput : undefined,
       });
 
       const variantShapeErrors = hasVariantsField
@@ -1161,6 +1234,11 @@ export class ProductController {
       product.product_type = body.product_type ?? product.product_type;
       product.stock_in_hand = body.stock_in_hand ?? product.stock_in_hand;
       product.status = body.status ?? product.status;
+      if (body.base_unit !== undefined) product.base_unit = body.base_unit;
+      if (body.purchase_cost !== undefined) product.purchase_cost = body.purchase_cost !== null && body.purchase_cost !== "" ? Number(body.purchase_cost) : null;
+      if (body.retail_price !== undefined) product.retail_price = body.retail_price !== null && body.retail_price !== "" ? Number(body.retail_price) : null;
+      if (body.wholesale_price !== undefined) product.wholesale_price = body.wholesale_price !== null && body.wholesale_price !== "" ? Number(body.wholesale_price) : null;
+      if (body.dealer_price !== undefined) product.dealer_price = body.dealer_price !== null && body.dealer_price !== "" ? Number(body.dealer_price) : null;
 
       product.low_stock_threshold = body.low_stock_threshold !== undefined ? Number(body.low_stock_threshold) : product.low_stock_threshold;
       product.critical_stock_threshold = body.critical_stock_threshold !== undefined ? Number(body.critical_stock_threshold) : product.critical_stock_threshold;
@@ -1279,6 +1357,25 @@ export class ProductController {
           ]).ProductAttributeId,
           ProductAttributeValueId: link.ProductAttributeValueId,
         }));
+      }
+
+      if (hasUnitConversionsField) {
+        const ucRepo = qr.manager.getRepository(ProductUnitConversion);
+        await ucRepo.delete({ product_id: productId });
+        if (unitConversionsInput.length > 0) {
+          const ucEntities = unitConversionsInput.map((uc: any) =>
+            ucRepo.create({
+              product_id: productId,
+              category: uc.category || "COUNT",
+              unit_name: uc.unit_name,
+              unit_symbol: uc.unit_symbol || uc.unit_name,
+              conversion_to_base: Number(uc.conversion_to_base) || 1.0,
+              is_sale_unit: uc.is_sale_unit !== false,
+              is_purchase_unit: uc.is_purchase_unit !== false,
+            })
+          );
+          await ucRepo.save(ucEntities);
+        }
       }
 
       await qr.commitTransaction();

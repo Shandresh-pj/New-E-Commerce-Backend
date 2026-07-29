@@ -111,6 +111,28 @@ router.post(
  *       404:
  *         description: Product not found
  */
+
+
+// ================= GET PRODUCT BY ID =================
+
+/**
+ * @swagger
+ * /products/{id}:
+ *   get:
+ *     summary: Get product by ID
+ *     tags: [Products]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Product details
+ *       404:
+ *         description: Product not found
+ */
 router.get(
   "/products/:id",
   productController.getById.bind(productController)
@@ -164,52 +186,20 @@ router.get(
  *                 items:
  *                   type: string
  *                   format: binary
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               price:
- *                 type: number
- *               stock:
- *                 type: number
- *               product_type:
- *                 type: string
- *                 enum: [simple, variant]
- *               stock_in_hand:
- *                 type: number
- *               status:
- *                 type: string
- *                 enum: [active, inactive]
- *               variants:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     CompanyId:
- *                       type: number
- *                     Barcode:
- *                       type: string
- *                     Price:
- *                       type: number
- *                     Stock:
- *                       type: number
- *                     ProductAttributeId:
- *                       type: number
- *                     ProductAttributeValueId:
- *                       type: number
- *     responses:
- *       201:
- *         description: Product created successfully
- *       422:
- *         description: Validation failed
  */
 router.post(
   "/products/add",
   authenticateMiddleware,
   authorize({
-    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+    roles: [
+      UserType.SUPER_ADMIN,
+      UserType.ADMIN,
+      UserType.BRANCH_MANAGER,
+      UserType.SHOPKEEPER,
+      UserType.BRANCH,
+      UserType.EMPLOYEE,
+      UserType.DELIVERY_BOY,
+    ],
   }),
   uploadAny.upload.fields([
     { name: "image", maxCount: 1 },
@@ -221,71 +211,19 @@ router.post(
   productController.create.bind(productController)
 );
 
-
-// ================= UPDATE PRODUCT =================
-
-/**
- * @swagger
- * /products/{id}:
- *   put:
- *     summary: Update product by ID (replaces variants when `variants` is provided)
- *     tags: [Products]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               description:
- *                 type: string
- *               price:
- *                 type: number
- *               stock:
- *                 type: number
- *               product_type:
- *                 type: string
- *                 enum: [simple, variant]
- *               stock_in_hand:
- *                 type: number
- *               status:
- *                 type: string
- *                 enum: [active, inactive]
- *               variants:
- *                 type: string
- *                 description: JSON string of ProductVariant[]. Existing variants not included (by Id) are deleted; entries without Id are created.
- *               existing_images:
- *                 type: string
- *                 description: JSON string array of gallery image paths to keep. Omit to keep old append-only behavior; send (even as "[]") to replace the gallery with exactly this set plus any newly uploaded images.
- *               image:
- *                 type: string
- *                 format: binary
- *               images:
- *                 type: array
- *                 items:
- *                   type: string
- *                   format: binary
- *     responses:
- *       200:
- *         description: Product updated successfully
- *       404:
- *         description: Product not found
- *       422:
- *         description: Validation failed
- */
 router.put(
   "/products/:id",
   authenticateMiddleware,
   authorize({
-    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER],
+    roles: [
+      UserType.SUPER_ADMIN,
+      UserType.ADMIN,
+      UserType.BRANCH_MANAGER,
+      UserType.SHOPKEEPER,
+      UserType.BRANCH,
+      UserType.EMPLOYEE,
+      UserType.DELIVERY_BOY,
+    ],
   }),
   uploadAny.upload.fields([
     { name: "image", maxCount: 1 },
@@ -297,27 +235,6 @@ router.put(
   productController.update.bind(productController)
 );
 
-
-// ================= DELETE PRODUCT =================
-
-/**
- * @swagger
- * /products/{id}:
- *   delete:
- *     summary: Delete product by ID
- *     tags: [Products]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Product deleted successfully
- *       404:
- *         description: Product not found
- */
 router.delete(
   "/products/:id",
   authenticateMiddleware,

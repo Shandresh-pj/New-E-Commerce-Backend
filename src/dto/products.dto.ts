@@ -23,8 +23,13 @@ export enum ProductType {
 }
 
 export enum ProductStatus {
-  ACTIVE   = "active",
-  INACTIVE = "inactive",
+  ACTIVE            = "active",
+  INACTIVE          = "inactive",
+  DRAFT             = "Draft",
+  PENDING_APPROVAL  = "Pending Approval",
+  APPROVED          = "Approved",
+  PUBLISHED         = "Published",
+  REJECTED          = "Rejected",
 }
 
 export enum ProductApprovalStatus {
@@ -36,6 +41,34 @@ export enum ProductApprovalStatus {
 }
 
 // ─── Nested DTOs ───────────────────────────────────────────────────────────
+
+export class ProductUnitConversionDto {
+  @IsOptional()
+  @IsNumber()
+  id?: number;
+
+  @IsString()
+  @IsNotEmpty()
+  unit_name!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  unit_symbol!: string;
+
+  @IsNumber()
+  @Min(0.000001)
+  conversion_to_base!: number;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  is_sale_unit?: boolean;
+
+  @IsOptional()
+  is_purchase_unit?: boolean;
+}
 
 export class ProductVariantDto {
   @IsOptional()
@@ -109,6 +142,10 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
+  base_unit?: string;
+
+  @IsOptional()
+  @IsString()
   category?: string;
 
   @IsOptional()
@@ -121,8 +158,28 @@ export class CreateProductDto {
   stock_in_hand?: number;
 
   @IsOptional()
-  @IsEnum(ProductStatus)
-  status?: ProductStatus;
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  purchase_cost?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  retail_price?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  wholesale_price?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  dealer_price?: number;
 
   @IsOptional()
   @IsArray()
@@ -137,6 +194,12 @@ export class CreateProductDto {
   attribute_values?: ProductAttributeValueLinkDto[];
 
   @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductUnitConversionDto)
+  unit_conversions?: ProductUnitConversionDto[];
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   low_stock_threshold?: number;
@@ -145,6 +208,15 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0)
   critical_stock_threshold?: number;
+
+  @IsOptional()
+  user_id?: any;
+
+  @IsOptional()
+  company_id?: any;
+
+  @IsOptional()
+  branch_id?: any;
 
   @IsOptional()
   @IsString()
@@ -183,6 +255,10 @@ export class UpdateProductDto {
 
   @IsOptional()
   @IsString()
+  base_unit?: string;
+
+  @IsOptional()
+  @IsString()
   category?: string;
 
   @IsOptional()
@@ -195,12 +271,32 @@ export class UpdateProductDto {
   stock_in_hand?: number;
 
   @IsOptional()
-  @IsEnum(ProductStatus)
-  status?: ProductStatus;
+  @IsString()
+  status?: string;
 
   @IsOptional()
   @IsEnum(ProductApprovalStatus)
   approval_status?: ProductApprovalStatus;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  purchase_cost?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  retail_price?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  wholesale_price?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  dealer_price?: number;
 
   @IsOptional()
   @IsArray()
@@ -213,6 +309,12 @@ export class UpdateProductDto {
   @ValidateNested({ each: true })
   @Type(() => ProductAttributeValueLinkDto)
   attribute_values?: ProductAttributeValueLinkDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ProductUnitConversionDto)
+  unit_conversions?: ProductUnitConversionDto[];
 
   /** JSON-stringified array of existing gallery image paths to retain */
   @IsOptional()
@@ -227,6 +329,15 @@ export class UpdateProductDto {
   @IsNumber()
   @Min(0)
   critical_stock_threshold?: number;
+
+  @IsOptional()
+  user_id?: any;
+
+  @IsOptional()
+  company_id?: any;
+
+  @IsOptional()
+  branch_id?: any;
 
   @IsOptional()
   @IsString()

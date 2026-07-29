@@ -15,52 +15,55 @@ const isProduction = process.env.NODE_ENV === "production";
 // DB_SYNC=false → No auto-sync (safe for production; use migrations instead).
 const shouldSync = String(process.env.DB_SYNC ?? "true").toLowerCase().trim() === "true";
 
+const dbUrl = process.env.DATABASE_URL || process.env.PRODUCTION_DB_URL;
+const useLiveDb =
+  isProduction ||
+  String(process.env.USE_LIVE_DB ?? "true").toLowerCase().trim() === "true" ||
+  (Boolean(dbUrl) && process.env.DB_TYPE === "postgres");
+
 let dbConfig: DataSourceOptions;
 
-if (isProduction) {
-  const dbUrl = process.env.DATABASE_URL || process.env.PRODUCTION_DB_URL;
-
+if (useLiveDb && dbUrl) {
+  console.log("⚡ Connecting to Live Database (Neon PostgreSQL)...");
+  dbConfig = {
+    type: "postgres",
+    url: dbUrl,
+    synchronize: shouldSync,
+    logging: false,
+    entities: [...ALL_ENTITIES] as any[],
+    ssl: { rejectUnauthorized: false },
+    poolSize: 10,
+    extra: {
+      max: 10,
+      connectionTimeoutMillis: 20000,
+      idleTimeoutMillis: 30000,
+    },
+  };
+} else if (isProduction) {
   if (!dbUrl && !process.env.PRODUCTION_DB_HOST && !process.env.DB_HOST) {
     console.error(
       "❌ ERROR: Production database connection details (DATABASE_URL or PRODUCTION_DB_URL) are not set!"
     );
   }
 
-  if (dbUrl) {
-    dbConfig = {
-      type: "postgres",
-      url: dbUrl,
-      synchronize: shouldSync,
-      logging: false,
-      entities: [...ALL_ENTITIES] as any[],
-      ssl: { rejectUnauthorized: false },
-      poolSize: 10,
-      extra: {
-        max: 10,
-        connectionTimeoutMillis: 20000,
-        idleTimeoutMillis: 30000,
-      },
-    };
-  } else {
-    dbConfig = {
-      type: "postgres",
-      host: process.env.PRODUCTION_DB_HOST || process.env.DB_HOST,
-      port: Number(process.env.PRODUCTION_DB_PORT || process.env.DB_PORT || 5432),
-      username: process.env.PRODUCTION_DB_USERNAME || process.env.DB_USERNAME,
-      password: process.env.PRODUCTION_DB_PASSWORD || process.env.DB_PASSWORD,
-      database: process.env.PRODUCTION_DB_DATABASE || process.env.DB_DATABASE,
-      synchronize: shouldSync,
-      logging: false,
-      entities: [...ALL_ENTITIES] as any[],
-      ssl: { rejectUnauthorized: false },
-      poolSize: 10,
-      extra: {
-        max: 10,
-        connectionTimeoutMillis: 20000,
-        idleTimeoutMillis: 30000,
-      },
-    };
-  }
+  dbConfig = {
+    type: "postgres",
+    host: process.env.PRODUCTION_DB_HOST || process.env.DB_HOST,
+    port: Number(process.env.PRODUCTION_DB_PORT || process.env.DB_PORT || 5432),
+    username: process.env.PRODUCTION_DB_USERNAME || process.env.DB_USERNAME,
+    password: process.env.PRODUCTION_DB_PASSWORD || process.env.DB_PASSWORD,
+    database: process.env.PRODUCTION_DB_DATABASE || process.env.DB_DATABASE,
+    synchronize: shouldSync,
+    logging: false,
+    entities: [...ALL_ENTITIES] as any[],
+    ssl: { rejectUnauthorized: false },
+    poolSize: 10,
+    extra: {
+      max: 10,
+      connectionTimeoutMillis: 20000,
+      idleTimeoutMillis: 30000,
+    },
+  };
 } else {
   const dbType = (process.env.DB_TYPE || "mysql") as "mysql" | "postgres";
 

@@ -106,7 +106,7 @@ export const compressImage = async (
       .rotate()
       .jpeg({
         quality: 80,
-        mozjpeg: true,
+        progressive: true,
       })
       .toFile(tempPath);
 
