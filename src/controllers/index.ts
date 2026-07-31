@@ -129,4 +129,9 @@ export const billingController            = new BillingController();
 export const subscriptionInvoiceController = new SubscriptionInvoiceController();
 export const paymentCheckoutController    = new PaymentCheckoutController();
 
+// ── Enterprise Mobility Super App ──────────────────────────────────────────
+import { MobilityController } from "./mobility.Controller";
+export const mobilityController           = new MobilityController();
+
+
 
