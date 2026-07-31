@@ -73,60 +73,59 @@ function parseProductId(raw: any): number {
  *       401:
  *         description: Unauthorized
  */
-router.post(
-  "/wishlist",
-  authenticateMiddleware,
-  async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-      const userId = getUserId(req);
+const addWishlistItem = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = getUserId(req);
 
-      const productId = parseProductId(req.body.product_id);
+    const productId = parseProductId(req.params.productId || req.body.product_id || req.body.productId);
 
-      const product = await dataSource
-        .getRepository(Product)
-        .findOne({ where: { id: productId } });
+    const product = await dataSource
+      .getRepository(Product)
+      .findOne({ where: { id: productId } });
 
-      if (!product || product.status !== ProductStatus.ACTIVE) {
-        throw new ApiError(404, "Product not found");
-      }
-
-      const repository = dataSource.getRepository(Wishlist);
-
-      const existing = await repository.findOne({
-        where: { user_id: userId, product_id: productId },
-        relations: { product: true },
-      });
-
-      if (existing) {
-        return res.status(200).json({
-          success: true,
-          message: "Product already in wishlist",
-          data: existing,
-        });
-      }
-
-      const item = repository.create({
-        user_id: userId,
-        product_id: productId,
-      });
-
-      await repository.save(item);
-
-      const saved = await repository.findOne({
-        where: { id: item.id },
-        relations: { product: true },
-      });
-
-      return res.status(201).json({
-        success: true,
-        message: "Product added to wishlist",
-        data: saved,
-      });
-    } catch (error) {
-      next(error);
+    if (!product || product.status !== ProductStatus.ACTIVE) {
+      throw new ApiError(404, "Product not found");
     }
+
+    const repository = dataSource.getRepository(Wishlist);
+
+    const existing = await repository.findOne({
+      where: { user_id: userId, product_id: productId },
+      relations: { product: true },
+    });
+
+    if (existing) {
+      return res.status(200).json({
+        success: true,
+        message: "Product already in wishlist",
+        data: existing,
+      });
+    }
+
+    const item = repository.create({
+      user_id: userId,
+      product_id: productId,
+    });
+
+    await repository.save(item);
+
+    const saved = await repository.findOne({
+      where: { id: item.id },
+      relations: { product: true },
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Product added to wishlist",
+      data: saved,
+    });
+  } catch (error) {
+    next(error);
   }
-);
+};
+
+router.post("/wishlist", authenticateMiddleware, addWishlistItem);
+router.post("/wishlist/:productId", authenticateMiddleware, addWishlistItem);
 
 /**
  * @swagger

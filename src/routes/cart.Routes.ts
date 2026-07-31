@@ -18,7 +18,7 @@ const router = Router();
 router.post(
   "/cart/add",
   authenticateMiddleware,
-  authorize({ roles: [UserType.CUSTOMER, UserType.SUPER_ADMIN] }),
+  authorize({ roles: [UserType.CUSTOMER, UserType.SUPER_ADMIN, UserType.ADMIN] }),
   cartController.addToCart.bind(cartController)
 );
 
@@ -34,7 +34,7 @@ router.post(
 router.get(
   "/cart",
   authenticateMiddleware,
-  authorize({ roles: [UserType.CUSTOMER, UserType.SUPER_ADMIN] }),
+  authorize({ roles: [UserType.CUSTOMER, UserType.SUPER_ADMIN, UserType.ADMIN] }),
   cartController.getCart.bind(cartController)
 );
 
@@ -50,7 +50,7 @@ router.get(
 router.delete(
   "/cart/:id",
   authenticateMiddleware,
-  authorize({ roles: [UserType.CUSTOMER, UserType.SUPER_ADMIN] }),
+  authorize({ roles: [UserType.CUSTOMER, UserType.SUPER_ADMIN, UserType.ADMIN] }),
   cartController.remove.bind(cartController)
 );
 
