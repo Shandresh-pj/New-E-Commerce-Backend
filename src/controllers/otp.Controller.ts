@@ -12,7 +12,7 @@ import dataSource from "../config/database";
 import { Register } from "../entities/register";
 import { SendOtpDto, VerifyOtpDto } from "../dto/otp.dto";
 import { OtpVerification } from "../entities/otp";
-import { StatusType } from "../utils/Role-Access";
+import { StatusType, UserType } from "../utils/Role-Access";
 import { EmailService } from "../utils/sendEmailOtp";
 
 @Controller("/otp")
@@ -176,6 +176,7 @@ export class OtpController {
         {
           id: user?.id,
           email: otpRecord.email,
+          userType: UserType.CUSTOMER,
         },
         process.env.JWT_SECRET as string,
         { expiresIn: "24h" }

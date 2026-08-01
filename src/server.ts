@@ -6,6 +6,7 @@ import http from "http";
 import app from "./app";
 import { initializeSocket } from "./socket/socket";
 import { seedRoles } from "./utils/seeds/role.seed";
+import { seedMenus } from "./utils/seeds/menu.seed";
 import dataSource from "./config/database";
 import { startAttendanceCron } from "./utils/attendance.cron";
 import { EmailService } from "./utils/sendEmailOtp";
@@ -129,6 +130,7 @@ async function initDatabase() {
   }
 
   await seedRoles();
+  await seedMenus();
   console.log("✅ Database ready.");
 }
 
