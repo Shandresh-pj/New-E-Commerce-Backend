@@ -107,6 +107,15 @@ export class RoleAccessController {
       });
     }
 
+    const permRepo = dataSource.getRepository(Permission);
+    const hasPermission = await permRepo.findOne({ where: { id: Number(permission_id) } });
+    if (!hasPermission) {
+      return res.status(404).json({
+        success: false,
+        message: `Permission with ID ${permission_id} not found`
+      });
+    }
+
     const scope = parseScope(req.body);
 
     if (typeof scope === "string") {
@@ -186,6 +195,22 @@ export class RoleAccessController {
           success: false,
           message:
             "role_id & permission_id required"
+
+        });
+
+      }
+
+      const permRepo = queryRunner.manager.getRepository(Permission);
+      const hasPermission = await permRepo.findOne({ where: { id: Number(permission_id) } });
+      if (!hasPermission) {
+
+        await queryRunner.rollbackTransaction();
+
+        return res.status(404).json({
+
+          success: false,
+          message:
+            `Permission with ID ${permission_id} not found`
 
         });
 
@@ -584,19 +609,33 @@ data:record
         // Dynamically resolve real DB permission_id if itemPermId is missing, out of range (> 2147483647), or synthesized
         let targetPerm: Permission | null = null;
         if (itemPermId && Number.isInteger(itemPermId) && itemPermId > 0 && itemPermId <= 2147483647) {
-          targetPerm = await dbPermRepo.findOne({ where: { id: itemPermId } });
+          const tempPerm = await dbPermRepo.findOne({
+            where: { id: itemPermId },
+            relations: { menu: true }
+          });
+          if (tempPerm) {
+            // Verify if it actually matches the requested menu/action to avoid synthesized ID collisions
+            const matchesMenu = (!item.menu_id || tempPerm.menu_id === Number(item.menu_id)) &&
+                                (!item.menu_path || (tempPerm.menu && tempPerm.menu.path.toLowerCase() === item.menu_path.toLowerCase())) &&
+                                (!item.menu_name || (tempPerm.menu && tempPerm.menu.name.toLowerCase() === item.menu_name.toLowerCase())) &&
+                                (!item.action || tempPerm.action === item.action);
+            if (matchesMenu) {
+              targetPerm = tempPerm;
+            }
+          }
         }
 
         if (!targetPerm && (item.menu_path || item.menu_name || item.menu_id) && item.action) {
           let targetMenu: Menu | null = null;
-          if (item.menu_id) {
-            targetMenu = await dbMenuRepo.findOne({ where: { id: Number(item.menu_id) } });
-          }
-          if (!targetMenu && item.menu_path) {
+          // Prioritize path or name lookups since menu_id from frontend might be a synthesized/unaligned ID
+          if (item.menu_path) {
             targetMenu = await dbMenuRepo.findOne({ where: { path: item.menu_path } });
           }
           if (!targetMenu && item.menu_name) {
             targetMenu = await dbMenuRepo.findOne({ where: { name: item.menu_name } });
+          }
+          if (!targetMenu && item.menu_id && Number(item.menu_id) <= 2147483647) {
+            targetMenu = await dbMenuRepo.findOne({ where: { id: Number(item.menu_id) } });
           }
 
           if (targetMenu) {
@@ -616,6 +655,8 @@ data:record
 
         if (targetPerm) {
           itemPermId = targetPerm.id;
+        } else {
+          itemPermId = null;
         }
 
         if (!itemPermId) {

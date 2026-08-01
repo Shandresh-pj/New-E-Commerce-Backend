@@ -51,7 +51,11 @@ const router = Router();
 router.get(
   "/profile/all",
   authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.CUSTOMER],
+    menu: "Profile",
+    action: "READ"
+  }),
   profileController.getAll.bind(profileController)
 );
 
@@ -195,7 +199,11 @@ router.put(
 router.delete(
   "/profile/:id",
   authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
+    menu: "Profile",
+    action: "DELETE"
+  }),
   profileController.delete.bind(profileController)
 );
 

@@ -10,7 +10,7 @@ interface AuthorizeOptions {
 }
 
 export function authorize(opts: AuthorizeOptions = {}) {
-  return (req: any, res: Response, next: NextFunction) => {
+  return async (req: any, res: Response, next: NextFunction) => {
 
     if (!req.user) {
       return res.status(401).json({
@@ -32,13 +32,36 @@ export function authorize(opts: AuthorizeOptions = {}) {
       return next();
     }
 
-    if (opts.roles && opts.roles.length > 0) {
+    // 1. Check dynamic database permissions if menu and action are provided
+    let hasMenuPermission = false;
+    if (opts.menu && opts.action) {
+      try {
+        const { PermissionService } = require("../services/permission.service");
+        hasMenuPermission = await PermissionService.hasPermission(req.user.id, opts.menu, opts.action);
+      } catch (err) {
+        console.error("Error checking permissions dynamically in authorize middleware:", err);
+      }
+    }
+
+    // 2. Check role privileges (bypassed if dynamic permission is matched)
+    if (!hasMenuPermission && opts.roles && opts.roles.length > 0) {
       const userType = req.user.userType || req.user.user_type;
       if (!opts.roles.includes(userType)) {
         return res.status(403).json({
           success: false,
           statusCode: 403,
           message: "Access denied: insufficient role privileges"
+        });
+      }
+    }
+
+    // 3. If dynamic permission was required but not matched, deny access
+    if (opts.menu && opts.action && !hasMenuPermission) {
+      if (!opts.roles || opts.roles.length === 0) {
+        return res.status(403).json({
+          success: false,
+          statusCode: 403,
+          message: `Permission denied: ${opts.action} action on ${opts.menu} module is not authorized`
         });
       }
     }
