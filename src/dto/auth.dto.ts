@@ -16,6 +16,7 @@ import {
   IsString,
   Matches,
   MinLength,
+  ValidateIf,
 } from "class-validator";
 import { FILE_TYPES, IsFile } from "../decorators";
 import { Match } from "../decorators";
@@ -242,18 +243,64 @@ export class ChangeMyPasswordDto {
 // OTP
 // ═══════════════════════════════════════════════════════════════════════════
 
+// export class SendOtpDto {
+//   @IsEmail()
+//   @IsNotEmpty()
+//   email!: string;
+// }
 export class SendOtpDto {
-  @IsEmail()
-  @IsNotEmpty()
-  email!: string;
+
+  @ValidateIf(o => !o.mobilenumber)
+  @IsNotEmpty({
+    message: "Email is required when mobile number is not provided",
+  })
+  @IsEmail({}, {
+    message: "Invalid email address",
+  })
+  email?: string;
+
+  @ValidateIf(o => !o.email)
+  @IsNotEmpty({
+    message: "Mobile number is required when email is not provided",
+  })
+  @Matches(/^[0-9]{10,15}$/, {
+    message: "Invalid mobile number",
+  })
+  mobilenumber?: string;
+
 }
 
 export class VerifyOtpDto {
-  @IsOptional()
-  @IsEmail()
+
+  @ValidateIf(o => !o.mobilenumber)
+  @IsNotEmpty({
+    message: "Email is required when mobile number is not provided",
+  })
+  @IsEmail({}, {
+    message: "Invalid email address",
+  })
   email?: string;
 
-  @IsString()
+  @ValidateIf(o => !o.email)
+  @IsNotEmpty({
+    message: "Mobile number is required when email is not provided",
+  })
+  @Matches(/^[0-9]{10,15}$/, {
+    message: "Invalid mobile number",
+  })
+  mobilenumber?: string;
+
   @IsNotEmpty()
   otp!: string;
+
 }
+
+// export class VerifyOtpDto {
+//   @IsOptional()
+//   @IsEmail()
+//   email?: string;
+
+//   @IsString()
+//   @IsNotEmpty()
+//   otp!: string;
+// }
