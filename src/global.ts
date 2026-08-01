@@ -103,6 +103,12 @@ import { BillingHistory }                              from "./entities/billing-
 import { HardwareDeviceEntity }                        from "./entities/hardware_device.entity";
 import { PosOrderEntity }                              from "./entities/pos_order.entity";
 
+// Fleet & Mobility
+import { Vehicle }                                       from "./entities/vehicle.entity";
+import { Driver }                                        from "./entities/driver.entity";
+import { MobilityBooking }                               from "./entities/mobility-booking.entity";
+import { FleetAsset }                                    from "./entities/fleet-asset.entity";
+
 // Secure Communication & Real-time Meetings
 import { ChatConversation }                            from "./entities/chat_conversation.entity";
 import { ChatParticipant }                             from "./entities/chat_participant.entity";
@@ -220,6 +226,12 @@ export const ALL_ENTITIES = [
   // Hardware Devices & POS Billing
   HardwareDeviceEntity,
   PosOrderEntity,
+
+  // Fleet & Mobility  ← REGISTERED (fixes "No metadata for Vehicle/MobilityBooking" 500 errors)
+  Vehicle,
+  Driver,
+  MobilityBooking,
+  FleetAsset,
 
   // Secure Communication & Real-time Meetings
   ChatConversation,

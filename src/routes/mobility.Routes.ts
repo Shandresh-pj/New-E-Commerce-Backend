@@ -332,4 +332,359 @@ router.post(
   mobilityController.verifyKyc.bind(mobilityController)
 );
 
+/**
+ * @swagger
+ * /mobility/categories:
+ *   get:
+ *     summary: Fetch Dynamic Vehicle Categories & Pricing Matrix
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of active vehicle categories with fare rates and capacity
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 count:
+ *                   type: integer
+ *                   example: 7
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "sedan"
+ *                       name:
+ *                         type: string
+ *                         example: "Prime Sedan"
+ *                       type:
+ *                         type: string
+ *                         example: "Passenger"
+ *                       icon:
+ *                         type: string
+ *                         example: "ri-car-line"
+ *                       baseFare:
+ *                         type: number
+ *                         example: 70
+ *                       perKm:
+ *                         type: number
+ *                         example: 18
+ *                       perMin:
+ *                         type: number
+ *                         example: 2.5
+ *                       capacity:
+ *                         type: string
+ *                         example: "4"
+ *                       luggage:
+ *                         type: string
+ *                         example: "3 Bags"
+ *                       eta:
+ *                         type: string
+ *                         example: "5 mins"
+ *                       isEV:
+ *                         type: boolean
+ *                         example: false
+ *                       tag:
+ *                         type: string
+ *                         example: "Comfort"
+ */
+router.get(
+  "/mobility/categories",
+  authenticateMiddleware,
+  authorize(),
+  mobilityController.getCategories.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /mobility/rentals/catalog:
+ *   get:
+ *     summary: Get Rental Vehicles Catalog & Hourly/Daily Packages
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Catalog of self-drive and chauffeur rental vehicles with packages
+ */
+router.get(
+  "/mobility/rentals/catalog",
+  authenticateMiddleware,
+  authorize(),
+  mobilityController.getRentalCatalog.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /mobility/corporate/rosters:
+ *   get:
+ *     summary: Get Corporate Transport Schedules & Employee Rosters
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of active corporate transport routes and assigned employees
+ */
+router.get(
+  "/mobility/corporate/rosters",
+  authenticateMiddleware,
+  authorize(),
+  mobilityController.getCorporateRosters.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /mobility/trips/{tripId}/track:
+ *   get:
+ *     summary: Real-Time Live Trip Tracking Telemetry
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: tripId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "TRIP-998241"
+ *     responses:
+ *       200:
+ *         description: Real-time driver location, pickup/destination, ETA, distance and speed
+ */
+router.get(
+  "/mobility/trips/:tripId/track",
+  authenticateMiddleware,
+  authorize(),
+  mobilityController.getTripTracking.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /mobility/trips/{tripId}/replay:
+ *   get:
+ *     summary: Historical GPS Route Animation Trace Replay
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: tripId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "TRIP-998241"
+ *     responses:
+ *       200:
+ *         description: Array of sequential GPS points with speed, heading, and status
+ */
+router.get(
+  "/mobility/trips/:tripId/replay",
+  authenticateMiddleware,
+  authorize(),
+  mobilityController.getTripReplay.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /mobility/driver/{driverId}/location:
+ *   get:
+ *     summary: Get Specific Driver Current Live GPS Coordinates
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: driverId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Driver latitude, longitude, heading, and speed
+ */
+router.get(
+  "/mobility/driver/:driverId/location",
+  authenticateMiddleware,
+  authorize(),
+  mobilityController.getDriverLocation.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /mobility/bookings/status:
+ *   post:
+ *     summary: Update Booking Status by Booking Code
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - bookingId
+ *               - status
+ *             properties:
+ *               bookingId:
+ *                 type: string
+ *                 example: "TRIP-998241"
+ *               status:
+ *                 type: string
+ *                 enum: [SEARCHING, ACCEPTED, ARRIVED, IN_PROGRESS, COMPLETED, CANCELLED]
+ *                 example: "ACCEPTED"
+ *     responses:
+ *       200:
+ *         description: Booking status updated and broadcasted via Socket.IO
+ */
+router.post(
+  "/mobility/bookings/status",
+  authenticateMiddleware,
+  authorize(),
+  mobilityController.updateBookingByCode.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /mobility/bookings/assign-driver:
+ *   post:
+ *     summary: Assign Driver to Active Booking
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - bookingId
+ *               - driverId
+ *             properties:
+ *               bookingId:
+ *                 type: string
+ *                 example: "TRIP-998241"
+ *               driverId:
+ *                 type: integer
+ *                 example: 1
+ *     responses:
+ *       200:
+ *         description: Driver assigned and notification emitted
+ */
+router.post(
+  "/mobility/bookings/assign-driver",
+  authenticateMiddleware,
+  authorize(),
+  mobilityController.assignDriver.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /mobility/verification/drivers:
+ *   get:
+ *     summary: List All Drivers Pending KYC Verification
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Driver verification records with license and badge details
+ */
+router.get(
+  "/mobility/verification/drivers",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER],
+  }),
+  mobilityController.getVerificationDrivers.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /mobility/verification/vehicles:
+ *   get:
+ *     summary: List All Vehicles Pending RC/KYC Verification
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Vehicle verification records with RC, permit, and insurance details
+ */
+router.get(
+  "/mobility/verification/vehicles",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER],
+  }),
+  mobilityController.getVerificationVehicles.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /verification/drivers:
+ *   get:
+ *     summary: Driver Verification List
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Driver verification list
+ */
+router.get(
+  "/verification/drivers",
+  authenticateMiddleware,
+  authorize(),
+  mobilityController.getVerificationDrivers.bind(mobilityController)
+);
+
+router.get(
+  "/v1/verification/drivers",
+  authenticateMiddleware,
+  authorize(),
+  mobilityController.getVerificationDrivers.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /verification/vehicles:
+ *   get:
+ *     summary: Vehicle Verification List
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Vehicle verification list
+ */
+router.get(
+  "/verification/vehicles",
+  authenticateMiddleware,
+  authorize(),
+  mobilityController.getVerificationVehicles.bind(mobilityController)
+);
+
+router.get(
+  "/v1/verification/vehicles",
+  authenticateMiddleware,
+  authorize(),
+  mobilityController.getVerificationVehicles.bind(mobilityController)
+);
+
 export default router;
+
+
+
