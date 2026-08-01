@@ -564,26 +564,22 @@ public async verifyOtp(
     // FIND USER
     // ==========================================================
 
-    const user =
-      (await registerRepository.findOne({
-
-        where: {
-          id: otpRecord.registration.id,
-        },
-
-      })) as (Register & {
-        refreshToken?: string;
-      });
+    const targetUserId = otpRecord.registration?.id;
+    const user = (await registerRepository.findOne({
+      where: targetUserId
+        ? { id: targetUserId }
+        : usingEmail
+        ? { email: value }
+        : { mobilenumber: value },
+    })) as (Register & {
+      refreshToken?: string;
+    });
 
     if (!user) {
-
       return response.status(404).json({
-
         success: false,
         message: "User not found.",
-
       });
-
     }
 
     // ==========================================================
@@ -657,6 +653,11 @@ public async verifyOtp(
     // BANNER TOKEN
     // ==========================================================
 
+    const bannerSecret =
+      process.env.BANNER_TOKEN_SECRET ||
+      process.env.JWT_SECRET ||
+      "super-secret-banner-key-svk-dth";
+
     const bannerToken =
       jwt.sign(
 
@@ -665,8 +666,7 @@ public async verifyOtp(
           scope: "banner",
         },
 
-        process.env
-          .BANNER_TOKEN_SECRET as string,
+        bannerSecret,
 
         {
           expiresIn: "15m",
