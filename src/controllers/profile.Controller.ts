@@ -296,6 +296,34 @@ res:any
 
 try{
 
+const userType = req.user?.userType || req.user?.user_type;
+if (userType === "Customer") {
+  const { Register } = require("../entities/register");
+  const registerRepo = dataSource.getRepository(Register);
+  const registerUser = await registerRepo.findOne({
+    where: { id: req.user.id }
+  });
+
+  if (registerUser) {
+    const { password, ...safeUser } = registerUser;
+    return res.json({
+      success: true,
+      page: 1,
+      limit: 1,
+      total: 1,
+      data: [safeUser]
+    });
+  } else {
+    return res.json({
+      success: true,
+      page: 1,
+      limit: 1,
+      total: 0,
+      data: []
+    });
+  }
+}
+
 const repo=
 dataSource.getRepository(
 User

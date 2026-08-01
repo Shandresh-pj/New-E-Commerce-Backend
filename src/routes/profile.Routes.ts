@@ -52,7 +52,7 @@ router.get(
   "/profile/all",
   authenticateMiddleware,
   authorize({
-    roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.CUSTOMER],
     menu: "Profile",
     action: "READ"
   }),
