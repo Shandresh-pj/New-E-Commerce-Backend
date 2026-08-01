@@ -119,6 +119,88 @@ export const initializeSocket = (server: any) => {
       }
     });
 
+    // ── SECURE CHAT & MESSAGING EVENTS ─────────────────────────────
+    socket.on("join-conversation", (data: { conversation_id: number }) => {
+      socket.join(`conv_${data.conversation_id}`);
+    });
+
+    socket.on("leave-conversation", (data: { conversation_id: number }) => {
+      socket.leave(`conv_${data.conversation_id}`);
+    });
+
+    socket.on("chat:send", async (data: any) => {
+      try {
+        const { ChatService } = require("../services/chat.service");
+        const service = new ChatService();
+        const msg = await service.sendMessage({
+          ...data,
+          sender_id: userId,
+        });
+
+        io.to(`conv_${data.conversation_id}`).emit("chat:message_received", msg);
+      } catch (err: any) {
+        socket.emit("error", { message: err.message });
+      }
+    });
+
+    socket.on("chat:typing", (data: { conversation_id: number; is_typing: boolean }) => {
+      socket.to(`conv_${data.conversation_id}`).emit("chat:user_typing", {
+        user_id: userId,
+        conversation_id: data.conversation_id,
+        is_typing: data.is_typing,
+      });
+    });
+
+    // ── WEBRTC SIGNALING EVENTS (AUDIO/VIDEO CALLS & TEAM MEETINGS) ───
+    socket.on("call:invite", (data: { target_user_id: number; session_id: number; meeting_code: string; call_type: string }) => {
+      io.to(`user_${data.target_user_id}`).emit("call:incoming", {
+        caller_id: userId,
+        caller_name: user.name || 'User',
+        session_id: data.session_id,
+        meeting_code: data.meeting_code,
+        call_type: data.call_type,
+      });
+    });
+
+    socket.on("call:offer", (data: { target_user_id: number; offer: any; meeting_code: string }) => {
+      io.to(`user_${data.target_user_id}`).emit("call:offer", {
+        sender_id: userId,
+        offer: data.offer,
+        meeting_code: data.meeting_code,
+      });
+    });
+
+    socket.on("call:answer", (data: { target_user_id: number; answer: any; meeting_code: string }) => {
+      io.to(`user_${data.target_user_id}`).emit("call:answer", {
+        sender_id: userId,
+        answer: data.answer,
+        meeting_code: data.meeting_code,
+      });
+    });
+
+    socket.on("call:ice_candidate", (data: { target_user_id: number; candidate: any; meeting_code: string }) => {
+      io.to(`user_${data.target_user_id}`).emit("call:ice_candidate", {
+        sender_id: userId,
+        candidate: data.candidate,
+        meeting_code: data.meeting_code,
+      });
+    });
+
+    socket.on("call:end", (data: { target_user_id?: number; meeting_code: string }) => {
+      if (data.target_user_id) {
+        io.to(`user_${data.target_user_id}`).emit("call:ended", { meeting_code: data.meeting_code });
+      }
+    });
+
+    // ── MOBILITY REAL-TIME TELEMETRY EVENTS ─────────────────────────────
+    socket.on("driver:location_ping", (data: { driver_id: number; latitude: number; longitude: number; heading?: number }) => {
+      io.emit("driver:location_update", data);
+    });
+
+    socket.on("trip:status_update", (data: { booking_id: number; status: string; latitude?: number; longitude?: number }) => {
+      io.emit("trip:status_change", data);
+    });
+
     // ── Disconnect ──────────────────────────────────────────────────
     socket.on("disconnect", () => {
       console.log(`[Socket] Disconnected: user_${userId}`);

@@ -103,6 +103,13 @@ import { BillingHistory }                              from "./entities/billing-
 import { HardwareDeviceEntity }                        from "./entities/hardware_device.entity";
 import { PosOrderEntity }                              from "./entities/pos_order.entity";
 
+// Secure Communication & Real-time Meetings
+import { ChatConversation }                            from "./entities/chat_conversation.entity";
+import { ChatParticipant }                             from "./entities/chat_participant.entity";
+import { ChatMessage }                                 from "./entities/chat_message.entity";
+import { CallSession }                                 from "./entities/call_session.entity";
+import { CallParticipant }                            from "./entities/call_participant.entity";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ALL_ENTITIES — the authoritative list registered with TypeORM.
 // Add any new entity class here; database.ts will pick it up automatically.
@@ -213,6 +220,13 @@ export const ALL_ENTITIES = [
   // Hardware Devices & POS Billing
   HardwareDeviceEntity,
   PosOrderEntity,
+
+  // Secure Communication & Real-time Meetings
+  ChatConversation,
+  ChatParticipant,
+  ChatMessage,
+  CallSession,
+  CallParticipant,
 ] as const;
 
 /* ============================================================
