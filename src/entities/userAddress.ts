@@ -31,6 +31,9 @@ export class UserAddress extends BaseEntity {
   @Column({ name: "phone", type: "varchar", length: 20 })
   phone!: string;
 
+  @Column({ name: "receiver_type", type: "varchar", length: 20, default: "myself" })
+  receiverType!: string;
+
   @Column({ name: "line1", type: "varchar", length: 255 })
   line1!: string;
 
