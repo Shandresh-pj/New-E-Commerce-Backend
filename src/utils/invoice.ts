@@ -284,10 +284,7 @@ export const generateInvoicePDF = async (
     qrBuf = await generateQRBuffer(qrPayload);
   } catch (qrErr) {
     console.warn("[generateInvoicePDF] QR generation fallback:", qrErr);
-    qrBuf = Buffer.from(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-      'base64'
-    );
+    qrBuf = await generateQRBuffer(`INVOICE:${invoiceNo}|AMOUNT:${grandTotal.toFixed(2)}`);
   }
 
   // ── FILE PATH ─────────────────────────────────────────────────────────────

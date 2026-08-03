@@ -201,6 +201,27 @@ export const initializeSocket = (server: any) => {
       io.emit("trip:status_change", data);
     });
 
+    // ── HARDWARE AUTO-DETECTION & TELEMETRY EVENTS ─────────────────────────
+    socket.on("scan_hardware_devices", (data: any) => {
+      io.emit("scan_hardware_devices", data);
+    });
+
+    socket.on("device_connected", (data: any) => {
+      io.emit("device_connected", data);
+    });
+
+    socket.on("device_disconnected", (data: any) => {
+      io.emit("device_disconnected", data);
+    });
+
+    socket.on("device_telemetry", (data: any) => {
+      io.emit("device_telemetry", data);
+    });
+
+    socket.on("delivery_location_update", (data: any) => {
+      io.emit("delivery_location_update", data);
+    });
+
     // ── Disconnect ──────────────────────────────────────────────────
     socket.on("disconnect", () => {
       console.log(`[Socket] Disconnected: user_${userId}`);

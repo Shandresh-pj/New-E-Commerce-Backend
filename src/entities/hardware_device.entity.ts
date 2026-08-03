@@ -17,12 +17,20 @@ export enum DeviceType {
   CASH_DRAWER = "CASH_DRAWER"
 }
 
+export enum ConnectionCategory {
+  WIRED = "WIRED",
+  WIRELESS = "WIRELESS"
+}
+
 export enum ConnectionProtocol {
   WIFI_IP = "WIFI_IP",
   ETHERNET_LAN = "ETHERNET_LAN",
   WEB_SERIAL = "WEB_SERIAL",
   WEB_USB = "WEB_USB",
   BLUETOOTH = "BLUETOOTH",
+  BLUETOOTH_LE = "BLUETOOTH_LE",
+  NFC_TAP = "NFC_TAP",
+  ZIGBEE_MESH = "ZIGBEE_MESH",
   WEBSOCKET_LAN = "WEBSOCKET_LAN",
   MQTT_CLOUD = "MQTT_CLOUD",
   HID_KEYBOARD = "HID_KEYBOARD"
@@ -55,6 +63,9 @@ export class HardwareDeviceEntity {
   @Column({ type: "enum", enum: DeviceType, default: DeviceType.THERMAL_PRINTER })
   type!: DeviceType;
 
+  @Column({ type: "enum", enum: ConnectionCategory, default: ConnectionCategory.WIRED })
+  connection_category!: ConnectionCategory;
+
   @Column({ type: "enum", enum: ConnectionProtocol, default: ConnectionProtocol.WIFI_IP })
   protocol!: ConnectionProtocol;
 
@@ -70,11 +81,20 @@ export class HardwareDeviceEntity {
   @Column({ type: "varchar", length: 100, nullable: true })
   wifi_ssid!: string | null;
 
+  @Column({ type: "varchar", length: 50, nullable: true })
+  mac_address!: string | null;
+
   @Column({ type: "int", default: 5 })
   latency_ms!: number;
 
   @Column({ type: "int", default: 95 })
   signal_strength!: number;
+
+  @Column({ type: "int", nullable: true, default: -55 })
+  signal_dbm!: number | null;
+
+  @Column({ type: "int", nullable: true, default: 98 })
+  battery_level!: number | null;
 
   @Column({ type: "boolean", default: true })
   auto_reconnect!: boolean;
@@ -90,6 +110,9 @@ export class HardwareDeviceEntity {
 
   @UpdateDateColumn()
   updated_at!: Date;
+
+  @Column({ type: "int", default: 0 })
+  packets_received!: number;
 
   @Column({ type: "timestamp", nullable: true })
   last_seen_at!: Date | null;
