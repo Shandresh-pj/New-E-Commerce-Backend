@@ -346,6 +346,7 @@ export class OrderController {
         fullOrder = await dataSource.getRepository(Order).findOne({
           where: { id: order.id },
           relations: {
+            user: true,
             items: {
               product: true,
             },
@@ -359,8 +360,35 @@ export class OrderController {
       try {
         if (fullOrder) {
           const filePath = await generateInvoicePDF(fullOrder, company);
-          if (company?.email) {
-            await sendInvoiceEmail(company.email, filePath, safeInvoiceNo);
+
+          // Retrieve customer details exclusively (Do NOT send customer invoice to company/admin email)
+          let customerEmail = fullOrder.user?.email || req.body.customer_email || req.body.email;
+          let customerName = fullOrder.user?.name || req.body.customer_name || 'Valued Customer';
+
+          if (!customerEmail && fullOrder.user_id) {
+            const customerObj = await userRepo.findOne({
+              where: { id: fullOrder.user_id },
+              select: { email: true, name: true }
+            });
+            if (customerObj?.email) {
+              customerEmail = customerObj.email;
+              customerName = customerObj.name || customerName;
+            }
+          }
+
+          if (customerEmail) {
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
+            const invoiceDownloadUrl = `${frontendUrl}/orders/invoice-pdf/${fullOrder.id}`;
+            await sendInvoiceEmail(
+              customerEmail,
+              filePath,
+              safeInvoiceNo,
+              customerName,
+              fullOrder.total || total,
+              invoiceDownloadUrl
+            );
+          } else {
+            console.log(`[Order Email] No customer email provided for order #${order.id}. Invoice email skipped.`);
           }
         }
       } catch (postCommitErr) {
