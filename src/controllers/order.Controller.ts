@@ -587,42 +587,60 @@ async verify(req: Request, res: Response) {
 }
 
 // ==========================================
+  // ==========================================
   // SECURE PDF GENERATION (USED FOR BOTH PRINT & DOWNLOAD)
   // ==========================================
   @Get("/invoice-pdf/:id")
   public async getInvoicePdf(req: Request, res: Response) {
     try {
+      const orderId = Number(req.params.id);
+      if (!orderId || isNaN(orderId)) {
+        return res.status(400).json({ success: false, message: "Invalid or missing order ID" });
+      }
+
       const order = await dataSource.getRepository(Order).findOne({
-        where: { id: Number(req.params.id) },
+        where: { id: orderId },
         relations: {
           user: true,
           items: { product: true }
         }
       });
 
-      if (!order) return res.status(404).json({ message: "Order not found" });
+      if (!order) {
+        return res.status(404).json({ success: false, message: `Order #${orderId} not found` });
+      }
 
-      const company = await dataSource.getRepository(Register).findOne({ where: { id: order.company_id }});
-      
+      let company: any = null;
+      if (order.company_id) {
+        try {
+          company = await dataSource.getRepository(Register).findOne({ where: { id: order.company_id } });
+        } catch (cErr) {
+          console.warn("[getInvoicePdf] Company lookup skipped:", cErr);
+        }
+      }
+
       // Generate the PDF file (returns path)
       const filePath = await generateInvoicePDF(order, company, req.query);
 
-      // Stream binary data directly to client (Angular will read as Blob)
+      if (!fs.existsSync(filePath)) {
+        return res.status(500).json({ success: false, message: "Generated PDF file could not be accessed." });
+      }
+
       const stat = fs.statSync(filePath);
-      res.writeHead(200, {
-        'Content-Type': 'application/pdf',
-        'Content-Length': stat.size,
-        'Content-Disposition': `inline; filename="${order.invoice_no}.pdf"` // Inline prevents auto-download by browser
-      });
-      
+      const safeInvoiceName = (order.invoice_no || `INV-${order.id}`).replace(/[/\\?%*:|"<>]/g, '-');
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Length', stat.size);
+      res.setHeader('Content-Disposition', `attachment; filename="${safeInvoiceName}.pdf"`);
+
       const readStream = fs.createReadStream(filePath);
       readStream.pipe(res);
 
-    } catch (error) {
-      return res.status(500).json({ message: "Failed to generate PDF" });
+    } catch (error: any) {
+      console.error("[getInvoicePdf Error]:", error);
+      return res.status(500).json({ success: false, message: error?.message || "Failed to generate PDF" });
     }
   }
-  
 }
 
 

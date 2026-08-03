@@ -215,22 +215,29 @@ function drawStatusPill(
 // ─────────────────────────────────────────────────────────────────────────────
 export const generateInvoicePDF = async (
   order: any,
-  company: any,
+  company: any = {},
   options: InvoiceOptions = {}
 ): Promise<string> => {
+
+  company = company || {};
+  order = order || {};
+  options = options || {};
 
   // ── RESOLVE OPTIONS ──────────────────────────────────────────────────────
   const themeId   = options.theme     || "aurora";
   const t         = THEMES[themeId] || THEMES.aurora;
   const title     = (options.title    || "TAX INVOICE").toUpperCase();
-  const gst       = options.gst       || company.gst_number || "N/A";
-  const notes     = options.notes     || "Thank you for choosing BizCore Enterprise!";
+  const gst       = options.gst       || company.gst_number || company.gstin || "N/A";
+  const notes     = options.notes     || "Thank you for choosing SVK E-Commerce!";
   const branch    = options.branch    || "Main Branch";
   const taxRate   = options.taxRate   !== undefined ? Number(options.taxRate) : 18;
   const currency  = options.currency  || "₹";
 
   // ── DERIVED DATA ──────────────────────────────────────────────────────────
-  const invoiceNo   = order.invoice_no   || "N/A";
+  const rawInvoiceNo = (order.invoice_no || `INV-${order.id || Date.now()}`).trim();
+  const invoiceNo    = rawInvoiceNo || "INV-001";
+  const safeFileName = invoiceNo.replace(/[/\\?%*:|"<>]/g, '-');
+
   const createdAt   = order.created_at
     ? new Date(order.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
     : new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
@@ -238,13 +245,13 @@ export const generateInvoicePDF = async (
   dueDate.setDate(dueDate.getDate() + 30);
   const dueDateStr  = dueDate.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 
-  const companyName  = company.name      || "BizCore Enterprise";
+  const companyName  = company.name      || "SVK E-Commerce";
   const companyEmail = company.email     || "N/A";
   const companyPhone = company.mobilenumber || company.phone || "N/A";
   const companyAddr  = company.address   || "N/A";
   const companyId    = company.company_id || company.id || "01";
 
-  const customerName  = order.user?.name         || "Walk-in Customer";
+  const customerName  = order.user?.name         || "Valued Customer";
   const customerEmail = order.user?.email        || "N/A";
   const customerPhone = order.user?.mobilenumber || "N/A";
 
@@ -265,20 +272,28 @@ export const generateInvoicePDF = async (
   if (["FAILED", "DECLINED", "REJECTED"].includes(statusStr))  pillColors = t.pillFailed;
 
   // ── QR CODE (PNG Buffer) ─────────────────────────────────────────────────
-  // Encode a compact JSON payload that a scanner can verify via API
-  const qrPayload = JSON.stringify({
-    inv: invoiceNo,
-    id:  order.id,
-    co:  companyName,
-    tot: grandTotal.toFixed(2),
-    st:  statusStr,
-  });
-  const qrBuf = await generateQRBuffer(qrPayload);
+  let qrBuf: Buffer;
+  try {
+    const qrPayload = JSON.stringify({
+      inv: invoiceNo,
+      id:  order.id,
+      co:  companyName,
+      tot: grandTotal.toFixed(2),
+      st:  statusStr,
+    });
+    qrBuf = await generateQRBuffer(qrPayload);
+  } catch (qrErr) {
+    console.warn("[generateInvoicePDF] QR generation fallback:", qrErr);
+    qrBuf = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      'base64'
+    );
+  }
 
   // ── FILE PATH ─────────────────────────────────────────────────────────────
   const invoiceDir = path.join(__dirname, "../../uploads/invoices");
   if (!fs.existsSync(invoiceDir)) fs.mkdirSync(invoiceDir, { recursive: true });
-  const filePath = path.join(invoiceDir, `${invoiceNo}.pdf`);
+  const filePath = path.join(invoiceDir, `${safeFileName}.pdf`);
 
   // ── CREATE DOCUMENT ───────────────────────────────────────────────────────
   const doc = new PDFDocument({
