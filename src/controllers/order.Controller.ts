@@ -30,7 +30,7 @@ import { Product } from "../entities/products";
 import { StockLog } from "../entities/stock";
 
 import validate from "../middleware/validate";
-import { CreateOrderDto } from "../dto/order.dto";
+import { CreateOrderDto, PaymentMethod, PaymentStatus } from "../dto/order.dto";
 import { Register } from "../entities/register";
 import { TenantService } from "../middleware/tenantFilter.middleware";
 import { ProductStatus } from "../dto/products.dto";
@@ -130,7 +130,14 @@ export class OrderController {
         coupon_code,
         payment,
         requested_invoice_no,
+        receiver_name,
+        receiver_phone,
+        receiver_type,
+        delivery_address,
+        pincode,
       } = req.body;
+
+      console.log("Create Order Body:", JSON.stringify(req.body, null, 2));
 
       if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ success: false, message: "Order items cannot be empty." });
@@ -250,6 +257,27 @@ export class OrderController {
 
       const total = Math.max(0, subtotal - discount);
 
+      // Normalize and validate payment method & status to protect against database enum crashes
+      let finalPaymentMethod: PaymentMethod = PaymentMethod.CASH;
+      if (payment?.method) {
+        const normalizedMethod = String(payment.method)
+          .toUpperCase()
+          .replace(/[\s-]+/g, "_");
+        if (Object.values(PaymentMethod).includes(normalizedMethod as PaymentMethod)) {
+          finalPaymentMethod = normalizedMethod as PaymentMethod;
+        }
+      }
+
+      let finalPaymentStatus: PaymentStatus = PaymentStatus.PENDING;
+      if (payment?.status) {
+        const normalizedStatus = String(payment.status)
+          .toUpperCase()
+          .replace(/[\s-]+/g, "_");
+        if (Object.values(PaymentStatus).includes(normalizedStatus as PaymentStatus)) {
+          finalPaymentStatus = normalizedStatus as PaymentStatus;
+        }
+      }
+
       // ================= CREATE ORDER =================
       const order = orderRepo.create({
         user_id: finalUserId,
@@ -260,12 +288,17 @@ export class OrderController {
         subtotal,
         discount,
         total,
-        payment_method: payment?.method || "CASH",
-        payment_status: payment?.status || "PENDING",
+        payment_method: finalPaymentMethod,
+        payment_status: finalPaymentStatus,
         transaction_id: payment?.transaction_id || null,
         payment_gateway: payment?.gateway || null,
         coupon_id: appliedCoupon ? appliedCoupon.id : null,
         coupon_code: appliedCoupon ? appliedCoupon.code : null,
+        receiver_name: receiver_name || null,
+        receiver_phone: receiver_phone || null,
+        receiver_type: receiver_type || "myself",
+        delivery_address: delivery_address || null,
+        pincode: pincode || null,
       });
 
       await orderRepo.save(order);
@@ -431,7 +464,9 @@ export class OrderController {
       where,
       relations: {
         user: true,
-        items: true,
+        items: {
+          product: true,
+        },
       },
       order: { id: "DESC" },
     });
@@ -457,7 +492,9 @@ export class OrderController {
       where,
       relations: {
         user: true,
-        items: true,
+        items: {
+          product: true,
+        },
       },
     });
 
@@ -529,7 +566,10 @@ async verify(req: Request, res: Response) {
   const order = await repo.findOne({
     where: { id: Number(req.params.id) },
     relations: {
-      items: true,
+      user: true,
+      items: {
+        product: true,
+      },
     },
   });
 
@@ -554,7 +594,10 @@ async verify(req: Request, res: Response) {
     try {
       const order = await dataSource.getRepository(Order).findOne({
         where: { id: Number(req.params.id) },
-        relations: { items: { product: true } }
+        relations: {
+          user: true,
+          items: { product: true }
+        }
       });
 
       if (!order) return res.status(404).json({ message: "Order not found" });

@@ -76,6 +76,21 @@ export class Order {
   @Column({ type: "text", nullable: true })
   qr_code!: string | null;
 
+  @Column({ type: "varchar", length: 100, nullable: true })
+  receiver_name!: string | null;
+
+  @Column({ type: "varchar", length: 20, nullable: true })
+  receiver_phone!: string | null;
+
+  @Column({ type: "varchar", length: 20, nullable: true })
+  receiver_type!: string | null;
+
+  @Column({ type: "text", nullable: true })
+  delivery_address!: string | null;
+
+  @Column({ type: "varchar", length: 20, nullable: true })
+  pincode!: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 

@@ -141,7 +141,7 @@ export class PaymentController {
       await paymentRepo.save(payment);
 
       // Update Order Payment Status
-      order.payment_status = "PAID" as any;
+      order.payment_status = "SUCCESS" as any;
       order.status = "CONFIRMED";
       order.transaction_id = razorpay_payment_id;
       order.gateway = "RAZORPAY";

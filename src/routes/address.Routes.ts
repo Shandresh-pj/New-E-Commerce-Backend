@@ -100,7 +100,7 @@ router.post(
     try {
       const userId = getUserId(req);
 
-      const { label, name, phone, line1, line2, city, state, pincode, isDefault } = req.body;
+      const { label, name, phone, line1, line2, city, state, pincode, isDefault, receiver_type, receiverType } = req.body;
 
       if (!name || !phone || !line1 || !city || !state || !pincode) {
         return res.status(400).json({ success: false, message: "Missing required fields" });
@@ -128,6 +128,7 @@ router.post(
         state,
         pincode,
         isDefault: !!isDefault,
+        receiverType: receiver_type || receiverType || "myself",
       });
 
       await repository.save(address);
@@ -180,7 +181,7 @@ router.put(
     try {
       const userId = getUserId(req);
 
-      const { label, name, phone, line1, line2, city, state, pincode, isDefault } = req.body;
+      const { label, name, phone, line1, line2, city, state, pincode, isDefault, receiver_type, receiverType } = req.body;
       const repository = dataSource.getRepository(UserAddress);
 
       const address = await repository.findOne({
@@ -205,6 +206,7 @@ router.put(
         state: state || address.state,
         pincode: pincode || address.pincode,
         isDefault: !!isDefault,
+        receiverType: receiver_type || receiverType || address.receiverType,
       });
 
       return res.json({ success: true, message: "Address updated successfully" });
