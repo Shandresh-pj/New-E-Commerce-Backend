@@ -149,137 +149,82 @@ message:error.message
 @Middleware([
 authenticateMiddleware
 ])
-public async getById(
-req:any,
-res:any
-){
+  public async getById(
+    req: any,
+    res: any
+  ) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Unauthorized"
+        });
+      }
 
-try{
+      const userId = Number(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid user id"
+        });
+      }
 
-// ===========================
-// AUTH CHECK
-// ===========================
+      const { Register } = require("../entities/register");
+      let repo = dataSource.getRepository(User);
+      let isCustomer = false;
 
-if(!req.user){
+      if (req.user && req.user.id === userId) {
+        isCustomer = req.user.userType === "Customer";
+      } else {
+        const existsInUser = await repo.findOne({ where: { id: userId } });
+        if (!existsInUser) {
+          isCustomer = true;
+        }
+      }
 
-return res.status(401)
-.json({
+      if (isCustomer) {
+        repo = dataSource.getRepository(Register) as any;
+      }
 
-success:false,
-message:
-"Unauthorized"
+      const user = await repo.findOne({
+        where: { id: userId }
+      });
 
-});
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found"
+        });
+      }
 
-}
+      if (
+        !req.user?.isSuperAdmin &&
+        req.user?.id !== user.id
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Forbidden"
+        });
+      }
 
+      const {
+        password,
+        verificationToken,
+        resetPasswordToken,
+        ...safeUser
+      } = user as any;
 
-const userId=
-Number(req.params.id);
-
-if(isNaN(userId)){
-
-return res.status(400)
-.json({
-
-success:false,
-message:
-"Invalid user id"
-
-});
-
-}
-
-
-const repo=
-dataSource.getRepository(
-User
-);
-
-
-const user=
-await repo.findOne({
-
-where:{
-id:userId
-}
-
-});
-
-
-if(!user){
-
-return res.status(404)
-.json({
-
-success:false,
-message:
-"User not found"
-
-});
-
-}
-
-
-// ===========================
-// ONLY SELF OR SUPERADMIN
-// ===========================
-
-if(
-
-!req.user?.isSuperAdmin &&
-
-req.user?.id!==user.id
-
-){
-
-return res.status(403)
-.json({
-
-success:false,
-message:
-"Forbidden"
-
-});
-
-}
-
-
-// ===========================
-// REMOVE SENSITIVE DATA
-// ===========================
-
-const {
-password,
-verificationToken,
-resetPasswordToken,
-...safeUser
-
-}=user as any;
-
-
-return res.status(200)
-.json({
-
-success:true,
-data:safeUser
-
-});
-
-}
-catch(error:any){
-
-return res.status(500)
-.json({
-
-success:false,
-message:error.message
-
-});
-
-}
-
-}
+      return res.status(200).json({
+        success: true,
+        data: safeUser
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 
 // =====================================
 // GET ALL
@@ -396,234 +341,179 @@ message:error.message
 // UPDATE
 // =====================================
 
-@Put("/:id")
-@Middleware([
-authenticateMiddleware,
-validate(UpdateProfileDto)
-])
-public async update(
-req:any,
-res:any
-){
+  @Put("/:id")
+  @Middleware([
+    authenticateMiddleware,
+    validate(UpdateProfileDto)
+  ])
+  public async update(
+    req: any,
+    res: any
+  ) {
+    try {
+      const userId = Number(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid user id"
+        });
+      }
 
-try{
+      const { Register } = require("../entities/register");
+      let repo = dataSource.getRepository(User);
+      let isCustomer = false;
 
-const repo=
-dataSource.getRepository(
-User
-);
+      if (req.user && req.user.id === userId) {
+        isCustomer = req.user.userType === "Customer";
+      } else {
+        const existsInUser = await repo.findOne({ where: { id: userId } });
+        if (!existsInUser) {
+          isCustomer = true;
+        }
+      }
 
-const user=
-await repo.findOne({
+      if (isCustomer) {
+        repo = dataSource.getRepository(Register) as any;
+      }
 
-where:{
-id:Number(
-req.params.id
-)
-}
+      const user = await repo.findOne({
+        where: { id: userId }
+      });
 
-});
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found"
+        });
+      }
 
-if(!user){
+      // self or super admin
+      if (
+        !req.user.isSuperAdmin &&
+        req.user.id !== user.id
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Forbidden"
+        });
+      }
 
-return res.status(404)
-.json({
+      const emailExists = await repo.findOne({
+        where: { email: req.body.email }
+      });
 
-success:false,
-message:"User not found"
+      if (
+        emailExists &&
+        emailExists.id !== user.id
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already exists"
+        });
+      }
 
-});
+      const imgFile = req.files && !Array.isArray(req.files) ? ((req.files as any)['image']?.[0] || (req.files as any)['profile_image']?.[0]) : req.file;
+      const bgFile = req.files && !Array.isArray(req.files) ? ((req.files as any)['background_image']?.[0] || (req.files as any)['cover_image']?.[0]) : undefined;
 
-}
+      const image = imgFile
+        ? `/uploads/images/${imgFile.filename}`
+        : (req.body.image !== undefined ? req.body.image : user.image);
 
+      const background_image = bgFile
+        ? `/uploads/images/${bgFile.filename}`
+        : (req.body.background_image !== undefined ? req.body.background_image : user.background_image);
 
-// self or super admin
+      const updateData: any = {
+        name: req.body.name,
+        email: req.body.email,
+        mobilenumber: req.body.mobilenumber,
+        address: req.body.address,
+        status: req.body.status,
+        image: image,
+      };
 
-if(
+      if (!isCustomer) {
+        updateData.background_image = background_image;
+      }
 
-!req.user.isSuperAdmin &&
-req.user.id!==user.id
+      repo.merge(user, updateData);
 
-){
+      const updated = await repo.save(user);
 
-return res.status(403)
-.json({
+      const {
+        password,
+        ...safeUser
+      } = updated as any;
 
-success:false,
-message:"Forbidden"
-
-});
-
-}
-
-
-const emailExists=
-await repo.findOne({
-
-where:{
-email:req.body.email
-}
-
-});
-
-
-if(
-
-emailExists &&
-emailExists.id!==user.id
-
-){
-
-return res.status(400)
-.json({
-
-success:false,
-message:"Email already exists"
-
-});
-
-}
-
-
-const imgFile = req.files && !Array.isArray(req.files) ? ((req.files as any)['image']?.[0] || (req.files as any)['profile_image']?.[0]) : req.file;
-const bgFile = req.files && !Array.isArray(req.files) ? ((req.files as any)['background_image']?.[0] || (req.files as any)['cover_image']?.[0]) : undefined;
-
-const image = imgFile
-? `/uploads/images/${imgFile.filename}`
-: (req.body.image !== undefined ? req.body.image : user.image);
-
-const background_image = bgFile
-? `/uploads/images/${bgFile.filename}`
-: (req.body.background_image !== undefined ? req.body.background_image : user.background_image);
-
-
-repo.merge(
-
-user,
-
-{
-
-name:req.body.name,
-
-email:req.body.email,
-
-mobilenumber:req.body.mobilenumber,
-
-address:req.body.address,
-
-status:req.body.status,
-
-image:image,
-
-background_image:background_image
-
-}
-
-);
-
-const updated=
-await repo.save(user);
-
-const{
-password,
-...safeUser
-}=updated;
-
-return res.json({
-
-success:true,
-message:"Updated successfully",
-data:safeUser
-
-});
-
-}
-catch(error:any){
-
-return res.status(500)
-.json({
-
-success:false,
-message:error.message
-
-});
-
-}
-
-}
-
-
-// =====================================
-// DELETE
-// =====================================
+      return res.json({
+        success: true,
+        message: "Updated successfully",
+        data: safeUser
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 
 @Delete("/:id")
 @Middleware([
 authenticateMiddleware
 ])
-public async delete(
-req:any,
-res:any
-){
+  public async delete(
+    req: any,
+    res: any
+  ) {
+    try {
+      if (!req.user.isSuperAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "Only Super Admin"
+        });
+      }
 
-try{
+      const userId = Number(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid user id"
+        });
+      }
 
-if(
-!req.user.isSuperAdmin
-){
+      const { Register } = require("../entities/register");
+      let repo = dataSource.getRepository(User);
+      let isCustomer = false;
 
-return res.status(403)
-.json({
+      const existsInUser = await repo.findOne({ where: { id: userId } });
+      if (!existsInUser) {
+        isCustomer = true;
+      }
 
-success:false,
-message:"Only Super Admin"
+      if (isCustomer) {
+        repo = dataSource.getRepository(Register) as any;
+      }
 
-});
+      const result = await repo.delete(userId);
 
-}
+      if (!result.affected) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found"
+        });
+      }
 
-const repo=
-dataSource.getRepository(
-User
-);
-
-const result=
-await repo.delete(
-Number(req.params.id)
-);
-
-if(!result.affected){
-
-return res.status(404)
-.json({
-
-success:false,
-message:"User not found"
-
-});
-
-}
-
-return res.json({
-
-success:true,
-message:"Deleted successfully"
-
-});
-
-}
-catch(error:any){
-
-return res.status(500)
-.json({
-
-success:false,
-message:error.message
-
-});
-
-}
-
-}
+      return res.json({
+        success: true,
+        message: "Deleted successfully"
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
 
 }
