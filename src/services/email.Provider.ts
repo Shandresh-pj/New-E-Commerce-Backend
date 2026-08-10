@@ -25,10 +25,38 @@ function getClient(): Resend | null {
   return resendClient;
 }
 
-// ─── Sender address ───────────────────────────────────────────────────────
-// Use your verified domain on Resend, e.g: "SVK E-Com <noreply@svkdthworld.shop>"
-// Until domain is verified, use: "SVK E-Com <onboarding@resend.dev>"
-const FROM_ADDRESS = "SVK E-Com <noreply@svkdthworld.shop>";
+/**
+ * Returns the dynamic FROM sender address configured in environment variables.
+ * Defaults to verified onboarding address if unconfigured.
+ */
+function getFromAddress(): string {
+  return process.env.EMAIL_FROM || "SVK E-Com <onboarding@resend.dev>";
+}
+
+/**
+ * Helper to convert HTML to clean plain text.
+ * Multi-part MIME (HTML + Text) is required by SPF/DKIM/spam algorithms
+ * to prevent emails from being marked as spam by Gmail/Outlook.
+ */
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<br\s*[\/]?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/h[1-6]>/gi, "\n\n")
+    .replace(/<li[^>]*>/gi, "• ")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<a[^>]*href="([^"]+)"[^>]*>(.*?)<\/a>/gi, "$2 ($1)")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/\n\s+\n/g, "\n\n")
+    .trim();
+}
 
 export class EmailProvider {
   private static MAX_RETRIES = 3;
@@ -41,31 +69,29 @@ export class EmailProvider {
     const client = getClient();
     if (!client) return;
 
+    const fromAddr = getFromAddress();
+
     try {
-      // Resend doesn't have a "verify" API, so we check by listing domains
-      // This confirms the API key is valid
       const result = await client.domains.list();
       if (result.error) {
         throw new Error(result.error.message);
       }
       smtpStatus = "ok";
       console.log("✅ [EmailProvider] Resend API verified. Email service is active.");
-      console.log(`✅ [EmailProvider] Sending from: ${FROM_ADDRESS}`);
+      console.log(`✅ [EmailProvider] Sending from: ${fromAddr}`);
     } catch (error: any) {
       const msg = error?.message || String(error);
-      
-      // If the user created a "Sending Only" key, it will fail the domains.list() 
-      // but it is still perfectly valid for sending emails!
+
       if (msg.includes("restricted") || msg.includes("only send emails")) {
         smtpStatus = "ok";
         console.log("✅ [EmailProvider] Resend API key verified (Sending Only mode).");
-        console.log(`✅ [EmailProvider] Sending from: ${FROM_ADDRESS}`);
+        console.log(`✅ [EmailProvider] Sending from: ${fromAddr}`);
         return;
       }
 
       smtpStatus = "failed";
       if (msg.includes("401") || msg.includes("invalid_api_key") || msg.includes("Unauthorized")) {
-        console.error("❌ [EmailProvider] Invalid RESEND_API_KEY — please check your Render env vars.");
+        console.error("❌ [EmailProvider] Invalid RESEND_API_KEY — please check your env vars.");
       } else {
         console.error("❌ [EmailProvider] Resend verification failed:", msg);
       }
@@ -74,12 +100,14 @@ export class EmailProvider {
 
   /**
    * Sends an email via Resend HTTP API with exponential backoff retry.
-   * Uses HTTPS (port 443) — works on ALL cloud providers including Render free tier.
+   * Includes anti-spam MIME multi-part (HTML + PlainText) and RFC-compliant headers
+   * to guarantee INBOX delivery and prevent spam classification.
    */
   public static async sendWithRetry(mailOptions: {
     to: string | string[];
     subject: string;
     html: string;
+    text?: string;
     from?: string;
     attachments?: Array<{ filename: string; path?: string; content?: Buffer }>;
   }): Promise<void> {
@@ -94,18 +122,23 @@ export class EmailProvider {
     const sendInDev = process.env.SEND_EMAIL_LOCAL === "true" || process.env.FORCE_SEND_EMAIL === "true";
 
     const recipients = Array.isArray(mailOptions.to) ? mailOptions.to : [mailOptions.to];
+    const sender = mailOptions.from || getFromAddress();
+
+    // Extract domain for List-Unsubscribe header
+    const domainMatch = sender.match(/@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    const senderDomain = domainMatch ? domainMatch[1] : "svkdthworld.shop";
 
     // If not production and not explicitly enabled via SEND_EMAIL_LOCAL, mock and display preview
     if (!isProd && !sendInDev) {
       console.log(`\n📧 [DEV MODE] Email mocked (not sent via Resend API)`);
+      console.log(`   From:    ${sender}`);
       console.log(`   To:      ${recipients.join(", ")}`);
       console.log(`   Subject: ${mailOptions.subject}`);
-      
-      // Extract key details from HTML so developer/tester can see passwords & links right in terminal
+
       const pwdMatch = mailOptions.html.match(/password[:\s<>bstrong/]+([a-zA-Z0-9@#\$\^&\*_-]{6,30})/i) || mailOptions.html.match(/>([a-zA-Z0-9@#\$\^&\*_-]{8,16})<\//);
       const otpMatch = mailOptions.html.match(/([0-9]{4,6})/);
       const urlMatch = mailOptions.html.match(/href="([^"]+)"/i);
-      
+
       if (pwdMatch) console.log(`   🔑 Password Preview: ${pwdMatch[1]}`);
       if (otpMatch && mailOptions.subject.toLowerCase().includes("otp")) console.log(`   🔢 OTP Code: ${otpMatch[1]}`);
       if (urlMatch) console.log(`   🔗 Action URL:       ${urlMatch[1]}`);
@@ -113,18 +146,21 @@ export class EmailProvider {
       return;
     }
 
+    const plainTextBody = mailOptions.text || htmlToPlainText(mailOptions.html);
+
     for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
       try {
         const { data, error } = await client.emails.send({
-          from: mailOptions.from || FROM_ADDRESS,
+          from: sender,
           to: recipients,
           subject: mailOptions.subject,
           html: mailOptions.html,
-          replyTo: "noreply@svkdthworld.shop",
+          text: plainTextBody,
+          replyTo: process.env.REPLY_TO_EMAIL || "support@svkdthworld.shop",
           headers: {
-            "X-No-Forward": "true",
-            "Sensitivity": "Private",
-            "X-Auto-Response-Suppress": "All"
+            "Auto-Submitted": "auto-generated",
+            "X-Auto-Response-Suppress": "OOF, AutoReply, All",
+            "X-Entity-Ref-ID": `svk-msg-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
           },
           attachments: mailOptions.attachments?.map((a) => ({
             filename: a.filename,

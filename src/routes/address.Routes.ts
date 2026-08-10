@@ -10,18 +10,9 @@ interface AuthRequest extends Request {
 
 const router = Router();
 
-// The global auth gate (app.ts) guarantees a valid token before this
-// router runs, so req.user.id is always present here.
 function getUserId(req: AuthRequest): number {
   return Number((req.user as JwtPayload)?.id);
 }
-
-/**
- * @swagger
- * tags:
- *   name: Address
- *   description: User delivery address management
- */
 
 /**
  * @swagger
@@ -43,10 +34,45 @@ function getUserId(req: AuthRequest): number {
  *               properties:
  *                 success:
  *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Addresses fetched successfully"
  *                 data:
  *                   type: array
  *                   items:
- *                     $ref: '#/components/schemas/Address'
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       label:
+ *                         type: string
+ *                         example: "Home"
+ *                       name:
+ *                         type: string
+ *                         example: "John Doe"
+ *                       phone:
+ *                         type: string
+ *                         example: "+919876543210"
+ *                       line1:
+ *                         type: string
+ *                         example: "123 Main Street"
+ *                       line2:
+ *                         type: string
+ *                         example: "Apartment 4B"
+ *                       city:
+ *                         type: string
+ *                         example: "Bengaluru"
+ *                       state:
+ *                         type: string
+ *                         example: "Karnataka"
+ *                       pincode:
+ *                         type: string
+ *                         example: "560001"
+ *                       isDefault:
+ *                         type: boolean
+ *                         example: true
  *       401:
  *         description: Unauthorized
  */
@@ -84,7 +110,45 @@ router.get(
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/AddressInput'
+ *             type: object
+ *             required:
+ *               - name
+ *               - phone
+ *               - line1
+ *               - city
+ *               - state
+ *               - pincode
+ *             properties:
+ *               label:
+ *                 type: string
+ *                 example: "Home"
+ *               name:
+ *                 type: string
+ *                 example: "John Doe"
+ *               phone:
+ *                 type: string
+ *                 example: "+919876543210"
+ *               line1:
+ *                 type: string
+ *                 example: "123 Main Street"
+ *               line2:
+ *                 type: string
+ *                 example: "Near City Park"
+ *               city:
+ *                 type: string
+ *                 example: "Bengaluru"
+ *               state:
+ *                 type: string
+ *                 example: "Karnataka"
+ *               pincode:
+ *                 type: string
+ *                 example: "560001"
+ *               isDefault:
+ *                 type: boolean
+ *                 example: true
+ *               receiver_type:
+ *                 type: string
+ *                 example: "myself"
  *     responses:
  *       201:
  *         description: Address saved successfully
@@ -165,7 +229,42 @@ router.post(
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/AddressInput'
+ *             type: object
+ *             required:
+ *               - name
+ *               - phone
+ *               - line1
+ *               - city
+ *               - state
+ *               - pincode
+ *             properties:
+ *               label:
+ *                 type: string
+ *                 example: "Office"
+ *               name:
+ *                 type: string
+ *                 example: "John Doe"
+ *               phone:
+ *                 type: string
+ *                 example: "+919876543210"
+ *               line1:
+ *                 type: string
+ *                 example: "456 Tech Park"
+ *               line2:
+ *                 type: string
+ *                 example: "Building 3"
+ *               city:
+ *                 type: string
+ *                 example: "Bengaluru"
+ *               state:
+ *                 type: string
+ *                 example: "Karnataka"
+ *               pincode:
+ *                 type: string
+ *                 example: "560100"
+ *               isDefault:
+ *                 type: boolean
+ *                 example: false
  *     responses:
  *       200:
  *         description: Address updated successfully
@@ -281,6 +380,16 @@ router.delete(
  *         required: true
  *         schema:
  *           type: integer
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isDefault:
+ *                 type: boolean
+ *                 example: true
  *     responses:
  *       200:
  *         description: Default address updated

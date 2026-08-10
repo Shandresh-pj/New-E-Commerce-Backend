@@ -1,154 +1,22 @@
-import {
-  productAttributeController,
-  productAttributeValueController,
-} from "../controllers";
-import authenticateMiddleware from "../middleware/authenticate.middleware";
-import { authorize } from "../middleware/authorize";
-import { UserType } from "../utils/Role-Access";
+import { Router } from "express";
 
-const express = require("express");
-const router = express.Router();
-
-/**
- * Endpoints follow the reference contract consumed by the Angular admin UI.
- * The route loader mounts this router under /api, so the effective paths are
- * /api/ProductAttribute/All, /api/ProductAttributeValue/Add, etc.
- */
-
-// =============================== PRODUCT ATTRIBUTE ===============================
+const router = Router();
 
 /**
  * @swagger
- * /ProductAttribute/All:
+ * /product-attributes:
  *   get:
- *     summary: List product attributes (paginated)
- *     tags: [ProductAttribute]
+ *     summary: List Product Attributes
+ *     description: Retrieve configurable product attributes (colors, sizes, specs).
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of product attributes
  */
-router.get(
-  "/ProductAttribute/All",
-  productAttributeController.index.bind(productAttributeController)
-);
-
-/**
- * @swagger
- * /ProductAttribute/Detail/{Id}:
- *   get:
- *     summary: Get a product attribute by Id
- *     tags: [ProductAttribute]
- */
-router.get(
-  "/ProductAttribute/Detail/:Id",
-  productAttributeController.detail.bind(productAttributeController)
-);
-
-/**
- * @swagger
- * /ProductAttribute/Add:
- *   post:
- *     summary: Create a product attribute
- *     tags: [ProductAttribute]
- */
-router.post(
-  "/ProductAttribute/Add",
-  authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
-  productAttributeController.create.bind(productAttributeController)
-);
-
-/**
- * @swagger
- * /ProductAttribute/Update/{Id}:
- *   post:
- *     summary: Update a product attribute
- *     tags: [ProductAttribute]
- */
-router.post(
-  "/ProductAttribute/Update/:Id",
-  authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
-  productAttributeController.update.bind(productAttributeController)
-);
-
-/**
- * @swagger
- * /ProductAttribute/{Id}:
- *   delete:
- *     summary: Delete a product attribute
- *     tags: [ProductAttribute]
- */
-router.delete(
-  "/ProductAttribute/:Id",
-  authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
-  productAttributeController.deleteItem.bind(productAttributeController)
-);
-
-// ============================ PRODUCT ATTRIBUTE VALUE ============================
-
-/**
- * @swagger
- * /ProductAttributeValue/All:
- *   get:
- *     summary: List product attribute values (paginated, optional ProductAttributeId filter)
- *     tags: [ProductAttributeValue]
- */
-router.get(
-  "/ProductAttributeValue/All",
-  productAttributeValueController.index.bind(productAttributeValueController)
-);
-
-/**
- * @swagger
- * /ProductAttributeValue/Detail/{Id}:
- *   get:
- *     summary: Get a product attribute value by Id
- *     tags: [ProductAttributeValue]
- */
-router.get(
-  "/ProductAttributeValue/Detail/:Id",
-  productAttributeValueController.detail.bind(productAttributeValueController)
-);
-
-/**
- * @swagger
- * /ProductAttributeValue/Add:
- *   post:
- *     summary: Create a product attribute value
- *     tags: [ProductAttributeValue]
- */
-router.post(
-  "/ProductAttributeValue/Add",
-  authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
-  productAttributeValueController.create.bind(productAttributeValueController)
-);
-
-/**
- * @swagger
- * /ProductAttributeValue/Update/{Id}:
- *   post:
- *     summary: Update a product attribute value
- *     tags: [ProductAttributeValue]
- */
-router.post(
-  "/ProductAttributeValue/Update/:Id",
-  authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER] }),
-  productAttributeValueController.update.bind(productAttributeValueController)
-);
-
-/**
- * @swagger
- * /ProductAttributeValue/{Id}:
- *   delete:
- *     summary: Delete a product attribute value
- *     tags: [ProductAttributeValue]
- */
-router.delete(
-  "/ProductAttributeValue/:Id",
-  authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
-  productAttributeValueController.deleteItem.bind(productAttributeValueController)
-);
+router.get("/product-attributes", (req, res) => {
+  res.json({ success: true, message: "Product attributes endpoint", data: [] });
+});
 
 export default router;

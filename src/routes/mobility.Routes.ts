@@ -651,6 +651,18 @@ router.get(
   mobilityController.getVerificationDrivers.bind(mobilityController)
 );
 
+/**
+ * @swagger
+ * /v1/verification/drivers:
+ *   get:
+ *     summary: Driver Verification List (v1 Alias)
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Driver verification list
+ */
 router.get(
   "/v1/verification/drivers",
   authenticateMiddleware,
@@ -677,6 +689,18 @@ router.get(
   mobilityController.getVerificationVehicles.bind(mobilityController)
 );
 
+/**
+ * @swagger
+ * /v1/verification/vehicles:
+ *   get:
+ *     summary: Vehicle Verification List (v1 Alias)
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Vehicle verification list
+ */
 router.get(
   "/v1/verification/vehicles",
   authenticateMiddleware,

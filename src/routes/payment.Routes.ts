@@ -11,10 +11,45 @@ const router = Router();
  * @swagger
  * /payments/create:
  *   post:
- *     summary: Create Payment
+ *     summary: Record Manual Payment
+ *     description: Record a manual / offline payment for an order (cash, card, or UPI).
  *     tags: [Payments]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - order_id
+ *               - amount
+ *               - payment_method
+ *             properties:
+ *               order_id:
+ *                 type: integer
+ *                 example: 5501
+ *               amount:
+ *                 type: number
+ *                 example: 1499.00
+ *               payment_method:
+ *                 type: string
+ *                 enum: [CASH, CARD, UPI, BANK_TRANSFER]
+ *                 example: "UPI"
+ *               transaction_id:
+ *                 type: string
+ *                 example: "TXN8844123"
+ *               notes:
+ *                 type: string
+ *                 example: "Paid via Google Pay"
+ *     responses:
+ *       201:
+ *         description: Payment recorded and order status updated
+ *       400:
+ *         description: Invalid order or payment amount
+ *       404:
+ *         description: Order not found
  */
 router.post(
   "/payments/create",
@@ -31,9 +66,42 @@ router.post(
  * /payments:
  *   get:
  *     summary: Get All Payments
+ *     description: Retrieve all payment records for the active company with optional filters.
  *     tags: [Payments]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: order_id
+ *         schema:
+ *           type: integer
+ *           example: 5501
+ *         description: Filter by order ID
+ *       - in: query
+ *         name: payment_method
+ *         schema:
+ *           type: string
+ *           enum: [CASH, CARD, UPI, RAZORPAY]
+ *         description: Filter by payment method
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, SUCCESS, FAILED]
+ *         description: Filter by payment status
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Payment list retrieved successfully
  */
 router.get(
   "/payments",
@@ -48,13 +116,35 @@ router.get(
  * @swagger
  * /payments/razorpay/create-order:
  *   post:
- *     summary: POST /payments/razorpay/create-order
- *     tags: [Payment]
+ *     summary: Create Razorpay Order
+ *     description: Initiates a Razorpay payment order. Returns a Razorpay order_id and key_id.
+ *     tags: [Payments]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - amount
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 example: 1499.00
+ *               currency:
+ *                 type: string
+ *                 default: "INR"
+ *                 example: "INR"
+ *               receipt:
+ *                 type: string
+ *                 example: "rcpt_ord5501"
  *     responses:
  *       200:
- *         description: Success
+ *         description: Razorpay order created
+ *       500:
+ *         description: Razorpay API error
  */
 router.post(
   "/payments/razorpay/create-order",
@@ -69,13 +159,42 @@ router.post(
  * @swagger
  * /payments/razorpay/verify:
  *   post:
- *     summary: POST /payments/razorpay/verify
- *     tags: [Payment]
+ *     summary: Verify Razorpay Payment Signature
+ *     description: Verifies the HMAC-SHA256 signature returned by Razorpay after payment.
+ *     tags: [Payments]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - razorpay_payment_id
+ *               - razorpay_order_id
+ *               - razorpay_signature
+ *               - order_id
+ *             properties:
+ *               razorpay_payment_id:
+ *                 type: string
+ *                 example: "pay_P123456789"
+ *               razorpay_order_id:
+ *                 type: string
+ *                 example: "order_N5GqlgJiknVK1A"
+ *               razorpay_signature:
+ *                 type: string
+ *                 example: "b59c8b3ab47d8c27f5f5b7d2ae04..."
+ *               order_id:
+ *                 type: integer
+ *                 example: 5501
  *     responses:
  *       200:
- *         description: Success
+ *         description: Payment verified and order updated
+ *       400:
+ *         description: Invalid signature
+ *       404:
+ *         description: Order not found
  */
 router.post(
   "/payments/razorpay/verify",

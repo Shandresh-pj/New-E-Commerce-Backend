@@ -18,10 +18,22 @@ const router = Router();
  * /subscriptions/plans:
  *   get:
  *     summary: Get All Subscription Plans
+ *     description: Public endpoint — returns all available subscription plans with pricing and features.
  *     tags: [Subscriptions]
  *     responses:
  *       200:
- *         description: Success
+ *         description: Plans retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/SubscriptionPlan'
  */
 router.get(
   "/subscriptions/plans",
@@ -52,6 +64,7 @@ router.get(
  * /subscriptions/plans:
  *   post:
  *     summary: Create Subscription Plan
+ *     description: Super Admin creates a new subscription tier with monthly/yearly pricing and feature set.
  *     tags: [Subscriptions]
  *     security:
  *       - bearerAuth: []
@@ -61,18 +74,42 @@ router.get(
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - name
+ *               - monthly_price
+ *               - yearly_price
  *             properties:
  *               name:
  *                 type: string
+ *                 example: Pro Plan
+ *                 description: "**REQUIRED** Plan name"
  *               monthly_price:
  *                 type: number
+ *                 example: 999.00
+ *                 description: "**REQUIRED** Monthly billing price in INR"
  *               yearly_price:
  *                 type: number
+ *                 example: 9999.00
+ *                 description: "**REQUIRED** Annual billing price in INR"
  *               trial_days:
- *                 type: number
+ *                 type: integer
+ *                 example: 14
+ *                 description: Optional free trial period in days (0 = no trial)
+ *               features:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Unlimited Users", "POS Billing", "Advanced Reports"]
+ *                 description: Optional list of plan features
+ *               is_active:
+ *                 type: boolean
+ *                 example: true
+ *                 description: Optional — defaults to true
  *     responses:
- *       200:
- *         description: Success
+ *       201:
+ *         description: Subscription plan created
+ *       403:
+ *         description: Super Admin only
  */
 router.post(
   "/subscriptions/plans",
@@ -231,11 +268,26 @@ router.post(
  * @swagger
  * /subscriptions/webhook:
  *   post:
- *     summary: Razorpay Webhook Endpoint
+ *     summary: Razorpay Subscription Webhook Endpoint
+ *     description: Receiver for automated Razorpay subscription recurring payment notifications.
  *     tags: [Subscriptions]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - event
+ *             properties:
+ *               event:
+ *                 type: string
+ *                 example: "subscription.charged"
+ *               payload:
+ *                 type: object
  *     responses:
  *       200:
- *         description: Webhook received successfully
+ *         description: Webhook processed successfully
  */
 router.post(
   "/subscriptions/webhook",

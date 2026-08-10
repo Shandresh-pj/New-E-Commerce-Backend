@@ -90,8 +90,10 @@ router.post(
  *   post:
  *     tags:
  *       - Super Admin
- *     summary: Select Company and Branch Context
- *     description: After login user selects company + branch + role to generate JWT
+ *     summary: Select Company & Branch Context
+ *     description: >  
+ *       After initial login (no company context), the user selects which company,
+ *       branch and role to operate under. A scoped JWT token is returned.
  *     requestBody:
  *       required: true
  *       content:
@@ -105,15 +107,25 @@ router.post(
  *             properties:
  *               userId:
  *                 type: number
+ *                 example: 1
+ *                 description: "**REQUIRED** User ID"
  *               companyId:
  *                 type: number
+ *                 example: 1
+ *                 description: "**REQUIRED** Company ID to switch context to"
  *               branchId:
  *                 type: number
+ *                 example: 2
+ *                 description: Optional branch ID (required for branch-scoped roles)
  *               roleId:
  *                 type: number
+ *                 example: 3
+ *                 description: "**REQUIRED** Role ID to assume"
  *     responses:
  *       200:
- *         description: JWT generated successfully
+ *         description: Scoped JWT token returned
+ *       403:
+ *         description: User does not have access to this company/branch/role combination
  */
 router.post(
   "/auth/select-context",
@@ -128,8 +140,12 @@ router.post(
  *   delete:
  *     tags:
  *       - Super Admin
- *     summary: Select Company and Branch Context
- *     description: After login user selects company + branch + role to generate JWT
+ *     summary: Remove User Access
+ *     description: >  
+ *       Revokes a user's access to a specific company/branch/role combination.
+ *       The user will no longer be able to log into that context.
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -143,15 +159,27 @@ router.post(
  *             properties:
  *               userId:
  *                 type: number
+ *                 example: 42
+ *                 description: "**REQUIRED** User ID to revoke access from"
  *               companyId:
  *                 type: number
+ *                 example: 1
+ *                 description: "**REQUIRED** Company ID"
  *               branchId:
  *                 type: number
+ *                 example: 2
+ *                 description: Optional branch ID (if access is branch-scoped)
  *               roleId:
  *                 type: number
+ *                 example: 3
+ *                 description: "**REQUIRED** Role ID to revoke"
  *     responses:
  *       200:
- *         description: JWT generated successfully
+ *         description: User access revoked successfully
+ *       403:
+ *         description: Only Superadmin can revoke access
+ *       404:
+ *         description: User access record not found
  */
 router.delete(
   "/auth/removeUserAccess",

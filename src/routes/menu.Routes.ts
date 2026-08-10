@@ -13,8 +13,14 @@ const router = Router();
  *   get:
  *     tags: [Menus]
  *     summary: Get Menus with Permissions
+ *     description: Retrieve all navigation menu items and user permission matrix.
  *     security:
  *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of menus retrieved
+ *       401:
+ *         description: Unauthorized
  */
 router.get(
   "/menus",
@@ -29,8 +35,21 @@ router.get(
  *   get:
  *     tags: [Menus]
  *     summary: Get Menu by ID
+ *     description: Retrieve menu item details by ID.
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Menu ID
+ *     responses:
+ *       200:
+ *         description: Menu details
+ *       404:
+ *         description: Menu not found
  */
 router.get(
   "/menus/:id",
@@ -45,8 +64,40 @@ router.get(
  *   post:
  *     tags: [Menus]
  *     summary: Create Menu + Auto Permissions
+ *     description: Add a new navigation menu item (Super Admin only).
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - path
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Inventory Control"
+ *               path:
+ *                 type: string
+ *                 example: "/inventory"
+ *               icon:
+ *                 type: string
+ *                 example: "box-icon"
+ *               parent_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 example: null
+ *               sort_order:
+ *                 type: integer
+ *                 example: 1
+ *     responses:
+ *       201:
+ *         description: Menu created
+ *       400:
+ *         description: Missing required fields
  */
 router.post(
   "/menus",
@@ -61,9 +112,39 @@ router.post(
  * /menus/bulk:
  *   post:
  *     tags: [Menus]
- *     summary: Create Menus in bulk
+ *     summary: Create Menus in Bulk
+ *     description: Create multiple navigation menu items in one operation.
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - menus
+ *             properties:
+ *               menus:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - name
+ *                     - path
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                       example: "Reports"
+ *                     path:
+ *                       type: string
+ *                       example: "/reports"
+ *                     icon:
+ *                       type: string
+ *                       example: "chart-icon"
+ *     responses:
+ *       201:
+ *         description: Menus created successfully
  */
 router.post(
   "/menus/bulk",
@@ -79,8 +160,39 @@ router.post(
  *   put:
  *     tags: [Menus]
  *     summary: Update Menu
+ *     description: Update navigation menu details.
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Updated Menu Title"
+ *               path:
+ *                 type: string
+ *                 example: "/updated-path"
+ *               icon:
+ *                 type: string
+ *                 example: "new-icon"
+ *               sort_order:
+ *                 type: integer
+ *                 example: 2
+ *     responses:
+ *       200:
+ *         description: Menu updated successfully
+ *       404:
+ *         description: Menu not found
  */
 router.put(
   "/menus/update/:id",
@@ -96,8 +208,20 @@ router.put(
  *   delete:
  *     tags: [Menus]
  *     summary: Delete Menu
+ *     description: Remove a navigation menu item by ID.
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Menu deleted successfully
+ *       404:
+ *         description: Menu not found
  */
 router.delete(
   "/menus/delete/:id",

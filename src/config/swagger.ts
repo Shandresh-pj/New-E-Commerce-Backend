@@ -1,6 +1,10 @@
+import path from "path";
 import swaggerJsDoc from "swagger-jsdoc";
 
 const baseUrl = process.env.APP_URL || "http://localhost:3000/api";
+
+const toGlobPath = (relativePath: string) =>
+  path.join(__dirname, relativePath).replace(/\\/g, "/");
 
 const options = {
   definition: {
@@ -35,7 +39,10 @@ const options = {
     ]
   },
 
-  apis: ["./src/routes/**/*.ts", "./src/controllers/**/*.ts"]
+  apis: [
+    toGlobPath("../routes/**/*.{ts,js}"),
+    toGlobPath("../controllers/**/*.{ts,js}")
+  ]
 };
 
 export const swaggerSpec = swaggerJsDoc(options);

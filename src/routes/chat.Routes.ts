@@ -91,12 +91,32 @@ router.get("/chat/messages/:conversationId", authenticateMiddleware, (req, res) 
  * /chat/upload:
  *   post:
  *     summary: Upload Attachment or Voice Note
+ *     description: Upload image, document, or audio attachment for chat message.
  *     tags: [Secure Chat & Calls]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image/Audio/Document file binary (Required)
+ *               conversation_id:
+ *                 type: integer
+ *                 example: 101
+ *                 description: Chat conversation ID
  *     responses:
  *       200:
  *         description: File uploaded successfully
+ *       400:
+ *         description: No file uploaded
  */
 router.post("/chat/upload", authenticateMiddleware, (req, res) => chatController.uploadFile(req, res));
 
@@ -187,14 +207,18 @@ router.get("/chat/statuses", authenticateMiddleware, (req, res) => chatControlle
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - text
  *             properties:
  *               text:
  *                 type: string
+ *                 example: "In a meeting until 3 PM"
  *               media_url:
  *                 type: string
+ *                 example: "/uploads/images/status-1.jpg"
  *               type:
  *                 type: string
- *                 example: TEXT
+ *                 example: "TEXT"
  *     responses:
  *       200:
  *         description: Status update posted
@@ -215,9 +239,12 @@ router.post("/chat/statuses", authenticateMiddleware, (req, res) => chatControll
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - conversation_id
  *             properties:
  *               conversation_id:
  *                 type: integer
+ *                 example: 101
  *     responses:
  *       200:
  *         description: Chat cleared
@@ -238,9 +265,12 @@ router.post("/chat/clear", authenticateMiddleware, (req, res) => chatController.
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - conversation_id
  *             properties:
  *               conversation_id:
  *                 type: integer
+ *                 example: 101
  *     responses:
  *       200:
  *         description: Conversation deleted
@@ -261,11 +291,16 @@ router.post("/chat/delete-conversation", authenticateMiddleware, (req, res) => c
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - conversation_id
+ *               - public_key
  *             properties:
  *               conversation_id:
  *                 type: integer
+ *                 example: 101
  *               public_key:
  *                 type: string
+ *                 example: "RSA-PUBLIC-KEY-BASE64..."
  *     responses:
  *       200:
  *         description: Public key registered

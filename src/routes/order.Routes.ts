@@ -16,40 +16,76 @@ const router = Router();
  * @swagger
  * /orders/create:
  *   post:
- *     summary: Create Order
- *     description: Creates a new order with stock validation and safe invoice generation.
+ *     summary: Create New Order
+ *     description: Creates a new customer or POS order with real-time stock allocation and sequential invoice generation.
  *     tags: [Orders]
  *     security:
  *       - bearerAuth: []
- *
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - items
  *             properties:
  *               company_id:
  *                 type: integer
+ *                 example: 1
+ *                 description: Target company ID (Optional)
+ *               branch_id:
+ *                 type: integer
+ *                 example: 1
+ *                 description: Fulfillment branch ID (Optional)
  *               requested_invoice_no:
  *                 type: string
+ *                 example: "INV-2026-0891"
+ *                 description: Custom requested invoice number (Optional)
  *               payment:
  *                 type: object
  *                 properties:
  *                   method:
  *                     type: string
+ *                     enum: [CASH, CARD, UPI, RAZORPAY, NETBANKING]
+ *                     example: "UPI"
  *                   status:
  *                     type: string
+ *                     enum: [PENDING, PAID, FAILED]
+ *                     example: "PAID"
+ *                   transaction_id:
+ *                     type: string
+ *                     example: "pay_N8x2yZ99"
  *               items:
  *                 type: array
+ *                 description: List of line items (Required)
  *                 items:
  *                   type: object
- *
+ *                   required:
+ *                     - product_id
+ *                     - quantity
+ *                     - price
+ *                   properties:
+ *                     product_id:
+ *                       type: integer
+ *                       example: 101
+ *                     quantity:
+ *                       type: integer
+ *                       example: 2
+ *                     price:
+ *                       type: number
+ *                       example: 1299.00
  *     responses:
  *       201:
  *         description: Order created successfully
- *       500:
- *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       400:
+ *         description: Insufficient stock or invalid payload
+ *       401:
+ *         description: Unauthorized
  */
 router.post(
   "/orders/create",

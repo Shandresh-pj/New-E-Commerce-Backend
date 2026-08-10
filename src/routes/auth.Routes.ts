@@ -163,48 +163,8 @@ router.post(
  *   post:
  *     tags:
  *       - Auth
- *     summary: Select Company Context
- *     description: Select company, branch and role after login
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *            schema:
- *             type: object
- *             required:
- *               - name
- *               - email
- *               - password
- *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *               mobilenumber:
- *                 type: string
- *               userType : 
- *                 type: string
- *     responses:
- *       200:
- *         description: Context selected successfully
- */
-router.post(
-  "/auth/create-user",
-  authenticateMiddleware,
-  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
-  authController.createUser.bind(authController)
-);
-
-/**
- * @swagger
- * /auth/user/{:id}:
- *   get:
- *     tags:
- *       - Auth
- *     summary: get Id Based On User
- *     description: Super Admin can create Admin, Branch Manager, Employee and Customer users
+ *     summary: Create User (Admin Only)
+ *     description: Admin/SuperAdmin can create system users with assigned role and branch
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -216,14 +176,71 @@ router.post(
  *             required:
  *               - name
  *               - email
+ *               - password
  *               - userType
  *             properties:
- *               
+ *               name:
+ *                 type: string
+ *                 example: "Jane Smith"
+ *                 description: User full name (Required)
+ *               email:
+ *                 type: string
+ *                 example: "jane.smith@example.com"
+ *                 description: User email address (Required)
+ *               password:
+ *                 type: string
+ *                 example: "Password@123"
+ *                 description: User password (Required)
+ *               mobilenumber:
+ *                 type: string
+ *                 example: "+919876543211"
+ *                 description: User mobile number (Optional)
+ *               userType:
+ *                 type: string
+ *                 enum: [ADMIN, BRANCH_MANAGER, SHOPKEEPER, DELIVERY_BOY, EMPLOYEE, CUSTOMER]
+ *                 example: "EMPLOYEE"
+ *                 description: Role assigned to user (Required)
+ *               branchId:
+ *                 type: string
+ *                 example: "br_001"
+ *                 description: Assigned branch ID (Optional)
  *     responses:
  *       201:
  *         description: User created successfully
+ *       400:
+ *         description: Invalid input or email already exists
  *       403:
  *         description: Access denied
+ */
+router.post(
+  "/auth/create-user",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
+  authController.createUser.bind(authController)
+);
+
+/**
+ * @swagger
+ * /auth/user/{id}:
+ *   get:
+ *     tags:
+ *       - Auth
+ *     summary: Get User By ID
+ *     description: Fetch detailed profile of a user by user ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID (Required)
+ *     responses:
+ *       200:
+ *         description: User profile retrieved
+ *       404:
+ *         description: User not found
  */
 router.get(
   "/auth/user/:id",
@@ -238,30 +255,34 @@ router.get(
  *   get:
  *     tags:
  *       - Auth
- *     summary: All Users 
- *     description: Select company, branch and role after login
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - user_id
- *               - company_id
- *               - role_id
- *             properties:
- *               user_id:
- *                 type: number
- *               company_id:
- *                 type: number
- *               branch_id:
- *                 type: number
- *               role_id:
- *                 type: number
+ *     summary: Get All Users
+ *     description: Retrieve list of all registered users with optional search and role filtering
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number (Optional)
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page (Optional)
+ *       - in: query
+ *         name: role
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Filter by user role (Optional)
  *     responses:
  *       200:
- *         description: Context selected successfully
+ *         description: List of users retrieved
  */
 router.get(
   "/auth/get-users",
@@ -272,34 +293,26 @@ router.get(
 
 /**
  * @swagger
- * /auth/delete/{:id}:
+ * /auth/delete/{id}:
  *   delete:
  *     tags:
  *       - Auth
- *     summary: Delete Users
- *     description: Select company, branch 
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - user_id
- *               - company_id
- *               - role_id
- *             properties:
- *               user_id:
- *                 type: number
- *               company_id:
- *                 type: number
- *               branch_id:
- *                 type: number
- *               role_id:
- *                 type: number
+ *     summary: Delete User
+ *     description: Delete a user profile by ID (Admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID to delete (Required)
  *     responses:
  *       200:
- *         description: Context selected successfully
+ *         description: User deleted successfully
+ *       404:
+ *         description: User not found
  */
 router.delete(
   "/auth/delete/:id",
@@ -313,7 +326,8 @@ router.delete(
  * @swagger
  * /auth/admin-set-password/{userId}:
  *   put:
- *     summary: PUT /auth/admin-set-password/:userId
+ *     summary: Admin Override User Password
+ *     description: Directly update a user's password without requiring old password verification (Super Admin only).
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
@@ -322,10 +336,43 @@ router.delete(
  *         name: userId
  *         required: true
  *         schema:
- *           type: string
+ *           type: integer
+ *         description: ID of user whose password is being reset
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - newPassword
+ *             properties:
+ *               newPassword:
+ *                 type: string
+ *                 example: "AdminResetPass123!"
+ *                 description: New secure password (min 6 characters)
  *     responses:
  *       200:
- *         description: Success
+ *         description: User password updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "User password updated successfully"
+ *       400:
+ *         description: Invalid password format or missing parameter
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Super Admin required
+ *       404:
+ *         description: User not found
  */
 router.put(
   "/auth/admin-set-password/:userId",
@@ -364,7 +411,7 @@ router.get(
  * /auth/verify/{token}:
  *   get:
  *     tags:
- *       - Authentication
+ *       - Auth
  *     summary: Verify user email
  *     description: Verify email using verification token sent to user email
  *     parameters:
@@ -388,21 +435,8 @@ router.get(
  *                 message:
  *                   type: string
  *                   example: Email verified successfully
- *
  *       400:
  *         description: Invalid or expired token
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   example: Invalid or already used token
- *
  *       500:
  *         description: Internal server error
  */
@@ -417,8 +451,39 @@ router.get(
  * /auth/refresh:
  *   post:
  *     tags: [Auth]
- *     summary: Refresh access token
- *     description: Exchange valid refresh token for a new access token
+ *     summary: Refresh Access Token
+ *     description: Exchange a valid refresh token for a new short-lived JWT access token.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 example: "eyJhbGciOiJIUzI1NiIsIn..."
+ *                 description: Valid refresh token string
+ *     responses:
+ *       200:
+ *         description: New access token issued successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 token:
+ *                   type: string
+ *                   example: "eyJhbGciOiJIUzI1NiIsIn..."
+ *       400:
+ *         description: Missing or invalid refresh token
+ *       401:
+ *         description: Token expired or revoked
  */
 router.post(
   "/auth/refresh",
@@ -430,8 +495,34 @@ router.post(
  * /auth/logout:
  *   post:
  *     tags: [Auth]
- *     summary: Logout / Revoke token
- *     description: Invalidate refresh token on logout
+ *     summary: User Logout
+ *     description: Invalidate refresh token and clear active user session.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 example: "eyJhbGciOiJIUzI1NiIsIn..."
+ *     responses:
+ *       200:
+ *         description: Logged out successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Logged out successfully"
  */
 router.post(
   "/auth/logout",

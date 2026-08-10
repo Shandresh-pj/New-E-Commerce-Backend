@@ -20,7 +20,27 @@ const router = Router();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CreateContactDto'
+ *             type: object
+ *             required:
+ *               - companyName
+ *               - email
+ *               - phone
+ *             properties:
+ *               companyName:
+ *                 type: string
+ *                 example: "SVK Enterprise"
+ *               email:
+ *                 type: string
+ *                 example: "contact@svkenterprise.com"
+ *               phone:
+ *                 type: string
+ *                 example: "+919876543210"
+ *               contactPerson:
+ *                 type: string
+ *                 example: "Rajesh Kumar"
+ *               address:
+ *                 type: string
+ *                 example: "MG Road, Bengaluru"
  *     responses:
  *       201:
  *         description: Contact created successfully
@@ -33,15 +53,29 @@ router.post(
   contactController.create.bind(contactController)
 );
 
-
 /**
  * @swagger
  * /contact/check-duplicate:
  *   post:
  *     tags: [Contacts]
  *     summary: Check duplicate email/company/phone
+ *     description: Verify if an email, phone number, or company name already exists.
  *     requestBody:
  *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "test@example.com"
+ *               phone:
+ *                 type: string
+ *                 example: "+919876543210"
+ *               companyName:
+ *                 type: string
+ *                 example: "SVK DTH"
  *     responses:
  *       200:
  *         description: Duplicate check completed
@@ -57,17 +91,29 @@ router.post(
  *   post:
  *     tags: [Contacts]
  *     summary: Verify email using token
+ *     description: Verify user contact email address using secret verification token.
  *     requestBody:
  *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: "VERIFY-TOKEN-998241"
  *     responses:
  *       200:
- *         description: Email verified
+ *         description: Email verified successfully
+ *       400:
+ *         description: Invalid or expired token
  */
 router.post(
   "/contact/verify-email",
   contactController.verifyEmail.bind(contactController)
 );
-
 
 /**
  * @swagger
@@ -75,12 +121,28 @@ router.post(
  *   post:
  *     tags: [Contacts]
  *     summary: Complete account setup
- *     description: Creates Company, Admin User and Role Mapping.
+ *     description: Creates Company, Admin User and Role Mapping with initial password.
  *     requestBody:
  *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - password
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: "SETUP-TOKEN-12345"
+ *               password:
+ *                 type: string
+ *                 example: "SecurePass123!"
  *     responses:
  *       200:
  *         description: Password setup completed
+ *       400:
+ *         description: Invalid token or password
  */
 router.post(
   "/contact/setup-password",
@@ -197,6 +259,7 @@ router.get(
  *       - bearerAuth: []
  *     tags: [Contacts]
  *     summary: Update Contact
+ *     description: Update business contact details.
  *     parameters:
  *       - in: path
  *         name: id
@@ -208,10 +271,25 @@ router.get(
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateContactDto'
+ *             type: object
+ *             properties:
+ *               companyName:
+ *                 type: string
+ *                 example: "SVK Enterprise Updated"
+ *               contactPerson:
+ *                 type: string
+ *                 example: "Rajesh Kumar"
+ *               phone:
+ *                 type: string
+ *                 example: "+919876543210"
+ *               address:
+ *                 type: string
+ *                 example: "MG Road, Bengaluru"
  *     responses:
  *       200:
- *         description: Contact updated
+ *         description: Contact updated successfully
+ *       404:
+ *         description: Contact not found
  */
 router.put(
   "/contacts/:id",
@@ -229,16 +307,29 @@ router.put(
  *     security:
  *       - bearerAuth: []
  *     tags: [Contacts]
- *     summary: Approve Contact
+ *     summary: Approve Contact Registration
+ *     description: Approve business contact registration and issue tenant credentials.
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               notes:
+ *                 type: string
+ *                 example: "Approved after document check"
  *     responses:
  *       200:
- *         description: Contact approved
+ *         description: Contact approved successfully
+ *       404:
+ *         description: Contact not found
  */
 router.post(
   "/contacts/:id/approve",
@@ -255,16 +346,29 @@ router.post(
  *     security:
  *       - bearerAuth: []
  *     tags: [Contacts]
- *     summary: Reject Contact
+ *     summary: Reject Contact Registration
+ *     description: Reject business contact registration request with reason.
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 example: "Incomplete company registration details"
  *     responses:
  *       200:
  *         description: Contact rejected
+ *       404:
+ *         description: Contact not found
  */
 router.post(
   "/contacts/:id/reject",
@@ -282,15 +386,28 @@ router.post(
  *       - bearerAuth: []
  *     tags: [Contacts]
  *     summary: Restore Soft Deleted Contact
+ *     description: Restore a previously deleted contact record.
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 example: "Restored by admin"
  *     responses:
  *       200:
- *         description: Contact restored
+ *         description: Contact restored successfully
+ *       404:
+ *         description: Contact not found
  */
 router.post(
   "/contacts/:id/restore",

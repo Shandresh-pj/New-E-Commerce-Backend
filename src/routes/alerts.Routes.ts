@@ -10,10 +10,59 @@ const router = Router();
  * @swagger
  * /alerts:
  *   get:
- *     summary: Get low stock alerts
+ *     summary: Get Low Stock Alerts
+ *     description: Retrieve list of low stock inventory alerts for branches and main warehouse.
  *     tags: [Alerts]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of records per page
+ *     responses:
+ *       200:
+ *         description: Low stock alerts retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Low stock alerts fetched"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       product_name:
+ *                         type: string
+ *                         example: "HD Set Top Box"
+ *                       current_stock:
+ *                         type: integer
+ *                         example: 3
+ *                       threshold:
+ *                         type: integer
+ *                         example: 10
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Requires Admin or Branch Manager role
  */
 router.get(
   "/alerts",
@@ -28,10 +77,25 @@ router.get(
  * @swagger
  * /alerts/{id}:
  *   delete:
- *     summary: Dismiss/Delete alert
+ *     summary: Dismiss Low Stock Alert
+ *     description: Dismiss or remove a specific inventory alert.
  *     tags: [Alerts]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Alert ID to dismiss
+ *     responses:
+ *       200:
+ *         description: Alert dismissed successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Alert not found
  */
 router.delete(
   "/alerts/:id",
@@ -46,13 +110,52 @@ router.delete(
  * @swagger
  * /notifications:
  *   get:
- *     summary: GET /notifications
+ *     summary: Get User Notifications
+ *     description: Retrieve all unread and read system notifications for the authenticated user.
  *     tags: [Alerts]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [unread, read, all]
+ *           default: all
+ *         description: Filter notifications by status
  *     responses:
  *       200:
- *         description: Success
+ *         description: User notifications retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 101
+ *                       title:
+ *                         type: string
+ *                         example: "Order Shipped"
+ *                       message:
+ *                         type: string
+ *                         example: "Your order ORD-9981 has been dispatched"
+ *                       is_read:
+ *                         type: boolean
+ *                         example: false
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *       401:
+ *         description: Unauthorized
  */
 router.get(
   "/notifications",
@@ -65,7 +168,8 @@ router.get(
  * @swagger
  * /notifications/{id}/read:
  *   put:
- *     summary: PUT /notifications/:id/read
+ *     summary: Mark Notification as Read
+ *     description: Mark a specific user notification as read.
  *     tags: [Alerts]
  *     security:
  *       - bearerAuth: []
@@ -75,9 +179,24 @@ router.get(
  *         required: true
  *         schema:
  *           type: string
+ *         description: Notification ID
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               is_read:
+ *                 type: boolean
+ *                 example: true
  *     responses:
  *       200:
- *         description: Success
+ *         description: Notification marked as read
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Notification not found
  */
 router.put(
   "/notifications/:id/read",
@@ -90,13 +209,26 @@ router.put(
  * @swagger
  * /notifications/read-all:
  *   put:
- *     summary: PUT /notifications/read-all
+ *     summary: Mark All Notifications as Read
+ *     description: Mark all unread notifications for the logged-in user as read.
  *     tags: [Alerts]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               all:
+ *                 type: boolean
+ *                 example: true
  *     responses:
  *       200:
- *         description: Success
+ *         description: All notifications marked as read
+ *       401:
+ *         description: Unauthorized
  */
 router.put(
   "/notifications/read-all",

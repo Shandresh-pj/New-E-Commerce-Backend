@@ -16,10 +16,61 @@ const allRoles = [
  * @swagger
  * /leave/apply:
  *   post:
- *     summary: Apply Leave
+ *     summary: Apply for Employee Leave
+ *     description: Submit a new leave application with leave type, date range, and reason.
  *     tags: [Leave]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - leaveType
+ *               - startDate
+ *               - endDate
+ *               - reason
+ *             properties:
+ *               leaveType:
+ *                 type: string
+ *                 enum: [CASUAL, SICK, EARNED, UNPAID, MATERNITY, PATERNITY]
+ *                 example: CASUAL
+ *                 description: Type of leave requested (Required)
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-08-15"
+ *                 description: Leave start date (YYYY-MM-DD) (Required)
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-08-17"
+ *                 description: Leave end date (YYYY-MM-DD) (Required)
+ *               reason:
+ *                 type: string
+ *                 example: "Attending family function"
+ *                 description: Explanation for leave (Required)
+ *               halfDay:
+ *                 type: boolean
+ *                 example: false
+ *                 description: Whether leave is for half-day (Optional)
+ *               documentUrl:
+ *                 type: string
+ *                 example: "/uploads/documents/medical_certificate.pdf"
+ *                 description: Supporting document attachment (Optional)
+ *     responses:
+ *       201:
+ *         description: Leave application submitted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       400:
+ *         description: Invalid input payload or insufficient balance
+ *       401:
+ *         description: Unauthorized
  */
 router.post(
   "/leave/apply",
@@ -34,9 +85,26 @@ router.post(
  * /leave/balance:
  *   get:
  *     summary: Get Leave Balances for Employee
+ *     description: Retrieve total, used, and remaining leave quotas by employee ID or logged-in user.
  *     tags: [Leave]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: employeeId
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Target employee ID (Admin / Manager only) (Optional)
+ *     responses:
+ *       200:
+ *         description: Leave balance data retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *       401:
+ *         description: Unauthorized
  */
 router.get(
   ["/leave/balance", "/leave/balance/:id"],
@@ -49,10 +117,36 @@ router.get(
  * @swagger
  * /leave/history:
  *   get:
- *     summary: Get Leave History for Employee
+ *     summary: Get Leave History
+ *     description: Retrieve historic leave applications filtered by date range and status.
  *     tags: [Leave]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter applications from date (YYYY-MM-DD) (Optional)
+ *       - in: query
+ *         name: endDate
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter applications to date (YYYY-MM-DD) (Optional)
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, APPROVED, REJECTED, CANCELLED]
+ *         description: Leave status filter (Optional)
+ *     responses:
+ *       200:
+ *         description: Leave history list retrieved
  */
 router.get(
   ["/leave/history", "/leave/history/:id"],
@@ -65,10 +159,36 @@ router.get(
  * @swagger
  * /leave:
  *   get:
- *     summary: Get Leave Requests
+ *     summary: List All Leave Requests (Management)
+ *     description: Fetch leave applications across branch or organization with pagination.
  *     tags: [Leave]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number (Optional)
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page (Optional)
+ *       - in: query
+ *         name: status
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, APPROVED, REJECTED]
+ *         description: Filter by approval status (Optional)
+ *     responses:
+ *       200:
+ *         description: List of leave requests
  */
 router.get(
   "/leave",
@@ -81,10 +201,34 @@ router.get(
  * @swagger
  * /leave/approve/{id}:
  *   put:
- *     summary: Approve Leave
+ *     summary: Approve Leave Application
+ *     description: Approve a pending leave request by ID.
  *     tags: [Leave]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Leave Application ID (Required)
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               remarks:
+ *                 type: string
+ *                 example: "Approved after team cover confirmed"
+ *                 description: Manager approval notes (Optional)
+ *     responses:
+ *       200:
+ *         description: Leave application approved
+ *       404:
+ *         description: Leave request not found
  */
 router.put(
   "/leave/approve/:id",
@@ -101,10 +245,36 @@ router.put(
  * @swagger
  * /leave/reject/{id}:
  *   put:
- *     summary: Reject Leave
+ *     summary: Reject Leave Application
+ *     description: Reject a leave application with mandatory rejection notes.
  *     tags: [Leave]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Leave Application ID (Required)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reason
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 example: "Critical project deadline on requested dates"
+ *                 description: Rejection reason (Required)
+ *     responses:
+ *       200:
+ *         description: Leave application rejected
+ *       400:
+ *         description: Rejection reason is required
  */
 router.put(
   "/leave/reject/:id",
@@ -121,10 +291,23 @@ router.put(
  * @swagger
  * /leave/{id}:
  *   delete:
- *     summary: Delete Leave
+ *     summary: Cancel or Delete Leave Application
+ *     description: Delete a pending leave application.
  *     tags: [Leave]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Leave Application ID (Required)
+ *     responses:
+ *       200:
+ *         description: Leave application deleted
+ *       404:
+ *         description: Leave application not found
  */
 router.delete(
   "/leave/:id",
@@ -137,3 +320,4 @@ router.delete(
 );
 
 export default router;
+

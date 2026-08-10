@@ -30,7 +30,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: "🚀 Welcome to SVK E-Commerce Enterprise — Your Workspace is Ready",
+            subject: "Welcome to SVK E-Commerce — Your Workspace is Ready",
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -49,7 +49,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: `${otp} is your SVK E-Com OTP — Verify Your Email`,
+            subject: `${otp} is your SVK E-Commerce verification code`,
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -69,7 +69,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: "🔐 SVK E-Commerce — Company Admin Account Created",
+            subject: "SVK E-Commerce — Company Admin Account Created",
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -87,7 +87,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: "✅ Verify Your SVK E-Com Registration",
+            subject: "Verify your SVK E-Commerce account registration",
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -105,7 +105,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: "🎉 SVK E-Com Registration Approved — Setup Your Password",
+            subject: "SVK E-Commerce Registration Approved — Account Setup",
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -124,7 +124,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: "🔑 SVK E-Commerce — Password Reset Request",
+            subject: "Password Reset Request — SVK E-Commerce",
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -138,7 +138,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: "🔑 SVK E-Commerce — Password Reset Request",
+            subject: "Password Reset Request — SVK E-Commerce",
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -162,7 +162,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: "🔔 SVK E-Commerce — New Login Detected on Your Account",
+            subject: "Security Notice: New login detected on your SVK E-Commerce account",
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -186,7 +186,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: "🛡️ SVK E-Commerce — Security Alert on Your Account",
+            subject: "Security Notice: Account activity alert — SVK E-Commerce",
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -211,7 +211,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: `✅ Payment Confirmed — ₹${amount} — SVK E-Commerce`,
+            subject: `Payment Receipt: ₹${amount} — SVK E-Commerce`,
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -236,7 +236,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: `❌ Payment Failed — ₹${amount} — Action Required`,
+            subject: `Payment Status: Transaction failed for ₹${amount} — SVK E-Commerce`,
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -265,7 +265,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: `⭐ ${planName} Subscription Activated — SVK E-Commerce`,
+            subject: `Subscription Confirmed: ${planName} Plan — SVK E-Commerce`,
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -292,7 +292,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: `🔄 Upcoming Renewal: Your ${planName} Plan — SVK E-Commerce`,
+            subject: `Subscription Notice: Upcoming renewal for ${planName} Plan — SVK E-Commerce`,
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -317,7 +317,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: `⏰ Your Trial Expires in ${daysRemaining} Days — Upgrade Now`,
+            subject: `Subscription Notice: Your trial expires in ${daysRemaining} days — SVK E-Commerce`,
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -335,7 +335,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: "💬 We've Received Your Message — SVK E-Commerce",
+            subject: "We've received your message — SVK E-Commerce Support",
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -364,7 +364,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: `📦 Order #${orderId} Confirmed — SVK E-Commerce`,
+            subject: `Order Confirmation #${orderId} — SVK E-Commerce`,
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }
@@ -391,7 +391,7 @@ export class EmailService {
 
         EmailProvider.sendWithRetry({
             to: email,
-            subject: `🎫 Support Ticket #${ticketId} Created — SVK E-Commerce`,
+            subject: `Support Ticket #${ticketId} Created — SVK E-Commerce`,
             html
         }).catch(err => console.error("[Email] Background send error:", err.message));
     }

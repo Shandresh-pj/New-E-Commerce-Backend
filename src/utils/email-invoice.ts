@@ -23,7 +23,7 @@ export const sendInvoiceEmail = async (
   // Fire and forget sending with retry logic
   EmailProvider.sendWithRetry({
     to: email,
-    subject: `🧾 Invoice #${invoiceNo} — SVK E-Commerce`,
+    subject: `Invoice #${invoiceNo} — SVK E-Commerce`,
     html: html,
     attachments: [
       {

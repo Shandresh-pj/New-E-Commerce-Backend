@@ -94,7 +94,8 @@ router.post("/attendance/checkin",          authenticateMiddleware, authorize({ 
  * @swagger
  * /attendance/checkout/{id}:
  *   post:
- *     summary: POST /attendance/checkout/:id
+ *     summary: Employee Check Out
+ *     description: Record check-out for active attendance session.
  *     tags: [Attendance]
  *     security:
  *       - bearerAuth: []
@@ -103,10 +104,26 @@ router.post("/attendance/checkin",          authenticateMiddleware, authorize({ 
  *         name: id
  *         required: true
  *         schema:
- *           type: string
+ *           type: integer
+ *         description: Attendance record ID
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               gps_lat:
+ *                 type: number
+ *                 example: 12.9716
+ *               gps_lng:
+ *                 type: number
+ *                 example: 77.5946
  *     responses:
  *       200:
- *         description: Success
+ *         description: Check-out recorded successfully
+ *       404:
+ *         description: Attendance record not found
  */
 router.post("/attendance/checkout/:id",     authenticateMiddleware, authorize({ roles: allRoles }),   attendanceController.checkOut.bind(attendanceController));
 
@@ -158,9 +175,21 @@ router.post("/attendance/break-in",         authenticateMiddleware, authorize({ 
  *         schema:
  *           type: integer
  *         description: Break log ID
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               notes:
+ *                 type: string
+ *                 example: "Returned from lunch break"
  *     responses:
  *       200:
  *         description: Break ended successfully
+ *       404:
+ *         description: Active break session not found
  */
 router.post("/attendance/break-out/:breakLogId", authenticateMiddleware, authorize({ roles: allRoles }), attendanceController.breakOut.bind(attendanceController));
 
@@ -403,9 +432,24 @@ router.post("/attendance/regularize/:id",   authenticateMiddleware, authorize({ 
  *         required: true
  *         schema:
  *           type: integer
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               approved:
+ *                 type: boolean
+ *                 example: true
+ *               comment:
+ *                 type: string
+ *                 example: "Approved by HR manager"
  *     responses:
  *       200:
  *         description: Attendance approved successfully
+ *       404:
+ *         description: Attendance record not found
  */
 router.post("/attendance/approve/:id",      authenticateMiddleware, authorize({ roles: adminRoles }), attendanceController.approve.bind(attendanceController));
 

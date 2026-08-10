@@ -11,10 +11,45 @@ const router = Router();
  * @swagger
  * /stock/update:
  *   post:
- *     summary: Update Product Stock
+ *     summary: Update Product Inventory Stock
+ *     description: Add or deduct physical stock inventory quantity for a product or variant.
  *     tags: [Stock]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - productId
+ *               - quantity
+ *               - type
+ *             properties:
+ *               productId:
+ *                 type: integer
+ *                 example: 101
+ *                 description: Product ID (Required)
+ *               quantity:
+ *                 type: integer
+ *                 example: 25
+ *                 description: Quantity to add or remove (Required)
+ *               type:
+ *                 type: string
+ *                 enum: [ADDITION, DEDUCTION, AUDIT_ADJUSTMENT, RETURN]
+ *                 example: "ADDITION"
+ *                 description: Stock transaction type (Required)
+ *               reason:
+ *                 type: string
+ *                 example: "New shipment arrived from supplier"
+ *     responses:
+ *       200:
+ *         description: Stock updated successfully
+ *       400:
+ *         description: Missing required fields or insufficient stock
+ *       401:
+ *         description: Unauthorized
  */
 router.post(
   "/stock/update",
@@ -30,10 +65,32 @@ router.post(
  * @swagger
  * /stock/logs:
  *   get:
- *     summary: Get all stock logs
+ *     summary: Get Inventory Stock Logs
+ *     description: Retrieve audit logs of all historical stock changes and adjustments.
  *     tags: [Stock]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: productId
+ *         schema:
+ *           type: integer
+ *         description: Filter logs by product ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Stock logs list retrieved
+ *       401:
+ *         description: Unauthorized
  */
 router.get(
   "/stock/logs",
@@ -48,7 +105,8 @@ router.get(
  * @swagger
  * /stock/logs/{id}/approve:
  *   put:
- *     summary: PUT /stock/logs/:id/approve
+ *     summary: Approve Pending Stock Log Adjustment
+ *     description: Approve a pending stock audit/adjustment log (Admin only).
  *     tags: [Stock]
  *     security:
  *       - bearerAuth: []
@@ -57,10 +115,23 @@ router.get(
  *         name: id
  *         required: true
  *         schema:
- *           type: string
+ *           type: integer
+ *         description: Stock log ID
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               comment:
+ *                 type: string
+ *                 example: "Approved by warehouse manager"
  *     responses:
  *       200:
- *         description: Success
+ *         description: Stock log approved
+ *       404:
+ *         description: Stock log not found
  */
 router.put(
   "/stock/logs/:id/approve",

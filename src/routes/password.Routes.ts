@@ -75,8 +75,35 @@ router.post(
  *   post:
  *     tags:
  *       - Password
- *     summary: Change Password (Admin)
- *     description: Admin changes another user's password
+ *     summary: Change User Password (Admin Only)
+ *     description: Admin or Superadmin overrides another user's password directly (no old password required).
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - newPassword
+ *             properties:
+ *               userId:
+ *                 type: integer
+ *                 example: 42
+ *                 description: "**REQUIRED** ID of the user whose password is being changed"
+ *               newPassword:
+ *                 type: string
+ *                 example: "NewPass@2026"
+ *                 description: "**REQUIRED** New password (min 8 chars, must include uppercase, number, and symbol)"
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *       403:
+ *         description: Not authorized to change this user's password
+ *       404:
+ *         description: User not found
  */
 router.post(
   "/password/change-password",
@@ -92,8 +119,39 @@ router.post(
  *   post:
  *     tags:
  *       - Password
- *     summary: Change My Password
- *     description: User changes their own password
+ *     summary: Change My Own Password
+ *     description: Allows a logged-in user to change their own password by providing the current password first.
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - oldPassword
+ *               - newPassword
+ *             properties:
+ *               oldPassword:
+ *                 type: string
+ *                 example: "OldPass@123"
+ *                 description: "**REQUIRED** Current password for verification"
+ *               newPassword:
+ *                 type: string
+ *                 example: "NewPass@2026"
+ *                 description: "**REQUIRED** New password (min 8 chars)"
+ *               confirmPassword:
+ *                 type: string
+ *                 example: "NewPass@2026"
+ *                 description: Optional — must match newPassword
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *       400:
+ *         description: Old password is incorrect
+ *       422:
+ *         description: New passwords do not match
  */
 router.post(
   "/password/change-my-password",

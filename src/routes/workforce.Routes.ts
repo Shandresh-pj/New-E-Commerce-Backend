@@ -186,6 +186,16 @@ router.get("/workforce/notifications",               authenticateMiddleware, aut
  *         required: true
  *         schema:
  *           type: integer
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               is_read:
+ *                 type: boolean
+ *                 example: true
  *     responses:
  *       200:
  *         description: Notification marked read successfully

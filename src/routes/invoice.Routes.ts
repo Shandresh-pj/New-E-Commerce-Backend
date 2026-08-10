@@ -20,13 +20,25 @@ const allowedRoles = [
  * @swagger
  * /invoices/suggestions:
  *   get:
- *     summary: GET /invoices/suggestions
+ *     summary: Get Next Invoice Number Suggestions
+ *     description: Retrieve auto-incremented guaranteed unique invoice number for current company/branch context.
  *     tags: [Invoice]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: companyId
+ *         required: false
+ *         schema:
+ *           type: integer
+ *         description: Company ID (Optional)
  *     responses:
  *       200:
- *         description: Success
+ *         description: Next available invoice number suggestions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
  */
 router.get(
   "/invoices/suggestions",
@@ -39,13 +51,61 @@ router.get(
  * @swagger
  * /invoices/create:
  *   post:
- *     summary: POST /invoices/create
+ *     summary: Generate Sales Invoice
+ *     description: Create a formatted sales invoice record with GST tax calculations and billing info.
  *     tags: [Invoice]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - items
+ *               - totalAmount
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *                 example: "ord_5501"
+ *                 description: Associated Order ID (Optional)
+ *               customerName:
+ *                 type: string
+ *                 example: "John Doe"
+ *                 description: Customer full name (Optional)
+ *               customerPhone:
+ *                 type: string
+ *                 example: "+919876543210"
+ *                 description: Customer contact phone (Optional)
+ *               totalAmount:
+ *                 type: number
+ *                 example: 1499.00
+ *                 description: Total invoice amount (Required)
+ *               items:
+ *                 type: array
+ *                 description: List of invoiced line items (Required)
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - name
+ *                     - price
+ *                     - quantity
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                       example: "HD Set Top Box"
+ *                     price:
+ *                       type: number
+ *                       example: 1499.00
+ *                     quantity:
+ *                       type: integer
+ *                       example: 1
  *     responses:
- *       200:
- *         description: Success
+ *       201:
+ *         description: Invoice created successfully
+ *       400:
+ *         description: Missing required fields
  */
 router.post(
   "/invoices/create",
@@ -58,13 +118,32 @@ router.post(
  * @swagger
  * /invoices/print:
  *   post:
- *     summary: POST /invoices/print
+ *     summary: Print Invoice Payload
+ *     description: Format invoice data for thermal printer (80mm) or standard A4 receipt printer.
  *     tags: [Invoice]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - invoiceId
+ *             properties:
+ *               invoiceId:
+ *                 type: string
+ *                 example: "inv_1001"
+ *                 description: Target Invoice ID (Required)
+ *               paperSize:
+ *                 type: string
+ *                 enum: [80mm, A4, A5]
+ *                 default: 80mm
+ *                 description: Paper format for thermal/laser printer (Optional)
  *     responses:
  *       200:
- *         description: Success
+ *         description: Printable invoice payload formatted
  */
 router.post(
   "/invoices/print",
@@ -77,13 +156,32 @@ router.post(
  * @swagger
  * /invoices/download:
  *   post:
- *     summary: POST /invoices/download
+ *     summary: Download Invoice PDF
+ *     description: Generate and download invoice PDF binary buffer.
  *     tags: [Invoice]
  *     security:
  *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - invoiceId
+ *             properties:
+ *               invoiceId:
+ *                 type: string
+ *                 example: "inv_1001"
+ *                 description: Target Invoice ID (Required)
  *     responses:
  *       200:
- *         description: Success
+ *         description: Invoice PDF binary file stream
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
  */
 router.post(
   "/invoices/download",
