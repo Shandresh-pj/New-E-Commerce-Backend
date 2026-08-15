@@ -23,29 +23,77 @@ const router = Router();
  *             type: object
  *             required:
  *               - companyName
+ *               - businessName
+ *               - ownerName
  *               - email
  *               - phone
+ *               - country
+ *               - state
+ *               - city
+ *               - businessType
+ *               - preferredPlan
+ *               - billingCycle
  *             properties:
  *               companyName:
  *                 type: string
  *                 example: "SVK Enterprise"
+ *               fullName:
+ *                 type: string
+ *                 example: "Rajesh Kumar"
+ *               businessName:
+ *                 type: string
+ *                 example: "SVK Retail"
+ *               ownerName:
+ *                 type: string
+ *                 example: "Rajesh Kumar"
  *               email:
  *                 type: string
+ *                 format: email
  *                 example: "contact@svkenterprise.com"
  *               phone:
  *                 type: string
  *                 example: "+919876543210"
- *               contactPerson:
+ *               country:
  *                 type: string
- *                 example: "Rajesh Kumar"
- *               address:
+ *                 example: "India"
+ *               state:
  *                 type: string
- *                 example: "MG Road, Bengaluru"
+ *                 example: "Karnataka"
+ *               city:
+ *                 type: string
+ *                 example: "Bengaluru"
+ *               businessType:
+ *                 type: string
+ *                 example: "Retail"
+ *               gst:
+ *                 type: string
+ *                 example: "29ABCDE1234F1Z5"
+ *               website:
+ *                 type: string
+ *                 example: "https://svkenterprise.com"
+ *               employeeCount:
+ *                 type: integer
+ *                 example: 25
+ *               selectedPlan:
+ *                 type: string
+ *                 example: "Enterprise"
+ *               preferredPlan:
+ *                 type: string
+ *                 example: "Pro Plan"
+ *               billingCycle:
+ *                 type: string
+ *                 enum: [monthly, quarterly, yearly]
+ *                 example: "monthly"
+ *               message:
+ *                 type: string
+ *                 example: "Interested in onboarding 5 branches"
  *     responses:
  *       201:
  *         description: Contact created successfully
  *       400:
  *         description: Validation failed
+ *       500:
+ *         description: Internal server error
  */
 router.post(
   "/contact",
@@ -222,6 +270,42 @@ router.get(
   authenticateMiddleware,
   authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN] }),
   contactController.getContacts.bind(contactController)
+);
+
+/**
+ * @swagger
+ * /contacts:
+ *   post:
+ *     summary: Create CRM Contact / Lead
+ *     description: Authenticated user registers or creates a new client lead in the CRM system.
+ *     tags: [Contacts]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               company:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Contact created successfully
+ */
+router.post(
+  "/contacts",
+  authenticateMiddleware,
+  contactController.create.bind(contactController)
 );
 
 

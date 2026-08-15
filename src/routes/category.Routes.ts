@@ -248,7 +248,42 @@ router.delete(
  *     tags: [Categories]
  *     responses:
  *       200:
- *         description: Parent categories list
+ *         description: Parent categories list retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       name:
+ *                         type: string
+ *                         example: "Electronics"
+ *                       slug:
+ *                         type: string
+ *                         example: "electronics"
+ *                       status:
+ *                         type: boolean
+ *                         example: true
+ *                       image:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "uploads/categories/cat_1.png"
+ *                       description:
+ *                         type: string
+ *                         nullable: true
+ *                         example: "All consumer electronics"
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/categories/parents/list",
@@ -269,11 +304,44 @@ router.get(
  *         name: parent_id
  *         required: true
  *         schema:
- *           type: string
+ *           type: integer
  *         description: Parent Category ID (Required)
+ *         example: 1
  *     responses:
  *       200:
- *         description: Subcategories list
+ *         description: Subcategories list retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 5
+ *                       name:
+ *                         type: string
+ *                         example: "Smartphones"
+ *                       slug:
+ *                         type: string
+ *                         example: "smartphones"
+ *                       parent_id:
+ *                         type: integer
+ *                         example: 1
+ *                       status:
+ *                         type: boolean
+ *                         example: true
+ *       404:
+ *         description: Parent category not found
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/categories/children/:parent_id",
@@ -287,11 +355,46 @@ router.get(
  * /categories/tree/list:
  *   get:
  *     summary: Get Complete Nested Category Tree
- *     description: Retrieve full hierarchical category tree structure.
+ *     description: Retrieve full hierarchical category tree structure with child subcategories.
  *     tags: [Categories]
  *     responses:
  *       200:
- *         description: Hierarchical category tree
+ *         description: Hierarchical category tree retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       name:
+ *                         type: string
+ *                         example: "Electronics"
+ *                       slug:
+ *                         type: string
+ *                         example: "electronics"
+ *                       children:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: integer
+ *                               example: 5
+ *                             name:
+ *                               type: string
+ *                               example: "Smartphones"
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/categories/tree/list",

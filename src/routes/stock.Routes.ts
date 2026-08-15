@@ -9,6 +9,79 @@ const router = Router();
 
 /**
  * @swagger
+ * tags:
+ *   name: Stock
+ *   description: Product inventory levels, real-time stock movements, and low-stock alerts
+ */
+
+/**
+ * @swagger
+ * /stock:
+ *   get:
+ *     summary: Get Stock Inventory Overview
+ *     description: Retrieve inventory levels and stock reorder alerts for all products.
+ *     tags: [Stock]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Stock overview retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 total:
+ *                   type: integer
+ *                   example: 45
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 101
+ *                       product_id:
+ *                         type: integer
+ *                         example: 101
+ *                       name:
+ *                         type: string
+ *                         example: "Smart TV 55 Inch"
+ *                       sku:
+ *                         type: string
+ *                         example: "TV-55-4K"
+ *                       stock:
+ *                         type: integer
+ *                         example: 15
+ *                       reorder_level:
+ *                         type: integer
+ *                         example: 10
+ *                       is_low_stock:
+ *                         type: boolean
+ *                         example: false
+ *                       status:
+ *                         type: string
+ *                         example: "ACTIVE"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/stock",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER, UserType.SHOPKEEPER, UserType.EMPLOYEE],
+  }),
+  stockController.getStockSummary.bind(stockController)
+);
+
+/**
+ * @swagger
  * /stock/update:
  *   post:
  *     summary: Update Product Inventory Stock
@@ -30,26 +103,41 @@ const router = Router();
  *               productId:
  *                 type: integer
  *                 example: 101
- *                 description: Product ID (Required)
+ *                 description: "**REQUIRED** Product ID"
  *               quantity:
  *                 type: integer
  *                 example: 25
- *                 description: Quantity to add or remove (Required)
+ *                 description: "**REQUIRED** Quantity to add or remove"
  *               type:
  *                 type: string
  *                 enum: [ADDITION, DEDUCTION, AUDIT_ADJUSTMENT, RETURN]
  *                 example: "ADDITION"
- *                 description: Stock transaction type (Required)
+ *                 description: "**REQUIRED** Stock transaction type"
  *               reason:
  *                 type: string
  *                 example: "New shipment arrived from supplier"
  *     responses:
  *       200:
  *         description: Stock updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Stock updated successfully"
+ *                 data:
+ *                   type: object
  *       400:
  *         description: Missing required fields or insufficient stock
  *       401:
  *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.post(
   "/stock/update",
@@ -88,9 +176,40 @@ router.post(
  *           default: 20
  *     responses:
  *       200:
- *         description: Stock logs list retrieved
+ *         description: Stock logs list retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       product_id:
+ *                         type: integer
+ *                         example: 101
+ *                       change_quantity:
+ *                         type: integer
+ *                         example: 25
+ *                       type:
+ *                         type: string
+ *                         example: "ADDITION"
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                         example: "2026-08-14T10:00:00.000Z"
  *       401:
  *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/stock/logs",
@@ -117,6 +236,7 @@ router.get(
  *         schema:
  *           type: integer
  *         description: Stock log ID
+ *         example: 1
  *     requestBody:
  *       required: false
  *       content:
@@ -129,9 +249,24 @@ router.get(
  *                 example: "Approved by warehouse manager"
  *     responses:
  *       200:
- *         description: Stock log approved
+ *         description: Stock log approved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Stock log approved"
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: Stock log not found
+ *       500:
+ *         description: Internal server error
  */
 router.put(
   "/stock/logs/:id/approve",

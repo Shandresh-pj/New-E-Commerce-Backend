@@ -601,4 +601,115 @@ export class SubscriptionController {
     }
   }
 
+  // ─── BILLING HISTORY & UPGRADE ──────────────────────────────────────────
+
+  @Get("/history")
+  @Swagger("Get Billing History", "Returns past subscription invoices and payment records.")
+  async getBillingHistory(req: any, res: Response) {
+    try {
+      const company_id = Number(req.user?.companyId ?? req.user?.company_id ?? 1);
+      const invoiceRepo = dataSource.getRepository(SubscriptionInvoice);
+      const invoices = await invoiceRepo.find({
+        where: { company_id },
+        relations: { subscription: { plan: true } },
+        order: { created_at: "DESC" },
+      });
+
+      return res.json({
+        success: true,
+        data: invoices,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch billing history" });
+    }
+  }
+
+  @Post("/upgrade")
+  @Swagger("Upgrade Subscription", "Instant plan upgrade or checkout session generation.")
+  async upgradeSubscription(req: any, res: Response) {
+    try {
+      const { plan_id, billing_cycle, coupon_code } = req.body;
+      const company_id = Number(req.body.company_id || req.user?.companyId || req.user?.company_id || 1);
+
+      if (!plan_id) {
+        return res.status(400).json({ success: false, message: "plan_id is required" });
+      }
+
+      const planRepo = dataSource.getRepository(SubscriptionPlan);
+      const plan = await planRepo.findOne({ where: { id: Number(plan_id) } });
+      if (!plan) {
+        return res.status(404).json({ success: false, message: "Plan not found" });
+      }
+
+      const cycle = billing_cycle || "monthly";
+      const amount = cycle === "yearly" ? Number(plan.yearly_price) : Number(plan.monthly_price);
+
+      const subRepo = dataSource.getRepository(UserSubscription);
+      let sub = await subRepo.findOne({
+        where: { company_id },
+        order: { created_at: "DESC" },
+      });
+
+      const startDate = new Date();
+      const endDate = new Date();
+      if (cycle === "yearly") {
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      } else {
+        endDate.setMonth(endDate.getMonth() + 1);
+      }
+
+      if (sub) {
+        if (sub.plan_id !== plan.id) {
+          sub.upgraded_at = new Date();
+        }
+        sub.plan_id = plan.id;
+        sub.billing_cycle = cycle;
+        sub.status = "active";
+        sub.start_date = startDate;
+        sub.end_date = endDate;
+        await subRepo.save(sub);
+      } else {
+        sub = subRepo.create({
+          company_id,
+          plan_id: plan.id,
+          billing_cycle: cycle,
+          status: "active",
+          start_date: startDate,
+          end_date: endDate,
+          auto_renew: true,
+        });
+        await subRepo.save(sub);
+      }
+
+      // Generate Invoice record
+      const invoiceRepo = dataSource.getRepository(SubscriptionInvoice);
+      const invoiceNumber = `INV-SUB-${Date.now().toString().slice(-6)}`;
+      const gstAmount = amount * 0.18;
+
+      const invoice = invoiceRepo.create({
+        invoice_number: invoiceNumber,
+        subscription_id: sub.id,
+        company_id,
+        amount,
+        gst_amount: gstAmount,
+        subtotal: amount - gstAmount,
+        discount_amount: 0,
+        currency: "INR",
+        status: "paid",
+      });
+      await invoiceRepo.save(invoice);
+
+      return res.json({
+        success: true,
+        message: `Upgraded to ${plan.name} successfully`,
+        data: {
+          subscription: sub,
+          plan,
+          invoice,
+        },
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Upgrade failed" });
+    }
+  }
 }

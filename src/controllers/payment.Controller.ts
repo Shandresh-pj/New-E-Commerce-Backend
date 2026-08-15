@@ -15,18 +15,26 @@ export class PaymentController {
   @Middleware([validate(CreatePaymentDto)])
   @Swagger("Create Payment", "Cash / Online Payment")
   async create(req: Request, res: Response) {
-    const repo = dataSource.getRepository(Payment);
-    const payment = repo.create(req.body);
-    await repo.save(payment);
-    return res.json({ success: true, data: payment });
+    try {
+      const repo = dataSource.getRepository(Payment);
+      const payment = repo.create(req.body);
+      await repo.save(payment);
+      return res.json({ success: true, data: payment });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to create payment" });
+    }
   }
 
   @Get("/")
   async getAll(req: Request, res: Response) {
-    const data = await dataSource.getRepository(Payment).find({
-      order: { id: "DESC" }
-    });
-    return res.json({ success: true, data });
+    try {
+      const data = await dataSource.getRepository(Payment).find({
+        order: { id: "DESC" }
+      });
+      return res.json({ success: true, data });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch payments" });
+    }
   }
 
   @Post("/razorpay/create-order")

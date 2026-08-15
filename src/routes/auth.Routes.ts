@@ -129,6 +129,8 @@ router.post(
  *       - Auth
  *     summary: Select Company Context
  *     description: Select company, branch and role after login
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -141,19 +143,26 @@ router.post(
  *               - role_id
  *             properties:
  *               user_id:
- *                 type: number
+ *                 type: integer
  *               company_id:
- *                 type: number
+ *                 type: integer
  *               branch_id:
- *                 type: number
+ *                 type: integer
  *               role_id:
- *                 type: number
+ *                 type: integer
  *     responses:
  *       200:
  *         description: Context selected successfully
+ *       400:
+ *         description: Validation failed
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.post(
-  "/auth/select-context",authenticateMiddleware,
+  "/auth/select-context",
+  authenticateMiddleware,
   authController.selectContext.bind(authController)
 );
 
@@ -282,7 +291,42 @@ router.get(
  *         description: Filter by user role (Optional)
  *     responses:
  *       200:
- *         description: List of users retrieved
+ *         description: List of users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 count:
+ *                   type: integer
+ *                   example: 10
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       name:
+ *                         type: string
+ *                         example: "Admin User"
+ *                       email:
+ *                         type: string
+ *                         example: "admin@example.com"
+ *                       userType:
+ *                         type: string
+ *                         example: "ADMIN"
+ *                       isActive:
+ *                         type: boolean
+ *                         example: true
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin role required
  */
 router.get(
   "/auth/get-users",
@@ -396,9 +440,35 @@ router.put(
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Current access data
+ *         description: Current access permissions, roles, and accessible menus
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 roles:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["SUPER_ADMIN"]
+ *                 permissions:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["READ_USERS", "WRITE_PRODUCTS", "MANAGE_ORDERS"]
+ *                 menus:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: User not found
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/auth/me/permissions",

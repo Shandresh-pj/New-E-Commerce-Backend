@@ -61,7 +61,6 @@ router.post(
  *     description: Only SuperAdmin can update company
  *     security:
  *       - bearerAuth: []
- *
  *     parameters:
  *       - in: path
  *         name: id
@@ -69,7 +68,6 @@ router.post(
  *         schema:
  *           type: integer
  *         description: Company ID
- *
  *     requestBody:
  *       required: true
  *       content:
@@ -79,24 +77,30 @@ router.post(
  *             properties:
  *               companyName:
  *                 type: string
- *                 example: SVK DTH WORLD
- *
+ *                 example: "SVK DTH WORLD"
  *               email:
  *                 type: string
- *                 example: svk@gmail.com
- *
+ *                 example: "svk@gmail.com"
  *               phone:
  *                 type: string
  *                 example: "9876543210"
- *
  *               address:
  *                 type: string
- *                 example: T.VADIPATTI, MADURAI
- *
+ *                 example: "T.VADIPATTI, MADURAI"
  *               gst_number:
  *                 type: string
- *                 example: 33ABCDE1234F1Z5
- *
+ *                 example: "33ABCDE1234F1Z5"
+ *     responses:
+ *       200:
+ *         description: Company updated successfully
+ *       400:
+ *         description: Validation failed
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Company not found
+ *       500:
+ *         description: Internal server error
  */
 router.put(
   "/companies/:id",
@@ -114,6 +118,34 @@ router.put(
  *     tags:
  *       - Company
  *     summary: Get All Companies
+ *     description: Retrieve all companies with optional search and pagination
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Filter companies by name
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *     responses:
+ *       200:
+ *         description: Companies retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/companies",
@@ -129,6 +161,25 @@ router.get(
  *     tags:
  *       - Company
  *     summary: Get Company By ID
+ *     description: Retrieve details of a specific company
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Company ID
+ *     responses:
+ *       200:
+ *         description: Company retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Company not found
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/companies/:id",

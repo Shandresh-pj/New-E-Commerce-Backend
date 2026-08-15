@@ -77,6 +77,15 @@ router.get(
  *     responses:
  *       200:
  *         description: Product catalog CSV file download
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *               example: "id,name,sku,price,stock\n1,Sample Product,SKU-001,499.00,50"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/products/export",
@@ -451,6 +460,35 @@ router.put(
  *     responses:
  *       200:
  *         description: Product found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 10
+ *                     name:
+ *                       type: string
+ *                       example: "Wireless Optical Mouse"
+ *                     sku:
+ *                       type: string
+ *                       example: "MOU-OPT-001"
+ *                     barcode:
+ *                       type: string
+ *                       example: "8901234567890"
+ *                     retail_price:
+ *                       type: number
+ *                       example: 499.00
+ *                     stock_quantity:
+ *                       type: integer
+ *                       example: 30
  *       404:
  *         description: Product not found
  */

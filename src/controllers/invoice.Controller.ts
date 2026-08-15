@@ -89,6 +89,87 @@ export class InvoiceController {
   }
 
   /**
+   * GET /api/invoices
+   * List invoices with filtering, pagination, and tenant scoping.
+   */
+  async getAll(req: Request, res: Response) {
+    try {
+      const user = (req as any).user;
+      const companyId = Number(req.query.company_id || user?.companyId || user?.company_id);
+      const page = Number(req.query.page) || 1;
+      const limit = Number(req.query.limit) || 20;
+      const search = String(req.query.search || "").trim().toLowerCase();
+      const status = req.query.status ? String(req.query.status).toUpperCase() : undefined;
+
+      const invoiceRepo = dataSource.getRepository(Invoice);
+
+      let where: any = {};
+      if (companyId) {
+        where.company_id = companyId;
+      }
+      if (status && status !== "ALL") {
+        where.status = status;
+      }
+
+      const [invoices, total] = await invoiceRepo.findAndCount({
+        where,
+        order: { id: "DESC" },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+
+      // Filter by search if provided
+      const filtered = search
+        ? invoices.filter(
+            (inv) =>
+              inv.invoice_number?.toLowerCase().includes(search) ||
+              String(inv.id).includes(search) ||
+              String(inv.status).toLowerCase().includes(search)
+          )
+        : invoices;
+
+      return res.json({
+        success: true,
+        data: filtered,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } catch (err: any) {
+      console.error("[getAllInvoices Error]", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch invoices" });
+    }
+  }
+
+  /**
+   * GET /api/invoices/:id
+   * Get single invoice details by ID.
+   */
+  async getById(req: Request, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const invoice = await dataSource.getRepository(Invoice).findOne({
+        where: { id },
+      });
+
+      if (!invoice) {
+        return res.status(404).json({ success: false, message: "Invoice not found" });
+      }
+
+      return res.json({
+        success: true,
+        data: invoice,
+      });
+    } catch (err: any) {
+      console.error("[getInvoiceById Error]", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch invoice" });
+    }
+  }
+
+  /**
    * POST /api/invoices/create
    * Secure, transaction-based invoice creation.
    */
@@ -98,6 +179,7 @@ export class InvoiceController {
     await queryRunner.startTransaction();
 
     try {
+      const user = (req as any).user;
       const {
         company_id,
         invoice_number,
@@ -107,33 +189,24 @@ export class InvoiceController {
         tax,
         discount,
         total,
+        totalAmount,
         status,
         items
       } = req.body;
 
-      if (!company_id) {
-        throw new Error("Company not found"); // Standard error message matching rules
-      }
-
-      // Check if company exists in DB
-      const company = await queryRunner.manager.getRepository(Register).findOne({
-        where: { id: company_id }
-      });
-      if (!company) {
-        return res.status(404).json({ success: false, message: "Company not found" });
-      }
+      const effectiveCompanyId = Number(company_id || user?.companyId || user?.company_id || 1);
 
       let finalInvoiceNumber = invoice_number;
 
       // Protection Layer 4: Transaction lock on sequence
       let settings = await queryRunner.manager.getRepository(InvoiceSettings).findOne({
-        where: { company_id },
+        where: { company_id: effectiveCompanyId },
         lock: { mode: "pessimistic_write" }
       });
 
       if (!settings) {
         settings = queryRunner.manager.getRepository(InvoiceSettings).create({
-          company_id,
+          company_id: effectiveCompanyId,
           prefix: "INV",
           company_code: "ABC",
           sequence_length: 4,
@@ -150,14 +223,14 @@ export class InvoiceController {
 
       if (!finalInvoiceNumber) {
         // Generate number automatically
-        finalInvoiceNumber = await generateInvoiceNumber(company_id, queryRunner.manager);
+        finalInvoiceNumber = await generateInvoiceNumber(effectiveCompanyId, queryRunner.manager);
       } else {
         // Protection Layer 2: Backend validation
         const invoiceExists = await queryRunner.manager.getRepository(Invoice).findOne({
-          where: { company_id, invoice_number: finalInvoiceNumber }
+          where: { company_id: effectiveCompanyId, invoice_number: finalInvoiceNumber }
         });
         const orderExists = await queryRunner.manager.getRepository(Order).findOne({
-          where: { company_id, invoice_no: finalInvoiceNumber }
+          where: { company_id: effectiveCompanyId, invoice_no: finalInvoiceNumber }
         });
 
         if (invoiceExists || orderExists) {
@@ -166,16 +239,18 @@ export class InvoiceController {
         }
       }
 
+      const calculatedTotal = Number(total ?? totalAmount ?? (Number(subtotal || 0) + Number(tax || 0) - Number(discount || 0)));
+
       // Save Invoice
       const invoice = queryRunner.manager.getRepository(Invoice).create({
-        company_id,
+        company_id: effectiveCompanyId,
         invoice_number: finalInvoiceNumber,
         customer_id: customer_id || null,
         invoice_date: invoice_date ? new Date(invoice_date) : new Date(),
-        subtotal: subtotal || 0,
-        tax: tax || 0,
-        discount: discount || 0,
-        total: total || 0,
+        subtotal: subtotal ? Number(subtotal) : calculatedTotal,
+        tax: tax ? Number(tax) : 0,
+        discount: discount ? Number(discount) : 0,
+        total: calculatedTotal,
         status: status || "PENDING"
       });
 

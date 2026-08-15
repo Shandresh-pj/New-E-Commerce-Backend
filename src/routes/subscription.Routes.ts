@@ -45,12 +45,60 @@ router.get(
  * /subscriptions/current:
  *   get:
  *     summary: Get Current Subscription
+ *     description: Retrieve current active/trialing subscription plan, validity, and limits for the logged-in company.
  *     tags: [Subscriptions]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Returns the current active/trialing subscription for logged-in company
+ *         description: Current subscription details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 10
+ *                     status:
+ *                       type: string
+ *                       enum: [active, trialing, expired, cancelled]
+ *                       example: "active"
+ *                     billing_cycle:
+ *                       type: string
+ *                       enum: [monthly, yearly]
+ *                       example: "monthly"
+ *                     start_date:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2026-08-01T00:00:00.000Z"
+ *                     end_date:
+ *                       type: string
+ *                       format: date-time
+ *                       example: "2026-09-01T00:00:00.000Z"
+ *                     plan:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: integer
+ *                           example: 2
+ *                         name:
+ *                           type: string
+ *                           example: "Enterprise Plan"
+ *                         monthly_price:
+ *                           type: number
+ *                           example: 2499.00
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/subscriptions/current",
@@ -292,6 +340,94 @@ router.post(
 router.post(
   "/subscriptions/webhook",
   subscriptionController.webhook.bind(subscriptionController)
+);
+
+/**
+ * @swagger
+ * /subscriptions/history:
+ *   get:
+ *     summary: Get Subscription Billing History
+ *     description: Retrieve list of past invoices, charges and renewal records.
+ *     tags: [Subscriptions]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Billing history retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       invoice_number:
+ *                         type: string
+ *                         example: "INV-SUB-2026-001"
+ *                       amount:
+ *                         type: number
+ *                         example: 999.00
+ *                       status:
+ *                         type: string
+ *                         example: "paid"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  "/subscriptions/history",
+  authenticateMiddleware,
+  subscriptionController.getBillingHistory.bind(subscriptionController)
+);
+
+router.get(
+  "/billing/history",
+  authenticateMiddleware,
+  subscriptionController.getBillingHistory.bind(subscriptionController)
+);
+
+/**
+ * @swagger
+ * /subscriptions/upgrade:
+ *   post:
+ *     summary: Instant Plan Upgrade
+ *     description: Upgrade subscription plan tier and issue invoice.
+ *     tags: [Subscriptions]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - plan_id
+ *             properties:
+ *               plan_id:
+ *                 type: integer
+ *               billing_cycle:
+ *                 type: string
+ *                 enum: [monthly, yearly]
+ *     responses:
+ *       200:
+ *         description: Subscription upgraded
+ */
+router.post(
+  "/subscriptions/upgrade",
+  authenticateMiddleware,
+  authorize({ roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH] }),
+  subscriptionController.upgradeSubscription.bind(subscriptionController)
 );
 
 export default router;

@@ -92,6 +92,41 @@ router.post("/biometric/device/ping",         ctrl.ping.bind(ctrl));
  *     responses:
  *       200:
  *         description: Devices retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       device_name:
+ *                         type: string
+ *                         example: "Main Entrance Biometric Scanner"
+ *                       device_serial:
+ *                         type: string
+ *                         example: "BIO-HW-9901"
+ *                       device_type:
+ *                         type: string
+ *                         example: "FINGERPRINT"
+ *                       is_online:
+ *                         type: boolean
+ *                         example: true
+ *                       status:
+ *                         type: string
+ *                         example: "ACTIVE"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.get("/biometric/device",               authenticateMiddleware, authorize({ roles: adminRoles }), ctrl.listDevices.bind(ctrl));
 

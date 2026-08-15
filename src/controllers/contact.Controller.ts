@@ -112,6 +112,9 @@ export class ContactController {
         companyName,
         businessName,
         ownerName,
+        name,
+        contactPerson,
+        company,
         email,
         phone,
         country,
@@ -123,52 +126,56 @@ export class ContactController {
         employeeCount,
         preferredPlan,
         billingCycle,
-        message
+        message,
+        notes
       } = req.body;
+
+      const effCompanyName = companyName || businessName || company || `${name || ownerName || "Contact"}'s Enterprise`;
+      const effOwnerName = ownerName || name || contactPerson || "Contact Person";
+      const effEmail = email;
+      const effPhone = phone;
+      const effMessage = message || notes || null;
 
       const contactRepo = dataSource.getRepository(Contact);
       const userRepo = dataSource.getRepository(User);
 
       // Duplicates validation
-      const existingEmail = await contactRepo.findOne({ where: { email, isDeleted: false } });
-      const existingUser = await userRepo.findOne({ where: { email } });
-      if (existingEmail || existingUser) {
-        return res.status(400).json({ success: false, message: "Email is already registered" });
+      if (effEmail) {
+        const existingEmail = await contactRepo.findOne({ where: { email: effEmail, isDeleted: false } });
+        const existingUser = await userRepo.findOne({ where: { email: effEmail } });
+        if (existingEmail || existingUser) {
+          return res.status(400).json({ success: false, message: "Email is already registered" });
+        }
       }
 
-      const existingPhoneContact = await contactRepo.findOne({ where: { phone, isDeleted: false } });
-      const existingPhoneUser = await userRepo.findOne({ where: { mobilenumber: phone } });
-      const existingPhoneCompany = await dataSource.getRepository(Company).findOne({ where: { phone } });
-      if (existingPhoneContact || existingPhoneUser || existingPhoneCompany) {
-        return res.status(400).json({ success: false, message: "Mobile number is already registered" });
-      }
-
-      if (companyName) {
-         const existingCompany = await dataSource.getRepository(Company).findOne({ where: { name: companyName } });
-         if (existingCompany) {
-             return res.status(400).json({ success: false, message: "Company name is already registered" });
-         }
+      if (effPhone) {
+        const existingPhoneContact = await contactRepo.findOne({ where: { phone: effPhone, isDeleted: false } });
+        const existingPhoneUser = await userRepo.findOne({ where: { mobilenumber: effPhone } });
+        const existingPhoneCompany = await dataSource.getRepository(Company).findOne({ where: { phone: effPhone } });
+        if (existingPhoneContact || existingPhoneUser || existingPhoneCompany) {
+          return res.status(400).json({ success: false, message: "Mobile number is already registered" });
+        }
       }
 
       const verifyToken = crypto.randomUUID();
       const verifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
       const contact = contactRepo.create({
-        companyName,
-        businessName,
-        ownerName,
-        email,
-        phone,
-        country,
-        state,
-        city,
-        businessType,
+        companyName: effCompanyName,
+        businessName: effCompanyName,
+        ownerName: effOwnerName,
+        email: effEmail || `contact_${Date.now()}@svkworld.com`,
+        phone: effPhone || `+91${Date.now().toString().slice(-10)}`,
+        country: country || "India",
+        state: state || "Tamil Nadu",
+        city: city || "Chennai",
+        businessType: businessType || "Retail",
         gst: gst || null,
         website: website || null,
         employeeCount: employeeCount ? Number(employeeCount) : 1,
-        preferredPlan,
-        billingCycle,
-        message: message || null,
+        preferredPlan: preferredPlan || "Pro",
+        billingCycle: billingCycle || "monthly",
+        message: effMessage,
         status: ContactStatus.PENDING,
         emailVerified: false,
         verificationToken: verifyToken,
@@ -505,6 +512,13 @@ export class ContactController {
         if (c.status === "CONVERTED") stats.converted = Number(c.count);
       });
 
+      const formatted = contacts.map((c) => ({
+        ...c,
+        name: c.ownerName || c.companyName,
+        company: c.companyName,
+        notes: c.message,
+      }));
+
       return res.json({
         success: true,
         total,
@@ -512,7 +526,7 @@ export class ContactController {
         limit,
         totalPages: Math.ceil(total / limit),
         stats,
-        data: contacts
+        data: formatted
       });
     } catch (error) {
       next(error);

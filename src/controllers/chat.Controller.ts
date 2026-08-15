@@ -225,4 +225,98 @@ export class ChatController {
       return res.status(500).json({ success: false, message: err.message });
     }
   }
+
+  // ─── SEND MESSAGE VIA HTTP ───────────────────────────────────────────────
+  @Post("/messages/:conversationId")
+  @Middleware([authenticateMiddleware])
+  @Swagger("Send Message", "Sends a message into a chat conversation.")
+  async sendMessage(req: any, res: Response) {
+    try {
+      const conversationId = Number(req.params.conversationId);
+      const senderId = Number(req.user.userId || req.user.id || req.user.user_id || 1);
+      const { content, message, text, encrypted_content, message_type, attachment_url } = req.body;
+      const msgText = content || message || text || encrypted_content || "";
+
+      const saved = await this.chatService.sendMessage({
+        conversation_id: conversationId,
+        sender_id: senderId,
+        content: msgText,
+        encrypted_content: encrypted_content || msgText,
+        media_type: (message_type || "TEXT") as any,
+        media_url: attachment_url || null,
+      });
+
+      return res.json({ success: true, data: saved });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to send message" });
+    }
+  }
+
+  // ─── MEETINGS / CALLS API ────────────────────────────────────────────────
+  @Get("/meetings")
+  @Middleware([authenticateMiddleware])
+  @Swagger("Get Meetings", "List user meetings and active calls.")
+  async getMeetings(req: any, res: Response) {
+    try {
+      const userId = Number(req.user.userId || req.user.id || req.user.user_id || 1);
+      const history = await this.callService.getCallHistory(userId);
+      return res.json({ success: true, data: history });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to load meetings" });
+    }
+  }
+
+  @Post("/meetings")
+  @Middleware([authenticateMiddleware])
+  @Swagger("Create Meeting", "Schedule or start an instant meeting.")
+  async createMeeting(req: any, res: Response) {
+    try {
+      const userId = Number(req.user.userId || req.user.id || req.user.user_id || 1);
+      const { title, call_type, invited_user_ids, scheduled_at } = req.body;
+
+      const session = await this.callService.initiateCall({
+        caller_id: userId,
+        call_type: call_type || "VIDEO",
+        invited_user_ids: invited_user_ids || [],
+      });
+
+      return res.json({
+        success: true,
+        message: "Meeting initiated successfully",
+        data: session,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to create meeting" });
+    }
+  }
+
+  @Post("/meetings/:id/join")
+  @Middleware([authenticateMiddleware])
+  @Swagger("Join Meeting", "Join an active meeting.")
+  async joinMeeting(req: any, res: Response) {
+    try {
+      const userId = Number(req.user.userId || req.user.id || req.user.user_id || 1);
+      const meetingIdOrCode = req.params.id;
+
+      const session = await this.callService.joinCall(meetingIdOrCode, userId);
+      return res.json({ success: true, data: session });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to join meeting" });
+    }
+  }
+
+  @Post("/meetings/:id/end")
+  @Middleware([authenticateMiddleware])
+  @Swagger("End Meeting", "End a call or meeting session.")
+  async endMeeting(req: any, res: Response) {
+    try {
+      const userId = Number(req.user.userId || req.user.id || req.user.user_id || 1);
+      const sessionId = Number(req.params.id);
+
+      const result = await this.callService.endCall(sessionId, userId);
+      return res.json({ success: true, message: "Meeting ended successfully" });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to end meeting" });
+    }
+  }
 }

@@ -1538,20 +1538,24 @@ public async deleteUser( req:any, res:any ){
   @Put("/admin-set-password/:userId")
   @Middleware([authenticateMiddleware])
   public async adminSetPassword(req: any, res: any) {
-    if (!req.user?.isSuperAdmin) {
-      return res.status(403).json({ success: false, message: "Super Admin only" });
+    try {
+      if (!req.user?.isSuperAdmin) {
+        return res.status(403).json({ success: false, message: "Super Admin only" });
+      }
+      const { newPassword } = req.body;
+      if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ success: false, message: "newPassword must be at least 6 chars" });
+      }
+      const userRepo = dataSource.getRepository(User);
+      const user = await userRepo.findOne({ where: { id: Number(req.params.userId) } });
+      if (!user) return res.status(404).json({ success: false, message: "User not found" });
+      user.password = await bcrypt.hash(newPassword, 12);
+      user.mustChangePassword = false;
+      await userRepo.save(user);
+      return res.json({ success: true, message: "Password updated" });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to set password" });
     }
-    const { newPassword } = req.body;
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ success: false, message: "newPassword must be at least 6 chars" });
-    }
-    const userRepo = dataSource.getRepository(User);
-    const user = await userRepo.findOne({ where: { id: Number(req.params.userId) } });
-    if (!user) return res.status(404).json({ success: false, message: "User not found" });
-    user.password = await bcrypt.hash(newPassword, 12);
-    user.mustChangePassword = false;
-    await userRepo.save(user);
-    return res.json({ success: true, message: "Password updated" });
   }
 
   // =====================================================

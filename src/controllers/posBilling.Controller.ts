@@ -27,18 +27,25 @@ export class PosBillingController {
     try {
       const {
         invoice_no,
+        invoice_number,
         company_id,
         company_name,
         branch_id,
         branch_name,
         customer_name,
         customer_phone,
+        customerName,
+        customerPhone,
         items,
         subtotal,
         tax,
         discount,
+        discount_percentage,
         grand_total,
+        total,
+        totalAmount,
         payment_method,
+        payment,
         cash_tendered,
         change_due
       } = req.body;
@@ -51,8 +58,29 @@ export class PosBillingController {
 
       const activeCompanyId = Number(company_id || req.user?.companyId || req.user?.company_id || 1);
       const activeBranchId = Number(branch_id || req.user?.branchId || req.user?.branch_id || 1);
-      const invoiceNo = invoice_no || `INV-POS-${Date.now().toString().slice(-6)}`;
+      const invoiceNo = invoice_no || invoice_number || `INV-POS-${Date.now().toString().slice(-6)}`;
       const userId = req.user?.userId || req.user?.id || null;
+
+      const normalizedItems = items.map((it: any) => {
+        const pId = it.product_id ?? it.productId ?? it.id;
+        const uPrice = Number(it.unit_price ?? it.price ?? it.retail_price ?? 0);
+        const qty = Number(it.quantity ?? it.qty ?? 1);
+        const tPrice = Number(it.total_price ?? it.total ?? (uPrice * qty));
+        return {
+          ...it,
+          product_id: pId,
+          product_name: it.product_name || it.name || `Product #${pId}`,
+          unit_price: uPrice,
+          quantity: qty,
+          total_price: tPrice,
+        };
+      });
+
+      const calcSubtotal = subtotal !== undefined ? Number(subtotal) : normalizedItems.reduce((s: number, i: any) => s + i.total_price, 0);
+      const calcDiscount = discount !== undefined ? Number(discount) : (discount_percentage ? (calcSubtotal * Number(discount_percentage)) / 100 : 0);
+      const calcTax = tax !== undefined ? Number(tax) : 0;
+      const calcGrandTotal = grand_total !== undefined ? Number(grand_total) : (total ?? totalAmount ?? (calcSubtotal - calcDiscount + calcTax));
+      const payMethod = payment_method || payment?.method || "CASH";
 
       const posOrderRepo = qr.manager.getRepository(PosOrderEntity);
       const productRepo = qr.manager.getRepository(Product);
@@ -65,17 +93,17 @@ export class PosBillingController {
         branch_id: activeBranchId,
         company_name: company_name || "Spike Retail HQ",
         branch_name: branch_name || "Downtown Main Outlet",
-        customer_name: customer_name || "Walk-in Customer",
-        customer_phone: customer_phone || "N/A",
-        subtotal: Number(subtotal || 0),
-        tax: Number(tax || 0),
-        discount: Number(discount || 0),
-        grand_total: Number(grand_total || 0),
-        payment_method: payment_method || "CASH",
+        customer_name: customer_name || customerName || "Walk-in Customer",
+        customer_phone: customer_phone || customerPhone || "N/A",
+        subtotal: calcSubtotal,
+        tax: calcTax,
+        discount: calcDiscount,
+        grand_total: calcGrandTotal,
+        payment_method: payMethod,
         payment_status: "COMPLETED",
         cash_tendered: cash_tendered ? Number(cash_tendered) : null,
         change_due: change_due ? Number(change_due) : null,
-        items: items
+        items: normalizedItems
       });
 
       await posOrderRepo.save(newPosOrder);

@@ -88,75 +88,79 @@ export class RoleAccessController {
   @Post("/")
   @Middleware([authenticateMiddleware])
   async create(req: any, res: any) {
+    try {
+      if (
+        Array.isArray(req.body) ||
+        Array.isArray(req.body.grants) ||
+        Array.isArray(req.body.revokes) ||
+        Array.isArray(req.body.permissions)
+      ) {
+        return this.batch(req, res);
+      }
 
-    if (
-      Array.isArray(req.body) ||
-      Array.isArray(req.body.grants) ||
-      Array.isArray(req.body.revokes) ||
-      Array.isArray(req.body.permissions)
-    ) {
-      return this.batch(req, res);
-    }
+      const { role_id, permission_id, canApprove } = req.body;
 
-    const { role_id, permission_id, canApprove } = req.body;
+      if (!role_id || !permission_id) {
+        return res.status(400).json({
+          success: false,
+          message: "role_id & permission_id required"
+        });
+      }
 
-    if (!role_id || !permission_id) {
-      return res.status(400).json({
-        success: false,
-        message: "role_id & permission_id required"
+      const permRepo = dataSource.getRepository(Permission);
+      const hasPermission = await permRepo.findOne({ where: { id: Number(permission_id) } });
+      if (!hasPermission) {
+        return res.status(404).json({
+          success: false,
+          message: `Permission with ID ${permission_id} not found`
+        });
+      }
+
+      const scope = parseScope(req.body);
+
+      if (typeof scope === "string") {
+        return res.status(400).json({
+          success: false,
+          message: scope
+        });
+      }
+
+      const repo = dataSource.getRepository(RolePermission);
+
+      const exists = await repo.findOne({
+        where: { role_id, permission_id, ...scopeWhere(scope) }
       });
-    }
 
-    const permRepo = dataSource.getRepository(Permission);
-    const hasPermission = await permRepo.findOne({ where: { id: Number(permission_id) } });
-    if (!hasPermission) {
-      return res.status(404).json({
-        success: false,
-        message: `Permission with ID ${permission_id} not found`
+      if (exists) {
+        return res.status(409).json({
+          success: false,
+          message: "Already assigned"
+        });
+      }
+
+      const data = repo.create({
+        role_id,
+        permission_id,
+        company_id: scope.company_id,
+        branch_id: scope.branch_id,
+        user_id: scope.user_id,
+        canApprove: !!canApprove,
+        // created directly by Super Admin — no separate approval step needed
+        status: StatusType.ACTIVE
+      } as Partial<RolePermission>);
+
+      await repo.save(data);
+
+      await notifyAffectedUsers(data);
+
+      return res.status(201).json({
+        success: true,
+        data
       });
+    } catch (err: any) {
+      console.error("[RoleAccess create error]:", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to assign role permission" });
     }
-
-    const scope = parseScope(req.body);
-
-    if (typeof scope === "string") {
-      return res.status(400).json({
-        success: false,
-        message: scope
-      });
-    }
-
-    const repo = dataSource.getRepository(RolePermission);
-
-    const exists = await repo.findOne({
-      where: { role_id, permission_id, ...scopeWhere(scope) }
-    });
-
-    if (exists) {
-      return res.status(409).json({
-        success: false,
-        message: "Already assigned"
-      });
-    }
-
-    const data = repo.create({
-      role_id,
-      permission_id,
-      company_id: scope.company_id,
-      branch_id: scope.branch_id,
-      user_id: scope.user_id,
-      canApprove: !!canApprove,
-      // created directly by Super Admin — no separate approval step needed
-      status: StatusType.ACTIVE
-    } as Partial<RolePermission>);
-
-    await repo.save(data);
-
-    await notifyAffectedUsers(data);
-
-    return res.status(201).json({
-      success: true,
-      data
-    });
   }
 
 
@@ -368,50 +372,54 @@ export class RoleAccessController {
   @Get("/")
   @Middleware([authenticateMiddleware])
   async getAll(req: any, res: any) {
+    try {
+      // Optional filters so the permission form can pre-fill an exact scope:
+      // ?menu_id=&role_id=&company_id=&branch_id=&user_id=&level=admin|branch|employee|global
+      const { menu_id, role_id, company_id, branch_id, user_id, level } = req.query;
 
-    // Optional filters so the permission form can pre-fill an exact scope:
-    // ?menu_id=&role_id=&company_id=&branch_id=&user_id=&level=admin|branch|employee|global
-    const { menu_id, role_id, company_id, branch_id, user_id, level } = req.query;
+      const where: any = {};
 
-    const where: any = {};
+      if (menu_id)     where.permission = { menu_id: Number(menu_id) };
+      if (role_id)     where.role_id    = Number(role_id);
+      if (company_id)  where.company_id = Number(company_id);
+      if (branch_id)   where.branch_id  = Number(branch_id);
+      if (user_id)     where.user_id    = Number(user_id);
 
-    if (menu_id)     where.permission = { menu_id: Number(menu_id) };
-    if (role_id)     where.role_id    = Number(role_id);
-    if (company_id)  where.company_id = Number(company_id);
-    if (branch_id)   where.branch_id  = Number(branch_id);
-    if (user_id)     where.user_id    = Number(user_id);
+      if (level === "global")   { where.company_id = IsNull(); where.branch_id = IsNull(); where.user_id = IsNull(); }
+      if (level === "admin")    { where.branch_id  = IsNull(); where.user_id   = IsNull(); }
+      if (level === "branch")   { where.user_id    = IsNull(); }
+      if (level === "employee" && !user_id) { where.user_id = Not(IsNull()); }
 
-    if (level === "global")   { where.company_id = IsNull(); where.branch_id = IsNull(); where.user_id = IsNull(); }
-    if (level === "admin")    { where.branch_id  = IsNull(); where.user_id   = IsNull(); }
-    if (level === "branch")   { where.user_id    = IsNull(); }
-    if (level === "employee" && !user_id) { where.user_id = Not(IsNull()); }
-
-    // Tenant scoping: non-SA users only see records for their own company
-    const u = req.user;
-    if (!u.isSuperAdmin && u.userType !== UserType.SUPER_ADMIN) {
-      if (u.companyId) where.company_id = u.companyId;
-      if (u.branchId)  where.branch_id  = u.branchId;
-    }
-
-    const data = await dataSource.getRepository(RolePermission).find({
-      where,
-      relations: {
-        role: true,
-        user: true,
-        permission: {
-          menu: true
-        }
-      },
-      order: {
-        id: "DESC"
+      // Tenant scoping: non-SA users only see records for their own company
+      const u = req.user;
+      if (!u.isSuperAdmin && u.userType !== UserType.SUPER_ADMIN) {
+        if (u.companyId) where.company_id = u.companyId;
+        if (u.branchId)  where.branch_id  = u.branchId;
       }
-    });
 
-    return res.json({
-      success: true,
-      count: data.length,
-      data
-    });
+      const data = await dataSource.getRepository(RolePermission).find({
+        where,
+        relations: {
+          role: true,
+          user: true,
+          permission: {
+            menu: true
+          }
+        },
+        order: {
+          id: "DESC"
+        }
+      });
+
+      return res.json({
+        success: true,
+        count: data.length,
+        data
+      });
+    } catch (err: any) {
+      console.error("[RoleAccess getAll error]:", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch role permissions" });
+    }
   }
 
   // =====================================================
@@ -420,22 +428,26 @@ export class RoleAccessController {
   @Get("/role/:role_id")
   @Middleware([authenticateMiddleware])
   async getByRole(req: any, res: any) {
+    try {
+      const role_id = Number(req.params.role_id);
 
-    const role_id = Number(req.params.role_id);
+      const data = await dataSource.getRepository(RolePermission).find({
+        where: { role_id },
+        relations: {
+          role: true,
+          permission: { menu: true }
+        }
+      });
 
-    const data = await dataSource.getRepository(RolePermission).find({
-      where: { role_id },
-      relations: {
-        role: true,
-        permission: { menu: true }
-      }
-    });
-
-    return res.json({
-      success: true,
-      count: data.length,
-      data
-    });
+      return res.json({
+        success: true,
+        count: data.length,
+        data
+      });
+    } catch (err: any) {
+      console.error("[RoleAccess getByRole error]:", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch role permissions" });
+    }
   }
 
   // =====================================================
@@ -444,82 +456,84 @@ export class RoleAccessController {
   @Delete("/:id")
   @Middleware([authenticateMiddleware])
   async delete(req: any, res: any) {
+    try {
+      const id = Number(req.params.id);
 
-    const id = Number(req.params.id);
+      const repo = dataSource.getRepository(RolePermission);
 
-    const repo = dataSource.getRepository(RolePermission);
+      const record = await repo.findOne({ where: { id } });
 
-    const record = await repo.findOne({ where: { id } });
-
-    if (!record) {
-      return res.status(404).json({
-        success: false,
-        message: "Not found"
-      });
-    }
-
-    // Non-SA users may only delete records scoped to their own company/branch
-    const u = req.user;
-    if (!u.isSuperAdmin && u.userType !== UserType.SUPER_ADMIN) {
-      const companyMismatch = record.company_id != null && record.company_id !== u.companyId;
-      const branchMismatch  = record.branch_id  != null && record.branch_id  !== u.branchId;
-      if (companyMismatch || branchMismatch) {
-        return res.status(403).json({
+      if (!record) {
+        return res.status(404).json({
           success: false,
-          message: "Access denied"
+          message: "Not found"
         });
       }
+
+      // Non-SA users may only delete records scoped to their own company/branch
+      const u = req.user;
+      if (!u.isSuperAdmin && u.userType !== UserType.SUPER_ADMIN) {
+        const companyMismatch = record.company_id != null && record.company_id !== u.companyId;
+        const branchMismatch  = record.branch_id  != null && record.branch_id  !== u.branchId;
+        if (companyMismatch || branchMismatch) {
+          return res.status(403).json({
+            success: false,
+            message: "Access denied"
+          });
+        }
+      }
+
+      await repo.remove(record);
+
+      await notifyAffectedUsers(record);
+
+      return res.json({
+        success: true,
+        message: "Deleted successfully"
+      });
+    } catch (err: any) {
+      console.error("[RoleAccess delete error]:", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to delete role permission" });
     }
-
-    await repo.remove(record);
-
-    await notifyAffectedUsers(record);
-
-    return res.json({
-      success: true,
-      message: "Deleted successfully"
-    });
   }
 
-
   @Put("/:id/approve")
-@Middleware([authenticateMiddleware,approveGuard()])
-public async approve(req:any,res:any){
+  @Middleware([authenticateMiddleware, approveGuard()])
+  public async approve(req: any, res: any) {
+    try {
+      const repo = dataSource.getRepository(RolePermission);
 
-const repo = dataSource.getRepository(RolePermission);
+      const record = await repo.findOne({
+        where: { id: Number(req.params.id) }
+      });
 
-const record = await repo.findOne({
+      if (!record) {
+        return res.status(404).json({
+          success: false,
+          message: "Role access not found"
+        });
+      }
 
-where:{id:Number(req.params.id)}
-});
+      const status = req.body?.status;
 
-if(!record){
+      record.status = Object.values(StatusType).includes(status)
+        ? status
+        : StatusType.ACTIVE;
 
-return res.status(404).json({
-success:false,
-message:"Role access not found"
-});
+      await repo.save(record);
 
-}
+      await notifyAffectedUsers(record);
 
-const status = req.body?.status;
-
-record.status =
-Object.values(StatusType).includes(status)
-? status
-: StatusType.ACTIVE;
-
-await repo.save(record);
-
-await notifyAffectedUsers(record);
-
-return res.json({
-success:true,
-message:"Role access approved successfully",
-data:record
-});
-
-}
+      return res.json({
+        success: true,
+        message: "Role access approved successfully",
+        data: record
+      });
+    } catch (err: any) {
+      console.error("[RoleAccess approve error]:", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to approve role access" });
+    }
+  }
 
   // =====================================================
   // BATCH ASSIGN / UPDATE / REVOKE ROLE ACCESS

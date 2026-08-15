@@ -40,39 +40,6 @@ function parseProductId(raw: any): number {
  *   description: User product wishlist management
  */
 
-/**
- * @swagger
- * /wishlist:
- *   post:
- *     tags:
- *       - Wishlist
- *     summary: Add product to wishlist
- *     description: Adds a product to the logged-in user's wishlist (idempotent — adding an existing item returns it without duplicating)
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - product_id
- *             properties:
- *               product_id:
- *                 type: integer
- *     responses:
- *       201:
- *         description: Product added to wishlist
- *       200:
- *         description: Product already in wishlist
- *       404:
- *         description: Product not found
- *       422:
- *         description: Validation failed
- *       401:
- *         description: Unauthorized
- */
 const addWishlistItem = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const userId = getUserId(req);
@@ -124,7 +91,70 @@ const addWishlistItem = async (req: AuthRequest, res: Response, next: NextFuncti
   }
 };
 
+/**
+ * @swagger
+ * /wishlist:
+ *   post:
+ *     tags:
+ *       - Wishlist
+ *     summary: Add product to wishlist
+ *     description: Adds a product to the logged-in user's wishlist (idempotent — adding an existing item returns it without duplicating)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - product_id
+ *             properties:
+ *               product_id:
+ *                 type: integer
+ *     responses:
+ *       201:
+ *         description: Product added to wishlist
+ *       200:
+ *         description: Product already in wishlist
+ *       404:
+ *         description: Product not found
+ *       422:
+ *         description: Validation failed
+ *       401:
+ *         description: Unauthorized
+ */
 router.post("/wishlist", authenticateMiddleware, addWishlistItem);
+
+/**
+ * @swagger
+ * /wishlist/{productId}:
+ *   post:
+ *     tags:
+ *       - Wishlist
+ *     summary: Add product to wishlist by ID
+ *     description: Adds a product to the logged-in user's wishlist using path parameter productId
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of product to add to wishlist
+ *     responses:
+ *       201:
+ *         description: Product added to wishlist
+ *       200:
+ *         description: Product already in wishlist
+ *       404:
+ *         description: Product not found
+ *       422:
+ *         description: Validation failed
+ *       401:
+ *         description: Unauthorized
+ */
 router.post("/wishlist/:productId", authenticateMiddleware, addWishlistItem);
 
 /**
@@ -134,14 +164,53 @@ router.post("/wishlist/:productId", authenticateMiddleware, addWishlistItem);
  *     tags:
  *       - Wishlist
  *     summary: Get user wishlist
- *     description: Returns all wishlist items for the logged-in user
+ *     description: Returns all wishlist items for the logged-in user with attached product details
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Wishlist fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Wishlist fetched successfully"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       user_id:
+ *                         type: integer
+ *                         example: 10
+ *                       product_id:
+ *                         type: integer
+ *                         example: 25
+ *                       product:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                             example: 25
+ *                           name:
+ *                             type: string
+ *                             example: "Smart TV 55 Inch"
+ *                           retail_price:
+ *                             type: number
+ *                             example: 34999.00
  *       401:
  *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/wishlist",
@@ -183,9 +252,27 @@ router.get(
  *         required: true
  *         schema:
  *           type: integer
+ *         example: 25
  *     responses:
  *       200:
  *         description: Check result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Wishlist check completed"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     inWishlist:
+ *                       type: boolean
+ *                       example: true
  *       422:
  *         description: Validation failed
  *       401:
@@ -231,9 +318,21 @@ router.get(
  *         required: true
  *         schema:
  *           type: integer
+ *         example: 25
  *     responses:
  *       200:
  *         description: Product removed from wishlist
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Product removed from wishlist"
  *       404:
  *         description: Product not found in wishlist
  *       422:

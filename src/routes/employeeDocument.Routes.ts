@@ -99,5 +99,6 @@ router.post("/employee-documents", authenticateMiddleware, EmployeeDocumentContr
  *         $ref: '#/components/schemas/ErrorResponse'
  */
 router.put("/employee-documents/:id/verify", authenticateMiddleware, EmployeeDocumentController.verifyDocument);
+router.post("/employee-documents/:id/verify", authenticateMiddleware, EmployeeDocumentController.verifyDocument);
 
 export default router;

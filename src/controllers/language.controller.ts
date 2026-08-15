@@ -420,8 +420,12 @@ export class LanguageController {
   }
 
   static async publishTranslations(req: Request, res: Response): Promise<void> {
-    translationCache.clear();
-    res.json({ success: true, message: "Translation cache cleared. All clients will receive updated translations." });
+    try {
+      translationCache.clear();
+      res.json({ success: true, message: "Translation cache cleared. All clients will receive updated translations." });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message || "Failed to publish translations" });
+    }
   }
 
   private static async seedDefaultTranslations(): Promise<void> {

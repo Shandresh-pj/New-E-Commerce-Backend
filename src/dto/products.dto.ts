@@ -349,9 +349,13 @@ export class UpdateProductDto {
 }
 
 export class ScanProductDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  code!: string;  // barcode or QR value
+  code?: string; // barcode or QR value
+
+  @IsOptional()
+  @IsString()
+  barcode?: string;
 }
 
 export class AddToCartDto {

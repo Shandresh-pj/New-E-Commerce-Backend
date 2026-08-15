@@ -9,6 +9,13 @@ const router = Router();
 
 /**
  * @swagger
+ * tags:
+ *   name: Menus
+ *   description: Dynamic application navigation menus and permission management
+ */
+
+/**
+ * @swagger
  * /menus:
  *   get:
  *     tags: [Menus]
@@ -18,9 +25,47 @@ const router = Router();
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of menus retrieved
+ *         description: List of menus retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       name:
+ *                         type: string
+ *                         example: "Dashboard"
+ *                       path:
+ *                         type: string
+ *                         example: "/dashboard"
+ *                       icon:
+ *                         type: string
+ *                         example: "home-icon"
+ *                       permissions:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: integer
+ *                               example: 10
+ *                             action:
+ *                               type: string
+ *                               example: "VIEW"
  *       401:
  *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/menus",
@@ -45,11 +90,39 @@ router.get(
  *         schema:
  *           type: integer
  *         description: Menu ID
+ *         example: 1
  *     responses:
  *       200:
- *         description: Menu details
+ *         description: Menu details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     name:
+ *                       type: string
+ *                       example: "Dashboard"
+ *                     path:
+ *                       type: string
+ *                       example: "/dashboard"
+ *                     icon:
+ *                       type: string
+ *                       example: "home-icon"
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: Menu not found
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/menus/:id",
@@ -80,9 +153,11 @@ router.get(
  *               name:
  *                 type: string
  *                 example: "Inventory Control"
+ *                 description: "**REQUIRED** Menu title"
  *               path:
  *                 type: string
  *                 example: "/inventory"
+ *                 description: "**REQUIRED** Angular/React route path"
  *               icon:
  *                 type: string
  *                 example: "box-icon"
@@ -95,9 +170,28 @@ router.get(
  *                 example: 1
  *     responses:
  *       201:
- *         description: Menu created
+ *         description: Menu created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Menu created successfully"
+ *                 data:
+ *                   type: object
  *       400:
  *         description: Missing required fields
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Super Admin only
+ *       500:
+ *         description: Internal server error
  */
 router.post(
   "/menus",
@@ -145,6 +239,25 @@ router.post(
  *     responses:
  *       201:
  *         description: Menus created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Successfully created 2 menus"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.post(
   "/menus/bulk",
@@ -169,6 +282,7 @@ router.post(
  *         required: true
  *         schema:
  *           type: integer
+ *         example: 1
  *     requestBody:
  *       required: true
  *       content:
@@ -191,8 +305,25 @@ router.post(
  *     responses:
  *       200:
  *         description: Menu updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Menu updated successfully"
+ *                 data:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: Menu not found
+ *       500:
+ *         description: Internal server error
  */
 router.put(
   "/menus/update/:id",
@@ -217,11 +348,27 @@ router.put(
  *         required: true
  *         schema:
  *           type: integer
+ *         example: 1
  *     responses:
  *       200:
  *         description: Menu deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Menu deleted"
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: Menu not found
+ *       500:
+ *         description: Internal server error
  */
 router.delete(
   "/menus/delete/:id",

@@ -15,7 +15,22 @@ const router = Router();
  *     tags:
  *       - Profile
  *     summary: Get All Profiles
- *     description: Retrieve all user profiles
+ *     description: Retrieve all user profiles with pagination
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
  *     responses:
  *       200:
  *         description: Profiles fetched successfully
@@ -26,7 +41,17 @@ const router = Router();
  *               properties:
  *                 success:
  *                   type: boolean
- *                 users:
+ *                   example: true
+ *                 page:
+ *                   type: integer
+ *                   example: 1
+ *                 limit:
+ *                   type: integer
+ *                   example: 10
+ *                 total:
+ *                   type: integer
+ *                   example: 25
+ *                 data:
  *                   type: array
  *                   items:
  *                     type: object
@@ -47,6 +72,12 @@ const router = Router();
  *                         type: string
  *                       status:
  *                         type: string
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/profile/all",
@@ -68,12 +99,26 @@ router.get(
  *       - Profile
  *     summary: Get Profile By Id
  *     description: Retrieve a single profile
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
+ *         description: Profile ID
+ *     responses:
+ *       200:
+ *         description: Profile details retrieved
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Profile not found
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/profile/:id",
@@ -90,6 +135,9 @@ router.get(
  *     tags:
  *       - Profile
  *     summary: Create Profile
+ *     description: Create user profile with optional multipart image upload
+ *     security:
+ *       - bearerAuth: []
  *     consumes:
  *       - multipart/form-data
  *     requestBody:
@@ -122,6 +170,15 @@ router.get(
  *               image:
  *                 type: string
  *                 format: binary
+ *     responses:
+ *       201:
+ *         description: Profile created successfully
+ *       400:
+ *         description: Validation failed or user already exists
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.post(
   "/profile/add",
@@ -143,6 +200,9 @@ router.post(
  *     tags:
  *       - Profile
  *     summary: Update Profile
+ *     description: Update profile details with optional image upload
+ *     security:
+ *       - bearerAuth: []
  *     consumes:
  *       - multipart/form-data
  *     parameters:
@@ -151,6 +211,7 @@ router.post(
  *         required: true
  *         schema:
  *           type: integer
+ *         description: Profile ID
  *     requestBody:
  *       content:
  *         multipart/form-data:
@@ -168,6 +229,17 @@ router.post(
  *               image:
  *                 type: string
  *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       400:
+ *         description: Validation failed
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Profile not found
+ *       500:
+ *         description: Internal server error
  */
 router.put(
   "/profile/:id",
@@ -189,12 +261,27 @@ router.put(
  *     tags:
  *       - Profile
  *     summary: Delete Profile
+ *     description: Delete a user profile (Admin only)
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
+ *         description: Profile ID
+ *     responses:
+ *       200:
+ *         description: Profile deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Profile not found
+ *       500:
+ *         description: Internal server error
  */
 router.delete(
   "/profile/:id",

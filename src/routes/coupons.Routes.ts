@@ -15,8 +15,7 @@ const router = Router();
  *   post:
  *     summary: Create Coupon
  *     description: >
- *       Create a new discount coupon. Supports both percentage-based and fixed-amount discounts.
- *       Rate limiting on usage is enforced via `usage_limit`.
+ *       Create a new discount coupon. Supports percentage, flat, bogo, and free shipping discounts.
  *     tags: [Coupons]
  *     security:
  *       - bearerAuth: []
@@ -28,75 +27,74 @@ const router = Router();
  *             type: object
  *             required:
  *               - code
- *               - discount_type
- *               - discount_value
+ *               - type
+ *               - value
  *             properties:
  *               code:
  *                 type: string
  *                 example: WELCOME20
- *                 description: "**REQUIRED** Unique coupon code (auto-uppercased)"
- *               discount_type:
+ *                 description: "**REQUIRED** Unique coupon code"
+ *               type:
  *                 type: string
- *                 enum: [PERCENTAGE, FIXED]
- *                 example: PERCENTAGE
- *                 description: "**REQUIRED** Type of discount"
- *               discount_value:
+ *                 enum: [percent, flat, bogo, free_shipping]
+ *                 example: percent
+ *                 description: "**REQUIRED** Type of coupon discount"
+ *               value:
  *                 type: number
  *                 example: 20
- *                 description: "**REQUIRED** Percentage (0–100) or fixed INR amount"
- *               max_discount:
- *                 type: number
- *                 example: 500
- *                 description: Maximum discount cap in INR (for percentage coupons)
- *               min_order_value:
- *                 type: number
- *                 example: 200
- *                 description: Minimum cart value to apply this coupon
+ *                 description: "**REQUIRED** Discount value (percentage 0-100 or flat amount)"
+ *               buy_x:
+ *                 type: integer
+ *                 example: 2
+ *                 description: Buy X quantity (for BOGO)
+ *               get_y:
+ *                 type: integer
+ *                 example: 1
+ *                 description: Get Y quantity free (for BOGO)
+ *               expiry_date:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2026-12-31T23:59:59.000Z"
+ *                 description: Coupon expiry date
+ *               start_date:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2026-01-01T00:00:00.000Z"
+ *                 description: Coupon valid start date
  *               usage_limit:
  *                 type: integer
  *                 example: 100
- *                 description: Maximum total uses across all customers (0 = unlimited)
+ *                 description: Maximum total uses across all customers
  *               per_user_limit:
  *                 type: integer
  *                 example: 1
- *                 description: Max uses per customer (0 = unlimited)
- *               expiry_date:
- *                 type: string
- *                 format: date
- *                 example: "2026-12-31"
- *                 description: Coupon expiry date (null = never expires)
- *               applicable_products:
+ *                 description: Max uses per customer
+ *               company_id:
+ *                 type: integer
+ *                 example: 1
+ *               branch_id:
+ *                 type: integer
+ *                 example: 1
+ *               product_ids:
  *                 type: array
  *                 items:
  *                   type: integer
  *                 example: [101, 202]
- *                 description: Restrict coupon to specific product IDs (empty = all products)
- *               applicable_categories:
- *                 type: array
- *                 items:
- *                   type: integer
- *                 example: [5, 8]
- *                 description: Restrict coupon to specific category IDs (empty = all)
+ *                 description: Restrict coupon to specific product IDs
  *               is_active:
  *                 type: boolean
  *                 example: true
- *                 description: Whether coupon is immediately active
  *     responses:
  *       201:
  *         description: Coupon created successfully
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/ApiResponse'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       $ref: '#/components/schemas/Coupon'
  *       400:
  *         description: Duplicate coupon code or validation error
+ *       401:
+ *         description: Unauthorized
  *       403:
  *         description: Forbidden — Admin role required
+ *       500:
+ *         description: Internal server error
  */
 router.post(
   "/coupons/create",
@@ -232,11 +230,16 @@ router.post(
  *           type: boolean
  *         description: Filter by active/inactive status
  *       - in: query
- *         name: discount_type
+ *         name: type
  *         schema:
  *           type: string
- *           enum: [PERCENTAGE, FIXED]
- *         description: Filter by discount type
+ *           enum: [percent, flat, bogo, free_shipping]
+ *         description: Filter by coupon type
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by coupon code
  *       - in: query
  *         name: page
  *         schema:
@@ -250,17 +253,10 @@ router.post(
  *     responses:
  *       200:
  *         description: Coupon list retrieved
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/ApiResponse'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/Coupon'
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/coupons",
@@ -298,33 +294,52 @@ router.get(
  *               code:
  *                 type: string
  *                 example: SUMMER25
- *               discount_type:
+ *               type:
  *                 type: string
- *                 enum: [PERCENTAGE, FIXED]
- *               discount_value:
+ *                 enum: [percent, flat, bogo, free_shipping]
+ *                 example: percent
+ *               value:
  *                 type: number
  *                 example: 25
- *               max_discount:
- *                 type: number
- *                 example: 750
- *               min_order_value:
- *                 type: number
- *                 example: 300
+ *               buy_x:
+ *                 type: integer
+ *                 example: 2
+ *               get_y:
+ *                 type: integer
+ *                 example: 1
  *               usage_limit:
  *                 type: integer
  *                 example: 200
+ *               per_user_limit:
+ *                 type: integer
+ *                 example: 1
  *               expiry_date:
  *                 type: string
- *                 format: date
- *                 example: "2026-09-30"
+ *                 format: date-time
+ *                 example: "2026-09-30T23:59:59.000Z"
+ *               start_date:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2026-01-01T00:00:00.000Z"
  *               is_active:
  *                 type: boolean
  *                 example: true
+ *               product_ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 example: [101, 202]
  *     responses:
  *       200:
- *         description: Coupon updated
+ *         description: Coupon updated successfully
+ *       400:
+ *         description: Validation failed
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: Coupon not found
+ *       500:
+ *         description: Internal server error
  */
 router.put(
   "/coupons/:id",

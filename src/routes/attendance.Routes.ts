@@ -195,7 +195,7 @@ router.post("/attendance/break-out/:breakLogId", authenticateMiddleware, authori
 
 /**
  * @swagger
- * /attendance/breaks/{id}:
+ * /attendance/breaks/{attendanceId}:
  *   get:
  *     summary: Get break logs
  *     description: Retrieve all break logs for a specific attendance record.
@@ -204,7 +204,7 @@ router.post("/attendance/break-out/:breakLogId", authenticateMiddleware, authori
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: attendanceId
  *         required: true
  *         schema:
  *           type: integer
@@ -212,6 +212,12 @@ router.post("/attendance/break-out/:breakLogId", authenticateMiddleware, authori
  *     responses:
  *       200:
  *         description: Break logs retrieved successfully
+ *       400:
+ *         description: Invalid attendance ID
+ *       404:
+ *         description: Attendance record not found
+ *       500:
+ *         description: Internal server error
  */
 router.get("/attendance/breaks/:attendanceId", authenticateMiddleware, authorize({ roles: allRoles }), attendanceController.getBreaks.bind(attendanceController));
 

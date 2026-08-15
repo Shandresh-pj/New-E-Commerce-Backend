@@ -6,6 +6,13 @@ const router = Router();
 
 /**
  * @swagger
+ * tags:
+ *   name: Language
+ *   description: Multi-language configuration and localization dictionary management
+ */
+
+/**
+ * @swagger
  * /languages:
  *   get:
  *     summary: List Supported Languages
@@ -13,7 +20,47 @@ const router = Router();
  *     tags: [Language]
  *     responses:
  *       200:
- *         description: List of languages retrieved
+ *         description: List of languages retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       code:
+ *                         type: string
+ *                         example: "en"
+ *                       name:
+ *                         type: string
+ *                         example: "English"
+ *                       native_name:
+ *                         type: string
+ *                         example: "English"
+ *                       flag_icon:
+ *                         type: string
+ *                         example: "🇺🇸"
+ *                       direction:
+ *                         type: string
+ *                         enum: [ltr, rtl]
+ *                         example: "ltr"
+ *                       is_default:
+ *                         type: boolean
+ *                         example: true
+ *                       is_active:
+ *                         type: boolean
+ *                         example: true
+ *       500:
+ *         description: Internal server error
  */
 router.get("/languages", LanguageController.getLanguages);
 
@@ -26,7 +73,41 @@ router.get("/languages", LanguageController.getLanguages);
  *     tags: [Language]
  *     responses:
  *       200:
- *         description: Translation matrix object
+ *         description: Translation matrix object retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 matrix:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       group_name:
+ *                         type: string
+ *                         example: "menu"
+ *                       key_name:
+ *                         type: string
+ *                         example: "Dashboard"
+ *                       default_text:
+ *                         type: string
+ *                         example: "Dashboard"
+ *                       translations:
+ *                         type: object
+ *                         example: { "en": "Dashboard", "ta": "முகப்பு", "hi": "डैशबोर्ड", "ar": "لوحة القيادة" }
+ *                 languages:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       500:
+ *         description: Internal server error
  */
 router.get("/translations/matrix", LanguageController.getTranslationMatrix);
 
@@ -44,11 +125,28 @@ router.get("/translations/matrix", LanguageController.getTranslationMatrix);
  *         schema:
  *           type: string
  *         example: "hi"
+ *         description: ISO language code
  *     responses:
  *       200:
- *         description: Key-value dictionary object
+ *         description: Key-value dictionary object retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 langCode:
+ *                   type: string
+ *                   example: "hi"
+ *                 dictionary:
+ *                   type: object
+ *                   example: { "Dashboard": "डैशबोर्ड", "Settings": "सेटिंग्स" }
  *       404:
- *         $ref: '#/components/schemas/ErrorResponse'
+ *         description: Language not found
+ *       500:
+ *         description: Internal server error
  */
 router.get("/translations/:langCode", LanguageController.getDictionary);
 
@@ -73,18 +171,45 @@ router.get("/translations/:langCode", LanguageController.getDictionary);
  *             properties:
  *               code:
  *                 type: string
- *                 example: "hi"
+ *                 example: "fr"
+ *                 description: "**REQUIRED** 2-letter language code"
  *               name:
  *                 type: string
- *                 example: "Hindi"
- *               isRtl:
- *                 type: boolean
- *                 default: false
+ *                 example: "French"
+ *                 description: "**REQUIRED** Language name in English"
+ *               native_name:
+ *                 type: string
+ *                 example: "Français"
+ *               flag_icon:
+ *                 type: string
+ *                 example: "🇫🇷"
+ *               direction:
+ *                 type: string
+ *                 enum: [ltr, rtl]
+ *                 default: ltr
+ *                 example: "ltr"
  *     responses:
  *       201:
- *         description: Language added
+ *         description: Language added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Language created successfully"
+ *                 data:
+ *                   type: object
  *       400:
- *         $ref: '#/components/schemas/ErrorResponse'
+ *         description: Language code already exists or validation failed
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.post("/languages", authenticateMiddleware, LanguageController.createLanguage);
 
@@ -103,6 +228,7 @@ router.post("/languages", authenticateMiddleware, LanguageController.createLangu
  *         required: true
  *         schema:
  *           type: integer
+ *         example: 2
  *     requestBody:
  *       required: true
  *       content:
@@ -112,15 +238,45 @@ router.post("/languages", authenticateMiddleware, LanguageController.createLangu
  *             properties:
  *               name:
  *                 type: string
- *               isDefault:
+ *                 example: "Tamil"
+ *               native_name:
+ *                 type: string
+ *                 example: "தமிழ்"
+ *               flag_icon:
+ *                 type: string
+ *                 example: "🇮🇳"
+ *               direction:
+ *                 type: string
+ *                 enum: [ltr, rtl]
+ *                 example: "ltr"
+ *               is_default:
  *                 type: boolean
- *               isActive:
+ *                 example: false
+ *               is_active:
  *                 type: boolean
+ *                 example: true
  *     responses:
  *       200:
- *         description: Language updated
+ *         description: Language updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Language updated successfully"
+ *                 data:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
  *       404:
- *         $ref: '#/components/schemas/ErrorResponse'
+ *         description: Language not found
+ *       500:
+ *         description: Internal server error
  */
 router.put("/languages/:id", authenticateMiddleware, LanguageController.updateLanguage);
 
@@ -139,25 +295,42 @@ router.put("/languages/:id", authenticateMiddleware, LanguageController.updateLa
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - key
- *               - langCode
- *               - value
  *             properties:
- *               key:
+ *               key_id:
+ *                 type: integer
+ *                 example: 1
+ *               key_name:
  *                 type: string
- *                 example: "NAV_HOME"
- *               langCode:
+ *                 example: "menu.dashboard"
+ *               group_name:
  *                 type: string
- *                 example: "hi"
- *               value:
+ *                 example: "menu"
+ *               default_text:
  *                 type: string
- *                 example: "मुख्य पृष्ठ"
+ *                 example: "Dashboard"
+ *               translations:
+ *                 type: object
+ *                 example: { "ta": "முகப்பு", "hi": "डैशबोर्ड" }
  *     responses:
  *       200:
- *         description: Translation updated
+ *         description: Translation updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Translation updated successfully"
  *       400:
- *         $ref: '#/components/schemas/ErrorResponse'
+ *         description: Key required
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.put("/translations/values", authenticateMiddleware, LanguageController.upsertTranslation);
 
@@ -165,8 +338,8 @@ router.put("/translations/values", authenticateMiddleware, LanguageController.up
  * @swagger
  * /translations/import:
  *   post:
- *     summary: Import Translation File (JSON/CSV)
- *     description: Bulk import translations for a language using a JSON/CSV payload.
+ *     summary: Import Translation Dictionary
+ *     description: Bulk import translations for a language using a key-value dictionary object.
  *     tags: [Language]
  *     security:
  *       - bearerAuth: []
@@ -177,20 +350,41 @@ router.put("/translations/values", authenticateMiddleware, LanguageController.up
  *           schema:
  *             type: object
  *             required:
- *               - langCode
- *               - translations
+ *               - lang_code
+ *               - dictionary
  *             properties:
- *               langCode:
+ *               lang_code:
  *                 type: string
- *                 example: "en"
- *               translations:
+ *                 example: "ta"
+ *                 description: "**REQUIRED** ISO language code"
+ *               group:
+ *                 type: string
+ *                 example: "menu"
+ *                 description: Optional translation group
+ *               dictionary:
  *                 type: object
- *                 example: { "NAV_HOME": "Home", "NAV_CART": "Cart" }
+ *                 example: { "Dashboard": "முகப்பு", "Settings": "அமைப்புகள்" }
+ *                 description: "**REQUIRED** Key-value translations"
  *     responses:
  *       200:
  *         description: Translations imported successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Successfully imported 25 keys for 'ta'"
  *       400:
- *         $ref: '#/components/schemas/ErrorResponse'
+ *         description: Missing language code or dictionary
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.post("/translations/import", authenticateMiddleware, LanguageController.importTranslations);
 
@@ -203,20 +397,24 @@ router.post("/translations/import", authenticateMiddleware, LanguageController.i
  *     tags: [Language]
  *     security:
  *       - bearerAuth: []
- *     requestBody:
- *       required: false
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               langCode:
- *                 type: string
- *                 example: "hi"
- *                 description: Target language code to publish (optional, default all)
  *     responses:
  *       200:
  *         description: Translation cache published successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Translation cache cleared. All clients will receive updated translations."
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.post("/translations/publish", authenticateMiddleware, LanguageController.publishTranslations);
 

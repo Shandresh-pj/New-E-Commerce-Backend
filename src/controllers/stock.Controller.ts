@@ -30,8 +30,49 @@ import { Order } from "../entities/order";
 @Controller("/stock")
 export class StockController {
 
+  @Get("/")
+  @Swagger("Get Stock Inventory", "Returns inventory levels and low-stock alerts across products")
+  async getStockSummary(req: any, res: Response) {
+    try {
+      const companyId = Number(req.user?.companyId || req.user?.company_id || 1);
+      const productRepo = dataSource.getRepository(Product);
+
+      const products = await productRepo.find({
+        where: { registration_id: companyId },
+        relations: { branchStocks: true },
+        order: { id: "DESC" },
+      });
+
+      const summary = products.map((p) => {
+        const reorderLevel = 10;
+        const currentStock = Number(p.stock ?? p.stock_in_hand ?? 0);
+        return {
+          id: p.id,
+          product_id: p.id,
+          name: p.name,
+          sku: p.barcode || `SKU-${p.id}`,
+          stock: currentStock,
+          stock_in_hand: currentStock,
+          reorder_level: reorderLevel,
+          is_low_stock: currentStock <= reorderLevel,
+          status: p.status || "ACTIVE",
+          branch_stocks: p.branchStocks || [],
+          retail_price: p.retail_price,
+          category_id: p.category,
+        };
+      });
+
+      return res.json({
+        success: true,
+        data: summary,
+        total: summary.length,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch stock inventory" });
+    }
+  }
+
   @Post("/update")
-  @Middleware([validate(UpdateStockDto)])
   @Swagger("Update Stock", "Add / Remove Stock")
   async updateStock(req: any, res: Response, next: NextFunction) {
 
@@ -40,15 +81,28 @@ export class StockController {
     await qr.startTransaction();
 
     try {
-      const { product_id, quantity, action } = req.body;
+      const pId = Number(req.body.product_id || req.body.productId);
+      const qty = Number(req.body.quantity || req.body.stock || 0);
+      let act: "ADD" | "REMOVE" = "ADD";
+      if (req.body.action) {
+        act = String(req.body.action).toUpperCase().includes("REMOVE") || String(req.body.action).toUpperCase().includes("DEDUCT") ? "REMOVE" : "ADD";
+      } else if (req.body.type) {
+        act = String(req.body.type).toUpperCase().includes("DEDUCT") || String(req.body.type).toUpperCase().includes("REMOVE") ? "REMOVE" : "ADD";
+      }
+
+      if (!pId || isNaN(pId)) {
+        await qr.rollbackTransaction();
+        await qr.release();
+        return res.status(400).json({ success: false, message: "Valid product_id or productId is required" });
+      }
 
       const user = req.user;
       const isApproved = user?.isSuperAdmin || user?.userType === UserType.SUPER_ADMIN || user?.userType === UserType.ADMIN;
 
       const result = await StockService.updateStock(
-        product_id,
-        quantity,
-        action,
+        pId,
+        qty,
+        act,
         user?.userId || user?.id || 1,
         qr.manager,
         isApproved
@@ -72,17 +126,19 @@ export class StockController {
 
   @Get("/logs")
   async logs(req: Request, res: Response) {
+    try {
+      const repo = dataSource.getRepository(StockLog);
+      const logs = await repo.find({
+        order: { id: "DESC" },
+      });
 
-    const repo = dataSource.getRepository(StockLog);
-
-    const logs = await repo.find({
-      order: { id: "DESC" },
-    });
-
-    return res.json({
-      success: true,
-      data: logs,
-    });
+      return res.json({
+        success: true,
+        data: logs,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch stock logs" });
+    }
   }
 
   // ================= APPROVE STOCK ADJUSTMENT =================
@@ -268,53 +324,66 @@ export class AlertController {
 
   @Delete("/:id")
   async deleteAlert(req: Request, res: Response) {
-
-    const repo = dataSource.getRepository(LowStockAlert);
-
-    await repo.delete(req.params.id);
-
-    return res.json({
-      success: true,
-      message: "Alert deleted"
-    });
+    try {
+      const repo = dataSource.getRepository(LowStockAlert);
+      await repo.delete(req.params.id);
+      return res.json({
+        success: true,
+        message: "Alert deleted",
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to delete alert" });
+    }
   }
 
   // ==========================================
   // GET ALL NOTIFICATIONS
   // ==========================================
   async getNotifications(req: Request, res: Response) {
-    const repo = dataSource.getRepository(Notification);
-    const notifications = await repo.find({
-      order: { id: "DESC" },
-    });
-    return res.json({
-      success: true,
-      data: notifications,
-    });
+    try {
+      const repo = dataSource.getRepository(Notification);
+      const notifications = await repo.find({
+        order: { id: "DESC" },
+      });
+      return res.json({
+        success: true,
+        data: notifications,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch notifications" });
+    }
   }
 
   // ==========================================
   // MARK NOTIFICATION AS READ
   // ==========================================
   async markRead(req: Request, res: Response) {
-    const repo = dataSource.getRepository(Notification);
-    const notificationId = Number(req.params.id);
-    await repo.update(notificationId, { is_read: true });
-    return res.json({
-      success: true,
-      message: "Notification marked as read",
-    });
+    try {
+      const repo = dataSource.getRepository(Notification);
+      const notificationId = Number(req.params.id);
+      await repo.update(notificationId, { is_read: true });
+      return res.json({
+        success: true,
+        message: "Notification marked as read",
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to mark notification read" });
+    }
   }
 
   // ==========================================
   // MARK ALL AS READ
   // ==========================================
   async markAllRead(req: Request, res: Response) {
-    const repo = dataSource.getRepository(Notification);
-    await repo.update({ is_read: false }, { is_read: true });
-    return res.json({
-      success: true,
-      message: "All notifications marked as read",
-    });
+    try {
+      const repo = dataSource.getRepository(Notification);
+      await repo.update({ is_read: false }, { is_read: true });
+      return res.json({
+        success: true,
+        message: "All notifications marked as read",
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to mark all notifications read" });
+    }
   }
 }

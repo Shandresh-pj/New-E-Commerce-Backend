@@ -10,6 +10,7 @@ import { AttendanceNotification } from "../entities/attendance_notification.enti
 import { Employee } from "../entities/employee.entity";
 import { TenantService } from "../middleware/tenantFilter.middleware";
 import { nowDate } from "../utils/dateTime";
+import { LeaveRequest } from "../entities/leave.entity";
 
 const attendanceService   = new AttendanceService();
 const notificationService = new NotificationService();
@@ -296,6 +297,84 @@ export class WorkforceDashboardController {
     } catch (err: any) {
       console.error("[WorkforceDashboardController] markRead error:", err.message);
       return res.status(500).json({ success: false, message: err.message || "Failed to mark notification read" });
+    }
+  }
+
+  // ── Workforce Requests List ───────────────────────────────────────────
+  @Get("/requests")
+  @Middleware([authenticateMiddleware])
+  @Swagger("Workforce Requests", "Get leave, attendance regularization, and employee requests")
+  async getWorkforceRequests(req: any, res: Response) {
+    try {
+      const leaveRepo = dataSource.getRepository(LeaveRequest);
+      const empRepo = dataSource.getRepository(Employee);
+
+      const where: any = TenantService.scopeWhere(req.user);
+      const requests = await leaveRepo.find({
+        where,
+        order: { id: "DESC" },
+        take: 50,
+      });
+
+      const empIds = [...new Set(requests.map((r) => r.employee_id))];
+      const employees = empIds.length > 0 ? await empRepo.find({ where: { id: In(empIds) } }) : [];
+      const empMap = new Map(employees.map((e) => [e.id, e]));
+
+      const enriched = requests.map((r) => {
+        const emp = empMap.get(r.employee_id);
+        return {
+          id: r.id,
+          employee_id: r.employee_id,
+          employee_name: emp ? emp.name : `Employee #${r.employee_id}`,
+          department: emp ? emp.department : undefined,
+          type: r.leave_type || "LEAVE",
+          request_type: r.leave_type || "LEAVE",
+          from_date: r.from_date,
+          to_date: r.to_date,
+          total_days: r.total_days,
+          reason: r.reason,
+          status: r.status,
+          created_at: r.created_at,
+        };
+      });
+
+      return res.json({ success: true, data: enriched });
+    } catch (err: any) {
+      console.error("[WorkforceDashboardController] getWorkforceRequests error:", err.message);
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch workforce requests" });
+    }
+  }
+
+  // ── Action Workforce Request (Approve / Reject) ────────────────────────
+  @Post("/requests/:id/action")
+  @Middleware([authenticateMiddleware])
+  @Swagger("Action Workforce Request", "Approve or reject leave/workforce request")
+  async actionWorkforceRequest(req: any, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const { action, rejection_reason, reason } = req.body;
+      const targetAction = String(action || "").toUpperCase().startsWith("APPROV") ? "APPROVED" : "REJECTED";
+
+      const leaveRepo = dataSource.getRepository(LeaveRequest);
+      const request = await leaveRepo.findOne({ where: { id } });
+
+      if (!request) {
+        return res.status(404).json({ success: false, message: "Request not found" });
+      }
+
+      request.status = targetAction;
+      request.approved_by = req.user?.userId || req.user?.id || null;
+      request.approved_at = new Date().toISOString();
+      await leaveRepo.save(request);
+
+      return res.json({
+        success: true,
+        message: `Request ${targetAction.toLowerCase()} successfully`,
+        data: request,
+      });
+    } catch (err: any) {
+      console.error("[WorkforceDashboardController] actionWorkforceRequest error:", err.message);
+      return res.status(500).json({ success: false, message: err.message || "Failed to process request action" });
     }
   }
 }

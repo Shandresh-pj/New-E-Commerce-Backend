@@ -29,10 +29,18 @@ export class StatusController {
           order: { Id: "ASC" },
         });
 
+      const formatted = rows.map((r) => ({
+        ...r,
+        id: r.Id,
+        name: r.StatusCode,
+        module: r.StatusFor,
+        color_code: "#3B82F6",
+      }));
+
       return response.json({
         success: true,
         message: "Statuses fetched successfully",
-        data: { data: rows },
+        data: formatted,
       });
     } catch (error) {
       next(error);
@@ -40,20 +48,20 @@ export class StatusController {
   }
 
   // ================= CREATE =================
-  // POST /Status/Add  { StatusCode, StatusFor? }
+  // POST /Status/Add  { StatusCode / name, StatusFor / module? }
   public async create(
     request: Request,
     response: Response,
     next: NextFunction
   ) {
     try {
-      const StatusCode = request.body.StatusCode;
-      const StatusFor = request.body.StatusFor || "COMMON";
+      const StatusCode = request.body.StatusCode || request.body.name;
+      const StatusFor = request.body.StatusFor || request.body.module || "COMMON";
 
       if (!StatusCode) {
         return response.status(400).json({
           success: false,
-          message: "StatusCode is required",
+          message: "StatusCode / name is required",
         });
       }
 
@@ -76,7 +84,7 @@ export class StatusController {
       return response.json({
         success: true,
         message: "Status added successfully",
-        data: { Id: status.Id },
+        data: { Id: status.Id, id: status.Id, name: status.StatusCode, module: status.StatusFor },
       });
     } catch (error) {
       next(error);
@@ -103,11 +111,14 @@ export class StatusController {
         });
       }
 
-      if (request.body.StatusCode !== undefined) {
-        status.StatusCode = request.body.StatusCode;
+      const StatusCode = request.body.StatusCode || request.body.name;
+      const StatusFor = request.body.StatusFor || request.body.module;
+
+      if (StatusCode !== undefined) {
+        status.StatusCode = StatusCode;
       }
-      if (request.body.StatusFor !== undefined) {
-        status.StatusFor = request.body.StatusFor;
+      if (StatusFor !== undefined) {
+        status.StatusFor = StatusFor;
       }
 
       await repo.save(status);
@@ -115,7 +126,7 @@ export class StatusController {
       return response.json({
         success: true,
         message: "Status updated successfully",
-        data: { Id: status.Id },
+        data: { Id: status.Id, id: status.Id, name: status.StatusCode, module: status.StatusFor },
       });
     } catch (error) {
       next(error);

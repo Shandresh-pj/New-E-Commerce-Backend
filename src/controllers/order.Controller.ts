@@ -35,9 +35,9 @@ import { Register } from "../entities/register";
 import { TenantService } from "../middleware/tenantFilter.middleware";
 import { ProductStatus } from "../dto/products.dto";
 
-// import { generateInvoicePDF } from "../utils/invoice";
 import { generateQR } from "../utils/qr";
 import { sendInvoiceEmail } from "../utils/email-invoice";
+import { io } from "../socket/socket";
 import { generateInvoicePDF} from "../utils/invoice";
 // import { sendInvoiceEmail } from "../services/email.Service";
 import fs from "fs";
@@ -455,27 +455,30 @@ export class OrderController {
   // ==========================================
   @Get("/")
   public async getAll(req: any, res: Response) {
+    try {
+      const repo = dataSource.getRepository(Order);
+      const where = TenantService.scopeWhere(req.user);
 
-    const repo = dataSource.getRepository(Order);
-
-    const where = TenantService.scopeWhere(req.user);
-
-    const orders = await repo.find({
-      where,
-      relations: {
-        user: true,
-        items: {
-          product: true,
+      const orders = await repo.find({
+        where,
+        relations: {
+          user: true,
+          items: {
+            product: true,
+          },
         },
-      },
-      order: { id: "DESC" },
-    });
+        order: { id: "DESC" },
+      });
 
-    return res.json({
-      success: true,
-      data: orders,
-      order: true
-    });
+      return res.json({
+        success: true,
+        data: orders,
+        order: true
+      });
+    } catch (err: any) {
+      console.error("[getAll Orders Error]:", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch orders" });
+    }
   }
 
   // ==========================================
@@ -483,32 +486,35 @@ export class OrderController {
   // ==========================================
   @Get("/:id")
   public async getById(req: any, res: Response) {
+    try {
+      const repo = dataSource.getRepository(Order);
+      const where = TenantService.scopeWhere(req.user, { id: Number(req.params.id) });
 
-    const repo = dataSource.getRepository(Order);
-
-    const where = TenantService.scopeWhere(req.user, { id: Number(req.params.id) });
-
-    const order = await repo.findOne({
-      where,
-      relations: {
-        user: true,
-        items: {
-          product: true,
+      const order = await repo.findOne({
+        where,
+        relations: {
+          user: true,
+          items: {
+            product: true,
+          },
         },
-      },
-    });
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
       });
-    }
 
-    return res.json({
-      success: true,
-      data: order,
-    });
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: order,
+      });
+    } catch (err: any) {
+      console.error("[getOrderById Error]:", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch order" });
+    }
   }
 
   // ==========================================
@@ -516,75 +522,80 @@ export class OrderController {
   // ==========================================
   @Delete("/:id")
   public async delete(req: any, res: Response) {
+    try {
+      const repo = dataSource.getRepository(Order);
+      const productRepo = dataSource.getRepository(Product);
 
-    const repo = dataSource.getRepository(Order);
-    const productRepo = dataSource.getRepository(Product);
+      const where = TenantService.scopeWhere(req.user, { id: Number(req.params.id) });
 
-    const where = TenantService.scopeWhere(req.user, { id: Number(req.params.id) });
-
-    const order = await repo.findOne({
-      where,
-      relations: {items: true},
-    });
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    // RESTORE STOCK
-    for (const item of order.items) {
-
-      const product = await productRepo.findOne({
-        where: { id: item.product_id },
+      const order = await repo.findOne({
+        where,
+        relations: {items: true},
       });
 
-      if (product) {
-        product.stock += item.quantity;
-        await productRepo.save(product);
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found",
+        });
       }
+
+      // RESTORE STOCK
+      for (const item of order.items) {
+        const product = await productRepo.findOne({
+          where: { id: item.product_id },
+        });
+
+        if (product) {
+          product.stock += item.quantity;
+          await productRepo.save(product);
+        }
+      }
+
+      await repo.delete(order.id);
+
+      return res.json({
+        success: true,
+        message: "Order deleted and stock restored",
+      });
+    } catch (err: any) {
+      console.error("[deleteOrder Error]:", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to delete order" });
     }
-
-    await repo.delete(order.id);
-
-    return res.json({
-      success: true,
-      message: "Order deleted and stock restored",
-    });
   }
 
+  @Get("/verify/:id")
+  @Swagger("Verify Invoice QR", "Scan QR → get order details")
+  async verify(req: Request, res: Response) {
+    try {
+      const repo = dataSource.getRepository(Order);
 
-@Get("/verify/:id")
-@Swagger("Verify Invoice QR", "Scan QR → get order details")
+      const order = await repo.findOne({
+        where: { id: Number(req.params.id) },
+        relations: {
+          user: true,
+          items: {
+            product: true,
+          },
+        },
+      });
 
-async verify(req: Request, res: Response) {
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          message: "Invalid invoice",
+        });
+      }
 
-  const repo = dataSource.getRepository(Order);
-
-  const order = await repo.findOne({
-    where: { id: Number(req.params.id) },
-    relations: {
-      user: true,
-      items: {
-        product: true,
-      },
-    },
-  });
-
-  if (!order) {
-    return res.status(404).json({
-      success: false,
-      message: "Invalid invoice",
-    });
+      return res.json({
+        success: true,
+        data: order,
+      });
+    } catch (err: any) {
+      console.error("[verifyOrder Error]:", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to verify invoice" });
+    }
   }
-
-  return res.json({
-    success: true,
-    data: order,
-  });
-}
 
 // ==========================================
   // ==========================================
@@ -639,6 +650,63 @@ async verify(req: Request, res: Response) {
     } catch (error: any) {
       console.error("[getInvoicePdf Error]:", error);
       return res.status(500).json({ success: false, message: error?.message || "Failed to generate PDF" });
+    }
+  }
+
+  // ==========================================
+  // UPDATE ORDER STATUS (WITH REAL-TIME BROADCAST)
+  // ==========================================
+  public async updateStatus(req: any, res: Response) {
+    try {
+      const orderId = Number(req.params.id);
+      const { status, order_status, orderStatus, payment_status, notes } = req.body;
+      const targetStatus = (status || order_status || orderStatus || "").toUpperCase();
+
+      const orderRepo = dataSource.getRepository(Order);
+      const where = TenantService.scopeWhere(req.user, { id: orderId });
+
+      const order = await orderRepo.findOne({
+        where,
+        relations: {
+          items: { product: true },
+          user: true,
+        },
+      });
+
+      if (!order) {
+        return res.status(404).json({ success: false, message: "Order not found" });
+      }
+
+      if (targetStatus) {
+        order.status = targetStatus;
+      }
+      if (payment_status) {
+        order.payment_status = payment_status as any;
+      }
+
+      const updated = await orderRepo.save(order);
+
+      // Realtime notification to company
+      try {
+        if (order.company_id && io) {
+          io.to(`company_${order.company_id}`).emit("ORDER_STATUS_UPDATED", {
+            orderId: order.id,
+            status: order.status,
+            order: updated,
+          });
+        }
+      } catch (wsErr) {
+        console.warn("[updateStatus] WebSocket emit skipped:", wsErr);
+      }
+
+      return res.json({
+        success: true,
+        message: `Order status updated to ${order.status}`,
+        data: updated,
+      });
+    } catch (err: any) {
+      console.error("[updateOrderStatus Error]:", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to update order status" });
     }
   }
 }

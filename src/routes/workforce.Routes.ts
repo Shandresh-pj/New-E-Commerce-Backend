@@ -201,5 +201,88 @@ router.get("/workforce/notifications",               authenticateMiddleware, aut
  *         description: Notification marked read successfully
  */
 router.post("/workforce/notifications/:id/read",     authenticateMiddleware, authorize({ roles: allRoles }),   ctrl.markRead.bind(ctrl));
+router.patch("/workforce/notifications/:id/read",    authenticateMiddleware, authorize({ roles: allRoles }),   ctrl.markRead.bind(ctrl));
+
+/**
+ * @swagger
+ * /workforce/requests:
+ *   get:
+ *     summary: List Workforce & Leave Requests
+ *     description: Retrieve all pending employee leave and regularization requests.
+ *     tags: [WorkforceDashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of requests retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       employee_id:
+ *                         type: integer
+ *                         example: 12
+ *                       employee_name:
+ *                         type: string
+ *                         example: "Rajesh Kumar"
+ *                       type:
+ *                         type: string
+ *                         example: "CASUAL"
+ *                       status:
+ *                         type: string
+ *                         example: "PENDING"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/workforce/requests", authenticateMiddleware, authorize({ roles: allRoles }), ctrl.getWorkforceRequests.bind(ctrl));
+
+/**
+ * @swagger
+ * /workforce/requests/{id}/action:
+ *   post:
+ *     summary: Approve or Reject Workforce Request
+ *     description: Set request approval status to APPROVED or REJECTED.
+ *     tags: [WorkforceDashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - action
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [APPROVED, REJECTED]
+ *               rejection_reason:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Request action recorded
+ */
+router.post("/workforce/requests/:id/action", authenticateMiddleware, authorize({ roles: adminRoles }), ctrl.actionWorkforceRequest.bind(ctrl));
 
 export default router;

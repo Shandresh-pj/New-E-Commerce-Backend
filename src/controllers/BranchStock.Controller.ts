@@ -60,21 +60,24 @@ export class BranchStockController {
   @Get("/")
   @Swagger("Get Branch Stocks", "List all branch stock data")
   async getAll(req: any, res: Response) {
+    try {
+      const repo = dataSource.getRepository(BranchStock);
+      const where = TenantService.scopeWhere(req.user);
 
-    const repo = dataSource.getRepository(BranchStock);
+      const data = await repo.find({
+        where,
+        relations: { product: true },
+        order: { id: "DESC" },
+      });
 
-    const where = TenantService.scopeWhere(req.user);
-
-    const data = await repo.find({
-      where,
-      relations: { product: true },
-      order: { id: "DESC" },
-    });
-
-    return res.json({
-      success: true,
-      data,
-    });
+      return res.json({
+        success: true,
+        data,
+      });
+    } catch (err: any) {
+      console.error("[getBranchStocks Error]:", err);
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch branch stocks" });
+    }
   }
 
   // ================= TRANSFER STOCK REQUEST =================

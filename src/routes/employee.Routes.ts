@@ -23,20 +23,30 @@ const allRoles = [
  *       - Employees
  *     summary: Get all employees
  *     description: Get employee list with pagination
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: page
  *         schema:
- *           type: number
+ *           type: integer
  *           example: 1
+ *         description: Page number
  *       - in: query
  *         name: limit
  *         schema:
- *           type: number
+ *           type: integer
  *           example: 10
+ *         description: Items per page
  *     responses:
  *       200:
  *         description: Employee list fetched successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/employees",
@@ -56,18 +66,25 @@ router.get(
  *     tags:
  *       - Employees
  *     summary: Get employee by ID
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: number
+ *           type: integer
  *           example: 1
+ *         description: Employee ID
  *     responses:
  *       200:
  *         description: Employee details
+ *       401:
+ *         description: Unauthorized
  *       404:
  *         description: Employee not found
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/employees/:id",
@@ -88,6 +105,8 @@ router.get(
  *       - Employees
  *     summary: Create employee
  *     description: Create employee and send temporary password email
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -105,38 +124,39 @@ router.get(
  *               name:
  *                 type: string
  *                 example: John Doe
- *
  *               email:
  *                 type: string
  *                 example: john@gmail.com
- *
  *               mobilenumber:
  *                 type: string
- *                 example: 9876543210
- *
+ *                 example: "9876543210"
  *               company_id:
- *                 type: number
+ *                 type: integer
  *                 example: 1
- *
  *               branch_id:
- *                 type: number
+ *                 type: integer
  *                 example: 1
- *
  *               role_id:
- *                 type: number
+ *                 type: integer
  *                 example: 3
- *
  *               userType:
  *                 type: string
  *                 enum:
  *                   - EMPLOYEE
  *                 example: EMPLOYEE
- *
  *     responses:
  *       201:
  *         description: Employee created successfully
+ *       400:
+ *         description: Validation failed
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  *       409:
  *         description: Email already exists
+ *       500:
+ *         description: Internal server error
  */
 router.post(
   "/employees",
@@ -157,13 +177,15 @@ router.post(
  *     tags:
  *       - Employees
  *     summary: Update employee
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: number
- *
+ *           type: integer
+ *         description: Employee ID
  *     requestBody:
  *       required: true
  *       content:
@@ -173,16 +195,24 @@ router.post(
  *             properties:
  *               name:
  *                 type: string
- *
+ *                 example: "John Doe"
  *               email:
  *                 type: string
- *
+ *                 example: "john.updated@gmail.com"
  *               mobilenumber:
  *                 type: string
- *
+ *                 example: "9876543210"
  *     responses:
  *       200:
- *         description: Employee updated
+ *         description: Employee updated successfully
+ *       400:
+ *         description: Validation failed
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Employee not found
+ *       500:
+ *         description: Internal server error
  */
 router.put(
   "/employees/:id",
@@ -203,17 +233,27 @@ router.put(
  *     tags:
  *       - Employees
  *     summary: Delete employee
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
- *           type: number
+ *           type: integer
  *           example: 1
- *
+ *         description: Employee ID
  *     responses:
  *       200:
- *         description: Employee deleted
+ *         description: Employee deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Employee not found
+ *       500:
+ *         description: Internal server error
  */
 router.delete(
   "/employees/:id",
@@ -222,56 +262,5 @@ router.delete(
   auditMiddleware("EMPLOYEE"),
   employeeController.delete.bind(employeeController)
 );
-
-
-/* =========================================================
-   ASSIGN ROLE + BRANCH
-========================================================= */
-// /**
-//  * @swagger
-//  * /employees/assign:
-//  *   post:
-//  *     tags:
-//  *       - Employees
-//  *     summary: Assign employee branch and role
-//  *     requestBody:
-//  *       required: true
-//  *       content:
-//  *         application/json:
-//  *           schema:
-//  *             type: object
-//  *             required:
-//  *               - user_id
-//  *               - company_id
-//  *               - branch_id
-//  *               - role_id
-//  *
-//  *             properties:
-//  *               user_id:
-//  *                 type: number
-//  *                 example: 1
-//  *
-//  *               company_id:
-//  *                 type: number
-//  *                 example: 1
-//  *
-//  *               branch_id:
-//  *                 type: number
-//  *                 example: 2
-//  *
-//  *               role_id:
-//  *                 type: number
-//  *                 example: 3
-//  *
-//  *     responses:
-//  *       200:
-//  *         description: Employee assigned successfully
-//  */
-// router.post(
-//   "/employees/assign",
-//   employeeController.assign.bind(
-//     employeeController
-//   )
-// );
 
 export default router;

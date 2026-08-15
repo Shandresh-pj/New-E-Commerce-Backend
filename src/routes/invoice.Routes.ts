@@ -18,6 +18,67 @@ const allowedRoles = [
 
 /**
  * @swagger
+ * /invoices:
+ *   get:
+ *     summary: List All Invoices
+ *     description: Retrieve list of invoices filtered by company and optional status.
+ *     tags: [Invoice]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of invoices retrieved
+ */
+router.get(
+  "/invoices",
+  authenticateMiddleware,
+  authorize({ roles: allowedRoles }),
+  invoiceController.getAll.bind(invoiceController)
+);
+
+/**
+ * @swagger
+ * /invoices/{id}:
+ *   get:
+ *     summary: Get Invoice by ID
+ *     description: Retrieve specific invoice record.
+ *     tags: [Invoice]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Invoice details
+ *       404:
+ *         description: Invoice not found
+ */
+router.get(
+  "/invoices/:id",
+  authenticateMiddleware,
+  authorize({ roles: allowedRoles }),
+  invoiceController.getById.bind(invoiceController)
+);
+
+/**
+ * @swagger
  * /invoices/suggestions:
  *   get:
  *     summary: Get Next Invoice Number Suggestions

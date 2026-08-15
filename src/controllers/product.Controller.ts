@@ -754,37 +754,37 @@ export class ProductController {
   async scan(req: Request, res: Response, next: NextFunction) {
 
     try {
+      const rawCode = String(
+        req.body?.barcode ||
+        req.body?.code ||
+        req.query?.barcode ||
+        req.query?.code ||
+        ""
+      ).trim();
 
-      const dto = plainToInstance(ScanProductDto, req.body);
-      const errors = await classValidate(dto, {
-        whitelist: true,
-        forbidNonWhitelisted: true,
-      });
-
-      if (errors.length > 0) {
-        const validationErrors: Record<string, string[]> = {};
-        errors.forEach((error) => {
-          if (error.constraints) {
-            validationErrors[error.property] = Object.values(error.constraints);
-          }
+      if (!rawCode) {
+        return res.status(400).json({
+          success: false,
+          verified: false,
+          message: "Barcode or code parameter is required",
         });
-        throw new ApiError(422, "Validation Failed", validationErrors);
       }
 
       const repo = dataSource.getRepository(Product);
 
-      const { code } = req.body;
-
       const product = await repo
         .createQueryBuilder("product")
-        .where("product.barcode = :code", { code })
+        .leftJoinAndSelect("product.category", "category")
+        .leftJoinAndSelect("product.brand", "brand")
+        .leftJoinAndSelect("product.images", "images")
+        .where("LOWER(product.barcode) = LOWER(:code) OR LOWER(product.sku) = LOWER(:code)", { code: rawCode })
         .getOne();
 
       if (!product) {
         return res.status(404).json({
           success: false,
           verified: false,
-          message: "Invalid barcode",
+          message: `No product found matching barcode or SKU "${rawCode}"`,
         });
       }
 

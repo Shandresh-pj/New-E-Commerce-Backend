@@ -192,25 +192,28 @@ export class MenuController {
   @Get("/:id")
   @Middleware([authenticateMiddleware])
   async getOne(req: any, res: any) {
+    try {
+      const id = Number(req.params.id);
 
-    const id = Number(req.params.id);
-
-    const menu = await dataSource.getRepository(Menu).findOne({
-      where: { id },
-      relations: { permissions: true }
-    });
-
-    if (!menu) {
-      return res.status(404).json({
-        success: false,
-        message: "Menu not found"
+      const menu = await dataSource.getRepository(Menu).findOne({
+        where: { id },
+        relations: { permissions: true }
       });
-    }
 
-    return res.json({
-      success: true,
-      data: menu
-    });
+      if (!menu) {
+        return res.status(404).json({
+          success: false,
+          message: "Menu not found"
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: menu
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch menu" });
+    }
   }
 
   // =====================================================
@@ -285,25 +288,28 @@ async update(req: any, res: any) {
   @Delete("/:id")
   @Middleware([authenticateMiddleware])
   async delete(req: any, res: any) {
+    try {
+      const id = Number(req.params.id);
 
-    const id = Number(req.params.id);
+      const repo = dataSource.getRepository(Menu);
 
-    const repo = dataSource.getRepository(Menu);
+      const menu = await repo.findOne({ where: { id } });
 
-    const menu = await repo.findOne({ where: { id } });
+      if (!menu) {
+        return res.status(404).json({
+          success: false,
+          message: "Menu not found"
+        });
+      }
 
-    if (!menu) {
-      return res.status(404).json({
-        success: false,
-        message: "Menu not found"
+      await repo.remove(menu);
+
+      return res.json({
+        success: true,
+        message: "Menu deleted"
       });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to delete menu" });
     }
-
-    await repo.remove(menu);
-
-    return res.json({
-      success: true,
-      message: "Menu deleted"
-    });
   }
 }
