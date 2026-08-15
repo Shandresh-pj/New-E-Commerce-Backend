@@ -386,4 +386,45 @@ export class AlertController {
       return res.status(500).json({ success: false, message: err.message || "Failed to mark all notifications read" });
     }
   }
+
+  // ==========================================
+  // CREATE / BROADCAST NOTIFICATION
+  // ==========================================
+  async createNotification(req: Request, res: Response) {
+    try {
+      const repo = dataSource.getRepository(Notification);
+      const { title, message, type, priority, branch_name } = req.body;
+      const newNotification = repo.create({
+        message: message || title || "New system notification",
+        type: type || "SYSTEM",
+        branch_name: branch_name || undefined,
+        is_read: false,
+      });
+      const saved = await repo.save(newNotification);
+      return res.status(201).json({
+        success: true,
+        message: "Notification created successfully",
+        data: saved,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to create notification" });
+    }
+  }
+
+  // ==========================================
+  // DELETE NOTIFICATION
+  // ==========================================
+  async deleteNotification(req: Request, res: Response) {
+    try {
+      const repo = dataSource.getRepository(Notification);
+      const id = Number(req.params.id);
+      await repo.delete(id);
+      return res.json({
+        success: true,
+        message: "Notification deleted successfully",
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to delete notification" });
+    }
+  }
 }

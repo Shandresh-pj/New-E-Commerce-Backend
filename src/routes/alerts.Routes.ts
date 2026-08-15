@@ -237,4 +237,66 @@ router.put(
   alertController.markAllRead.bind(alertController)
 );
 
+/**
+ * @swagger
+ * /notifications:
+ *   post:
+ *     summary: Broadcast / Create Notification
+ *     description: Create and dispatch a system or module notification.
+ *     tags: [Alerts]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               title:
+ *                 type: string
+ *               message:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *                 example: SYSTEM
+ *     responses:
+ *       201:
+ *         description: Notification created successfully
+ */
+router.post(
+  "/notifications",
+  authenticateMiddleware,
+  authorize(),
+  alertController.createNotification.bind(alertController)
+);
+
+/**
+ * @swagger
+ * /notifications/{id}:
+ *   delete:
+ *     summary: Delete Notification
+ *     description: Delete a specific notification by ID.
+ *     tags: [Alerts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Notification deleted
+ */
+router.delete(
+  "/notifications/:id",
+  authenticateMiddleware,
+  authorize(),
+  alertController.deleteNotification.bind(alertController)
+);
+
 export default router;

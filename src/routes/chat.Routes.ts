@@ -693,5 +693,6 @@ router.get("/meetings", authenticateMiddleware, (req, res) => chatController.get
 router.post("/meetings", authenticateMiddleware, (req, res) => chatController.createMeeting(req, res));
 router.post("/meetings/:id/join", authenticateMiddleware, (req, res) => chatController.joinMeeting(req, res));
 router.post("/meetings/:id/end", authenticateMiddleware, (req, res) => chatController.endMeeting(req, res));
+router.delete("/meetings/:id", authenticateMiddleware, (req, res) => chatController.endMeeting(req, res));
 
 export default router;

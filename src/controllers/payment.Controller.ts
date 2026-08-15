@@ -165,4 +165,76 @@ export class PaymentController {
       return res.status(500).json({ success: false, message: err.message || "Failed to verify Razorpay payment" });
     }
   }
+
+  // ==========================================
+  // VERIFY MANUAL / OFFLINE PAYMENT
+  // ==========================================
+  async verifyManualPayment(req: Request, res: Response) {
+    try {
+      const paymentId = req.params.id;
+      const paymentRepo = dataSource.getRepository(Payment);
+      const orderRepo = dataSource.getRepository(Order);
+
+      const payment = await paymentRepo.findOne({ where: { id: Number(paymentId) } });
+      if (!payment) {
+        return res.status(404).json({ success: false, message: "Payment record not found" });
+      }
+
+      payment.status = "SUCCESS";
+      await paymentRepo.save(payment);
+
+      if (payment.order_id) {
+        const order = await orderRepo.findOne({ where: { id: payment.order_id } });
+        if (order) {
+          order.payment_status = "SUCCESS" as any;
+          order.status = "CONFIRMED";
+          await orderRepo.save(order);
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: "Payment verified and marked as SUCCESS",
+        data: payment,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to verify payment" });
+    }
+  }
+
+  // ==========================================
+  // REFUND PAYMENT
+  // ==========================================
+  async refundPayment(req: Request, res: Response) {
+    try {
+      const paymentId = req.params.id;
+      const paymentRepo = dataSource.getRepository(Payment);
+      const orderRepo = dataSource.getRepository(Order);
+
+      const payment = await paymentRepo.findOne({ where: { id: Number(paymentId) } });
+      if (!payment) {
+        return res.status(404).json({ success: false, message: "Payment record not found" });
+      }
+
+      payment.status = "REFUNDED";
+      await paymentRepo.save(payment);
+
+      if (payment.order_id) {
+        const order = await orderRepo.findOne({ where: { id: payment.order_id } });
+        if (order) {
+          order.payment_status = "REFUNDED" as any;
+          order.status = "CANCELLED";
+          await orderRepo.save(order);
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: "Payment marked as REFUNDED and order cancelled",
+        data: payment,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to process refund" });
+    }
+  }
 }

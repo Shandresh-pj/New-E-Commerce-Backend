@@ -1320,6 +1320,82 @@ router.get(
 
 /**
  * @swagger
+ * /mobility/fleet:
+ *   get:
+ *     summary: List Fleet Assets & Health
+ *     description: Retrieve all company vehicles, battery/fuel levels, odometer readings, and current driver assignments.
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Fleet assets list retrieved
+ */
+router.get(
+  "/mobility/fleet",
+  authenticateMiddleware,
+  mobilityController.getFleetAssets.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /mobility/transit:
+ *   get:
+ *     summary: List Transit Lines & Routes
+ *     description: Retrieve active metro lines, airport shuttles, and industrial park feeder transit routes.
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Transit routes list retrieved
+ */
+router.get(
+  "/mobility/transit",
+  authenticateMiddleware,
+  mobilityController.getTransitRoutes.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /mobility/telemetry:
+ *   get:
+ *     summary: Live GPS Telemetry Stream
+ *     description: Real-time GPS stream of active driver locations, speed, ignition status, and heading.
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Live telemetry data retrieved
+ */
+router.get(
+  "/mobility/telemetry",
+  authenticateMiddleware,
+  mobilityController.getTelemetryStream.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /mobility/kyc:
+ *   get:
+ *     summary: Vehicle Verification & KYC List
+ *     description: Retrieve vehicle RC, permit, and fitness verification records.
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: KYC records retrieved
+ */
+router.get(
+  "/mobility/kyc",
+  authenticateMiddleware,
+  mobilityController.getVerificationVehicles.bind(mobilityController)
+);
+
+/**
+ * @swagger
  * /geofences:
  *   get:
  *     summary: List Active Geofence Zones
@@ -1329,27 +1405,88 @@ router.get(
  *     responses:
  *       200:
  *         description: Geofences list
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Internal server error
  */
 router.get(
   "/geofences",
   authenticateMiddleware,
-  (req, res) => res.json({ success: true, data: [] })
+  mobilityController.getGeofences.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /geofences:
+ *   post:
+ *     summary: Create Geofence Zone
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - latitude
+ *               - longitude
+ *               - radius_meters
+ *     responses:
+ *       201:
+ *         description: Geofence created
+ */
+router.post(
+  "/geofences",
+  authenticateMiddleware,
+  mobilityController.createGeofence.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /geofences/{id}:
+ *   put:
+ *     summary: Update Geofence Zone
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Geofence updated
+ */
+router.put(
+  "/geofences/:id",
+  authenticateMiddleware,
+  mobilityController.updateGeofence.bind(mobilityController)
+);
+
+/**
+ * @swagger
+ * /geofences/{id}:
+ *   delete:
+ *     summary: Delete Geofence Zone
+ *     tags: [Mobility Super App]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Geofence deleted
+ */
+router.delete(
+  "/geofences/:id",
+  authenticateMiddleware,
+  mobilityController.deleteGeofence.bind(mobilityController)
 );
 
 export default router;

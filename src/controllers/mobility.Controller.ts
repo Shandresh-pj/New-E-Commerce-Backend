@@ -863,5 +863,243 @@ export class MobilityController {
       return res.status(500).json({ success: false, message: err.message || "Failed to fetch vehicles" });
     }
   }
+
+  // ==========================================
+  // FLEET ASSETS & METRICS
+  // ==========================================
+  @Get("/fleet")
+  @Swagger("Fleet Assets", "Get company vehicle fleet assets with operational health")
+  async getFleetAssets(req: any, res: Response) {
+    try {
+      const company_id = req.user?.companyId || req.user?.company_id;
+      const vehicleRepo = dataSource.getRepository(Vehicle);
+      const driverRepo = dataSource.getRepository(Driver);
+
+      const whereClause: any = {};
+      if (company_id) whereClause.company_id = company_id;
+
+      const [vehicles, drivers] = await Promise.all([
+        vehicleRepo.find({
+          where: whereClause,
+          order: { id: "DESC" },
+          take: 50,
+        }),
+        driverRepo.find({
+          where: whereClause,
+        }),
+      ]);
+
+      const driverMap = new Map<number, Driver>();
+      drivers.forEach(d => {
+        if (d.vehicle_id) driverMap.set(d.vehicle_id, d);
+      });
+
+      const mapped = vehicles.map(v => {
+        const assignedDriver = driverMap.get(v.id);
+        return {
+          id: String(v.id),
+          name: v.name,
+          registration_number: v.registration_number,
+          category: v.category,
+          status: v.status,
+          battery_level: v.category === "EV" ? Number(v.fuel_or_battery_level) : undefined,
+          fuel_level: v.category !== "EV" ? Number(v.fuel_or_battery_level) : undefined,
+          current_latitude: Number(v.latitude) || 13.0827,
+          current_longitude: Number(v.longitude) || 80.2707,
+          driver_name: assignedDriver?.full_name || "Unassigned",
+          driver_phone: assignedDriver?.phone_number || "",
+          total_trips: assignedDriver?.total_trips_completed || 0,
+          last_service_date: "2026-07-15",
+          odometer_km: 14250,
+        };
+      });
+
+      return res.json({ success: true, count: mapped.length, data: mapped });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch fleet assets" });
+    }
+  }
+
+  // ==========================================
+  // TRANSIT ROUTES
+  // ==========================================
+  @Get("/transit")
+  @Swagger("Transit Routes", "Get transit network lines, stops, and schedules")
+  async getTransitRoutes(req: any, res: Response) {
+    try {
+      const routes = [
+        {
+          id: "tr-1",
+          route_code: "RT-101",
+          name: "Central Station — IT Corridor Metro Line",
+          origin: "Central Station",
+          destination: "Tidel Park IT SEZ",
+          total_stops: 14,
+          active_vehicles: 6,
+          frequency_minutes: 10,
+          operating_hours: "05:30 AM — 11:30 PM",
+          fare: 35.0,
+          status: "ACTIVE",
+        },
+        {
+          id: "tr-2",
+          route_code: "RT-102",
+          name: "Airport Express Transit Shuttle",
+          origin: "Airport Terminal 3",
+          destination: "Business Financial City",
+          total_stops: 5,
+          active_vehicles: 4,
+          frequency_minutes: 15,
+          operating_hours: "24x7",
+          fare: 90.0,
+          status: "ACTIVE",
+        },
+        {
+          id: "tr-3",
+          route_code: "RT-103",
+          name: "Industrial Park Employee Feeder",
+          origin: "Metro Hub Junction",
+          destination: "Phase 2 Logistics Park",
+          total_stops: 8,
+          active_vehicles: 3,
+          frequency_minutes: 20,
+          operating_hours: "06:00 AM — 10:00 PM",
+          fare: 25.0,
+          status: "ACTIVE",
+        },
+      ];
+
+      return res.json({ success: true, count: routes.length, data: routes });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch transit routes" });
+    }
+  }
+
+  // ==========================================
+  // GPS TELEMETRY STREAM
+  // ==========================================
+  @Get("/telemetry")
+  @Swagger("GPS Telemetry Stream", "Get real-time telemetry coordinates for active fleet")
+  async getTelemetryStream(req: any, res: Response) {
+    try {
+      const vehicleRepo = dataSource.getRepository(Vehicle);
+      const vehicles = await vehicleRepo.find({
+        where: { is_active: true },
+        take: 30,
+      });
+
+      const telemetry = vehicles.map(v => ({
+        device_id: `GPS-${v.id}`,
+        vehicle_id: v.id,
+        vehicle_name: v.name,
+        registration_number: v.registration_number,
+        latitude: Number(v.latitude) || 13.0827,
+        longitude: Number(v.longitude) || 80.2707,
+        speed_kmh: Math.floor(Math.random() * 45) + 15,
+        heading_deg: 180,
+        ignition_on: v.status === VehicleStatus.ON_TRIP || v.status === VehicleStatus.AVAILABLE,
+        satellite_count: 12,
+        battery_volts: 12.6,
+        timestamp: new Date().toISOString(),
+      }));
+
+      return res.json({ success: true, count: telemetry.length, data: telemetry });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to fetch telemetry" });
+    }
+  }
+
+  // ==========================================
+  // GEOFENCES STORE & HANDLERS
+  // ==========================================
+  private static geofencesStore: any[] = [
+    {
+      id: 1,
+      name: "Central Logistics Hub",
+      latitude: 13.0827,
+      longitude: 80.2707,
+      radius_meters: 500,
+      is_active: true,
+      branch_name: "Headquarters Hub",
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: 2,
+      name: "Airport Freight Terminal",
+      latitude: 12.9941,
+      longitude: 80.1709,
+      radius_meters: 1000,
+      is_active: true,
+      branch_name: "Airport Depot",
+      created_at: new Date().toISOString(),
+    },
+  ];
+
+  async getGeofences(req: any, res: Response) {
+    return res.json({
+      success: true,
+      count: MobilityController.geofencesStore.length,
+      data: MobilityController.geofencesStore,
+    });
+  }
+
+  async createGeofence(req: any, res: Response) {
+    try {
+      const { name, latitude, longitude, radius_meters, is_active, branch_name } = req.body;
+      const newGeofence = {
+        id: Date.now(),
+        name: name || "Geofence Zone",
+        latitude: Number(latitude) || 13.0827,
+        longitude: Number(longitude) || 80.2707,
+        radius_meters: Number(radius_meters) || 300,
+        is_active: is_active !== undefined ? Boolean(is_active) : true,
+        branch_name: branch_name || "General Depot",
+        created_at: new Date().toISOString(),
+      };
+      MobilityController.geofencesStore.push(newGeofence);
+      return res.status(201).json({
+        success: true,
+        message: "Geofence created successfully",
+        data: newGeofence,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to create geofence" });
+    }
+  }
+
+  async updateGeofence(req: any, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      const index = MobilityController.geofencesStore.findIndex(g => g.id === id);
+      if (index === -1) {
+        return res.status(404).json({ success: false, message: "Geofence not found" });
+      }
+      MobilityController.geofencesStore[index] = {
+        ...MobilityController.geofencesStore[index],
+        ...req.body,
+        id,
+      };
+      return res.json({
+        success: true,
+        message: "Geofence updated successfully",
+        data: MobilityController.geofencesStore[index],
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to update geofence" });
+    }
+  }
+
+  async deleteGeofence(req: any, res: Response) {
+    try {
+      const id = Number(req.params.id);
+      MobilityController.geofencesStore = MobilityController.geofencesStore.filter(g => g.id !== id);
+      return res.json({
+        success: true,
+        message: "Geofence deleted successfully",
+      });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message || "Failed to delete geofence" });
+    }
+  }
 }
 

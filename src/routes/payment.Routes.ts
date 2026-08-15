@@ -205,4 +205,69 @@ router.post(
   paymentController.verifyRazorpayPayment.bind(paymentController)
 );
 
+/**
+ * @swagger
+ * /payments/{id}/verify:
+ *   post:
+ *     summary: Verify Manual Payment
+ *     description: Verify an offline/manual payment record and confirm the associated order.
+ *     tags: [Payments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Payment verified
+ */
+router.post(
+  "/payments/:id/verify",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.BRANCH_MANAGER],
+  }),
+  paymentController.verifyManualPayment.bind(paymentController)
+);
+
+/**
+ * @swagger
+ * /payments/{id}/refund:
+ *   post:
+ *     summary: Refund Payment
+ *     description: Mark a payment as REFUNDED and cancel the associated order.
+ *     tags: [Payments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Payment refunded
+ */
+router.post(
+  "/payments/:id/refund",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
+  }),
+  paymentController.refundPayment.bind(paymentController)
+);
+
+router.delete(
+  "/payments/:id",
+  authenticateMiddleware,
+  authorize({
+    roles: [UserType.SUPER_ADMIN, UserType.ADMIN],
+  }),
+  paymentController.refundPayment.bind(paymentController)
+);
+
 export default router;

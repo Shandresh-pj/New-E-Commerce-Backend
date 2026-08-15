@@ -145,11 +145,16 @@ export class ProductAttributeController {
     next: NextFunction
   ) {
     try {
-      const CompanyId = Number(request.body.CompanyId) || 0;
-      const AttributeNameCode = String(request.body.AttributeNameCode || "").trim();
+      const CompanyId = Number(request.body.CompanyId ?? request.body.company_id) || 0;
+      const rawName = request.body.Name ?? request.body.name;
       const Name = nameFromTranslations(
         request.body.ProductAttributeTranslations,
-        request.body.Name
+        rawName
+      ).trim();
+
+      const rawCode = request.body.AttributeNameCode ?? request.body.code ?? request.body.attribute_name_code;
+      const AttributeNameCode = String(
+        rawCode || (Name ? Name.toLowerCase().replace(/[^a-z0-9]/g, "_") : "")
       ).trim();
 
       if (!AttributeNameCode || !Name) {
@@ -355,8 +360,9 @@ export class ProductAttributeValueController {
       const repo = dataSource.getRepository(ProductAttributeValue);
 
       const where: any = {};
-      if (request.query.ProductAttributeId) {
-        where.ProductAttributeId = Number(request.query.ProductAttributeId);
+      const attrId = request.query.ProductAttributeId ?? request.query.attribute_id;
+      if (attrId && String(attrId) !== "ALL") {
+        where.ProductAttributeId = Number(attrId);
       }
       if (search) {
         where.Name = Raw((alias) => `LOWER(${alias}) LIKE :search`, { search: `%${search.toLowerCase()}%` });
@@ -364,7 +370,7 @@ export class ProductAttributeValueController {
 
       const [rows, totalItems] = await repo.findAndCount({
         where,
-        relations: { ProductLinks: true },
+        relations: { ProductLinks: true, ProductAttribute: true },
         order: { [orderColumn]: sortOrder },
         skip,
         take: pageSize,
@@ -378,7 +384,10 @@ export class ProductAttributeValueController {
           currentPage,
           pageSize,
           totalPages: Math.ceil(totalItems / pageSize),
-          data: rows.map(withValueTranslations),
+          data: rows.map((row: any) => ({
+            ...withValueTranslations(row),
+            attribute_name: row.ProductAttribute?.Name || "",
+          })),
         },
       });
     } catch (error) {
@@ -397,7 +406,7 @@ export class ProductAttributeValueController {
 
       const value = await dataSource
         .getRepository(ProductAttributeValue)
-        .findOne({ where: { Id }, relations: { ProductLinks: true } });
+        .findOne({ where: { Id }, relations: { ProductLinks: true, ProductAttribute: true } });
 
       if (!value) {
         return response.status(404).json({
@@ -409,7 +418,10 @@ export class ProductAttributeValueController {
       return response.json({
         success: true,
         message: "Product attribute value fetched successfully",
-        data: withValueTranslations(value),
+        data: {
+          ...withValueTranslations(value),
+          attribute_name: value.ProductAttribute?.Name || "",
+        },
       });
     } catch (error) {
       next(error);
@@ -427,12 +439,17 @@ export class ProductAttributeValueController {
     await queryRunner.startTransaction();
 
     try {
-      const CompanyId = Number(request.body.CompanyId) || 0;
-      const ProductAttributeId = Number(request.body.ProductAttributeId);
-      const AttributeValueCode = String(request.body.AttributeValueCode || "").trim();
+      const CompanyId = Number(request.body.CompanyId ?? request.body.company_id) || 0;
+      const ProductAttributeId = Number(request.body.ProductAttributeId ?? request.body.attribute_id);
+      const rawValName = request.body.Name ?? request.body.name ?? request.body.Value ?? request.body.value;
       const Name = nameFromTranslations(
         request.body.ProductAttributeValueTranslations,
-        request.body.Name
+        rawValName
+      ).trim();
+
+      const rawCode = request.body.AttributeValueCode ?? request.body.code ?? request.body.attribute_value_code ?? request.body.ColorHexCode;
+      const AttributeValueCode = String(
+        rawCode || (Name ? Name.toLowerCase().replace(/[^a-z0-9]/g, "_") : "")
       ).trim();
       const product_ids = request.body.product_ids;
 
@@ -558,12 +575,14 @@ export class ProductAttributeValueController {
         });
       }
 
-      if (request.body.ProductAttributeId !== undefined) {
-        value.ProductAttributeId = Number(request.body.ProductAttributeId);
+      const rawAttrId = request.body.ProductAttributeId ?? request.body.attribute_id;
+      if (rawAttrId !== undefined) {
+        value.ProductAttributeId = Number(rawAttrId);
       }
 
-      if (request.body.AttributeValueCode !== undefined) {
-        const code = String(request.body.AttributeValueCode).trim();
+      const rawCode = request.body.AttributeValueCode ?? request.body.code ?? request.body.attribute_value_code ?? request.body.ColorHexCode;
+      if (rawCode !== undefined) {
+        const code = String(rawCode).trim();
         if (!code) {
           await queryRunner.rollbackTransaction();
           return response.status(400).json({ success: false, message: "Value code cannot be empty" });
@@ -583,12 +602,13 @@ export class ProductAttributeValueController {
         value.AttributeValueCode = code;
       }
 
+      const rawValName = request.body.Name ?? request.body.name ?? request.body.Value ?? request.body.value;
       const newName = nameFromTranslations(
         request.body.ProductAttributeValueTranslations,
-        request.body.Name ?? value.Name
+        rawValName ?? value.Name
       ).trim();
 
-      if (newName !== value.Name) {
+      if (newName && newName !== value.Name) {
         const existingName = await valueRepo.findOne({
           where: {
             CompanyId: value.CompanyId,
