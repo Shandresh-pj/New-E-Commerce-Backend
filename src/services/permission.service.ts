@@ -8,30 +8,59 @@ import logger from "../utils/logger";
 
 export class PermissionService {
 
-  static async hasPermission(userId: number, menu: string, action: string) {
+  static async hasPermission(userId: number, menu: string, action: string): Promise<boolean> {
+    try {
+      const userRepo = dataSource.getRepository(User);
+      const userRoleRepo = dataSource.getRepository(UserRole);
 
-    const roles = await dataSource.getRepository(UserRole).find({
-      where: { user_id: userId }
-    });
+      const user = await userRepo.findOne({ where: { id: userId } });
+      if (!user) return false;
 
-    if (!roles.length) return false;
+      // Super Admin receives unconstrained access across all menus & actions
+      if (user.isSuperAdmin) return true;
 
-    const roleIds = roles.map(r => r.role_id);
+      const userRoles = await userRoleRepo.find({
+        where: { user_id: userId },
+        relations: { role: true, company: true, branch: true },
+      });
 
-    const permissions = await dataSource
-      .getRepository(RolePermission)
-      .createQueryBuilder("rp")
-      .leftJoinAndSelect("rp.permission", "permission")
-      .leftJoinAndSelect("permission.menu", "menu")
-      .where("rp.role_id IN (:...roleIds)", { roleIds })
-      .getMany();
+      if (!userRoles.length) return false;
 
-    return permissions.some(
-  p =>
-    p.permission?.menu?.name === menu &&
-    p.permission?.action === action
-);
+      const { permissions } = await this.resolveAccess(user, userRoles);
+
+      if (permissions.includes("FULL_ACCESS")) return true;
+
+      const reqActionUpper = (action || "").toUpperCase();
+      const reqMenuLower = (menu || "").toLowerCase().replace(/\/+$/, "");
+
+      return permissions.some((p: any) => {
+        if (!p || typeof p !== "object") return false;
+
+        const menuPath = (p.menu?.path || p.menu_path || "").toLowerCase().replace(/\/+$/, "");
+        const menuName = (p.menu?.name || p.menu_name || "").toLowerCase();
+
+        const pathMatch = menuPath && (reqMenuLower === menuPath || reqMenuLower.startsWith(menuPath + "/"));
+        const nameMatch = menuName && (reqMenuLower === menuName || reqMenuLower.startsWith(menuName + "/"));
+
+        if (!pathMatch && !nameMatch) return false;
+
+        const actUpper = (p.action || "").toUpperCase();
+        if (actUpper === "ALL" || actUpper === "*" || actUpper === "FULL") return true;
+        if (actUpper === reqActionUpper) return true;
+
+        if ((reqActionUpper === "WRITE" || reqActionUpper === "CREATE") &&
+            (actUpper === "WRITE" || actUpper === "CREATE")) return true;
+
+        if (reqActionUpper === "APPROVE" && (p.canApprove === true || actUpper === "APPROVE")) return true;
+
+        return false;
+      });
+    } catch (err) {
+      logger.error("[PermissionService.hasPermission error]:", err);
+      return false;
+    }
   }
+
 
   // Scope-aware permission/menu resolution (global < admin < branch < employee,
   // most specific wins). Mirrors the login-time resolution exactly so both call

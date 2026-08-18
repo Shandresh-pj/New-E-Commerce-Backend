@@ -28,47 +28,55 @@ const allRoles = [
  *           schema:
  *             type: object
  *             required:
- *               - leaveType
- *               - startDate
- *               - endDate
+ *               - leave_type
+ *               - from_date
+ *               - to_date
  *               - reason
  *             properties:
- *               leaveType:
+ *               employee_id:
+ *                 type: integer
+ *                 example: 5
+ *                 description: Employee ID (auto-filled from session if omitted)
+ *               company_id:
+ *                 type: integer
+ *                 example: 1
+ *                 description: Company ID (auto-filled from session if omitted)
+ *               branch_id:
+ *                 type: integer
+ *                 example: 1
+ *                 description: Branch ID (auto-filled from session if omitted)
+ *               leave_type:
  *                 type: string
- *                 enum: [CASUAL, SICK, EARNED, UNPAID, MATERNITY, PATERNITY]
+ *                 enum: [CASUAL, SICK, EMERGENCY, EARNED]
  *                 example: CASUAL
  *                 description: Type of leave requested (Required)
- *               startDate:
+ *               from_date:
  *                 type: string
  *                 format: date
  *                 example: "2026-08-15"
  *                 description: Leave start date (YYYY-MM-DD) (Required)
- *               endDate:
+ *               to_date:
  *                 type: string
  *                 format: date
  *                 example: "2026-08-17"
  *                 description: Leave end date (YYYY-MM-DD) (Required)
+ *               total_days:
+ *                 type: integer
+ *                 example: 3
+ *                 description: Total number of leave days
  *               reason:
  *                 type: string
  *                 example: "Attending family function"
  *                 description: Explanation for leave (Required)
- *               halfDay:
- *                 type: boolean
- *                 example: false
- *                 description: Whether leave is for half-day (Optional)
- *               documentUrl:
- *                 type: string
- *                 example: "/uploads/documents/medical_certificate.pdf"
- *                 description: Supporting document attachment (Optional)
  *     responses:
- *       201:
+ *       200:
  *         description: Leave application submitted successfully
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ApiResponse'
  *       400:
- *         description: Invalid input payload or insufficient balance
+ *         description: Invalid input payload
  *       401:
  *         description: Unauthorized
  */

@@ -20,10 +20,12 @@ export function authorize(opts: AuthorizeOptions = {}) {
       });
     }
 
+    // ── 1. Super Admin Rule: Highest-privilege role, full unconstrained access ──
     const isSuperAdmin = !!(
       req.user.isSuperAdmin ||
       req.user.userType === UserType.SUPER_ADMIN ||
-      req.user.user_type === UserType.SUPER_ADMIN
+      req.user.user_type === UserType.SUPER_ADMIN ||
+      req.user.role === "super_admin"
     );
 
     if (isSuperAdmin) {
@@ -32,21 +34,45 @@ export function authorize(opts: AuthorizeOptions = {}) {
       return next();
     }
 
-    // 1. Check dynamic database permissions if menu and action are provided
-    let hasMenuPermission = false;
-    if (opts.menu && opts.action) {
-      try {
-        const { PermissionService } = require("../services/permission.service");
-        hasMenuPermission = await PermissionService.hasPermission(req.user.id, opts.menu, opts.action);
-      } catch (err) {
-        console.error("Error checking permissions dynamically in authorize middleware:", err);
+    // ── 2. Determine target menu & action ──────────────────────────────────
+    let targetMenu = opts.menu;
+    if (!targetMenu) {
+      // Infer menu path from request URL/route (e.g. /api/leave → /leave)
+      const rawPath = req.baseUrl || req.originalUrl || req.path || "";
+      targetMenu = rawPath.replace(/^\/api/, "").split("?")[0];
+    }
+
+    let targetAction = opts.action;
+    if (!targetAction) {
+      if (opts.requireApproval) {
+        targetAction = "APPROVE";
+      } else {
+        const method = (req.method || "GET").toUpperCase();
+        switch (method) {
+          case "GET":     targetAction = "READ"; break;
+          case "POST":    targetAction = "CREATE"; break;
+          case "PUT":
+          case "PATCH":   targetAction = "UPDATE"; break;
+          case "DELETE":  targetAction = "DELETE"; break;
+          default:        targetAction = "READ"; break;
+        }
       }
     }
 
-    // 2. Check role privileges (bypassed if dynamic permission is matched)
-    if (!hasMenuPermission && opts.roles && opts.roles.length > 0) {
+    // ── 3. Dynamic Database RBAC Evaluation ─────────────────────────────────
+    let hasDbPermission = false;
+    try {
+      const { PermissionService } = require("../services/permission.service");
+      hasDbPermission = await PermissionService.hasPermission(req.user.id, targetMenu, targetAction);
+    } catch (err) {
+      console.error("[Authorize middleware] Permission evaluation error:", err);
+    }
+
+    // ── 4. Strict Least-Privilege Enforcement for Non-Super-Admin Roles ────
+    // Role privilege restriction check (if specific roles are restricted for this route)
+    if (opts.roles && opts.roles.length > 0) {
       const userType = req.user.userType || req.user.user_type;
-      if (!opts.roles.includes(userType)) {
+      if (!opts.roles.includes(userType) && !hasDbPermission) {
         return res.status(403).json({
           success: false,
           statusCode: 403,
@@ -55,17 +81,7 @@ export function authorize(opts: AuthorizeOptions = {}) {
       }
     }
 
-    // 3. If dynamic permission was required but not matched, deny access
-    if (opts.menu && opts.action && !hasMenuPermission) {
-      if (!opts.roles || opts.roles.length === 0) {
-        return res.status(403).json({
-          success: false,
-          statusCode: 403,
-          message: `Permission denied: ${opts.action} action on ${opts.menu} module is not authorized`
-        });
-      }
-    }
-
+    // Explicit deny delete check
     if (opts.denyDelete && opts.denyDelete.length > 0) {
       const userType = req.user.userType || req.user.user_type;
       if (req.method === "DELETE" && opts.denyDelete.includes(userType)) {
@@ -77,43 +93,29 @@ export function authorize(opts: AuthorizeOptions = {}) {
       }
     }
 
-    if (opts.menu && opts.action) {
+    // Require dynamic permission grant if not matched by role or explicit permission
+    if (!hasDbPermission) {
+      // Check if user has explicit JWT permission array as fallback
       const permissions: any[] = req.user.permissions || [];
-      if (permissions.length > 0 && !permissions.includes("FULL_ACCESS")) {
-        const allowed = permissions.some((p: any) => {
-          const menuName = (p.menu?.name || p.menu_name || '').toLowerCase();
-          const menuPath = (p.menu?.path || p.menu_path || '').toLowerCase();
-          const target = (opts.menu || '').toLowerCase();
-          const isMenuMatch = menuName === target || menuPath === target || target.includes(menuName);
-          return isMenuMatch && p.action === opts.action;
+      const hasJwtPermission = permissions.some((p: any) => {
+        if (p === "FULL_ACCESS") return true;
+        const menuName = (p.menu?.name || p.menu_name || "").toLowerCase();
+        const menuPath = (p.menu?.path || p.menu_path || "").toLowerCase();
+        const target = (targetMenu || "").toLowerCase();
+        const isMenuMatch = menuName === target || menuPath === target || target.includes(menuName);
+        return isMenuMatch && (p.action === targetAction || p.canApprove === true);
+      });
+
+      if (!hasJwtPermission) {
+        return res.status(403).json({
+          success: false,
+          statusCode: 403,
+          message: `Permission denied: ${targetAction} action on ${targetMenu} module is not authorized`
         });
-
-        if (!allowed) {
-          return res.status(403).json({
-            success: false,
-            statusCode: 403,
-            message: `Permission denied: ${opts.action} action on ${opts.menu} module is not authorized`
-          });
-        }
       }
     }
 
-    if (opts.requireApproval) {
-      const userType = req.user.userType || req.user.user_type;
-      const perms = ROLE_PERMISSIONS[userType as UserType];
-      if (!perms?.canApprove) {
-        const dbPermissions: any[] = req.user.permissions || [];
-        const hasDbApproval = dbPermissions.some((p: any) => p.action === "APPROVE" || p.canApprove === true);
-        if (!hasDbApproval) {
-          return res.status(403).json({
-            success: false,
-            statusCode: 403,
-            message: "Approval access denied: approval privileges required"
-          });
-        }
-      }
-    }
-
+    // ── 5. Tenant Scoping for Authorized Non-Super-Admin Users ──────────────
     const effectiveCompanyId = req.user.companyId || req.user.company_id;
     const effectiveBranchId  = req.user.branchId  || req.user.branch_id;
     const userType = req.user.userType || req.user.user_type;
@@ -126,19 +128,11 @@ export function authorize(opts: AuthorizeOptions = {}) {
     ];
 
     if (userType !== UserType.CUSTOMER) {
-      if (!effectiveCompanyId) {
-        req.companyId = 1;
-      } else {
-        req.companyId = Number(effectiveCompanyId);
-      }
+      req.companyId = effectiveCompanyId ? Number(effectiveCompanyId) : 1;
     }
 
     if (branchScopedRoles.includes(userType)) {
-      if (!effectiveBranchId) {
-        req.branchId = 1;
-      } else {
-        req.branchId = Number(effectiveBranchId);
-      }
+      req.branchId = effectiveBranchId ? Number(effectiveBranchId) : 1;
     } else if (effectiveBranchId) {
       req.branchId = Number(effectiveBranchId);
     }
