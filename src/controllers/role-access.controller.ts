@@ -23,19 +23,19 @@ import { emitToUser } from "../socket/socket";
 // or everyone holding that role at that company/branch scope otherwise.
 async function notifyAffectedUsers(record: Pick<RolePermission, "role_id" | "company_id" | "branch_id" | "user_id">) {
   try {
-    const { io } = require("../socket/socket");
-    if (io) {
-      io.emit("permissions-updated", { reason: "role-access-changed", role_id: record.role_id, user_id: record.user_id });
-    }
-
+    // ── Employee-level row: notify only that specific user ──────────────
     if (record.user_id) {
       emitToUser(record.user_id, "permissions-updated", { reason: "role-access-changed" });
       return;
     }
 
+    // ── Role-level row: find all UserRole rows matching role+scope ──────
+    // Notify only the users who actually hold this role at this scope.
+    // (Previously a global io.emit() was used here — that sent the event
+    //  to every connected user regardless of whether they were affected.)
     const where: any = { role_id: record.role_id };
     if (record.company_id != null) where.company_id = record.company_id;
-    if (record.branch_id != null) where.branch_id = record.branch_id;
+    if (record.branch_id != null)  where.branch_id  = record.branch_id;
 
     const affected = await dataSource.getRepository(UserRole).find({ where });
     const userIds = new Set(affected.map(ur => ur.user_id));

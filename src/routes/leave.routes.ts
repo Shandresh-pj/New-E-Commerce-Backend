@@ -327,5 +327,87 @@ router.delete(
   leaveController.delete.bind(leaveController)
 );
 
+/**
+ * @swagger
+ * /leave/update/{id}:
+ *   put:
+ *     summary: Update Leave Application Details
+ *     description: Update an existing leave request by ID.
+ *     tags: [Leave]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Leave Application ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               leave_type:
+ *                 type: string
+ *                 enum: [CASUAL, SICK, EMERGENCY, EARNED]
+ *               from_date:
+ *                 type: string
+ *                 format: date
+ *               to_date:
+ *                 type: string
+ *                 format: date
+ *               total_days:
+ *                 type: integer
+ *               reason:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *                 enum: [PENDING, APPROVED, REJECTED]
+ *     responses:
+ *       200:
+ *         description: Leave request updated successfully
+ *       404:
+ *         description: Leave request not found
+ */
+router.put(
+  ["/leave/update/:id", "/leave/:id"],
+  authenticateMiddleware,
+  authorize({ roles: allRoles }),
+  auditMiddleware("LEAVE_UPDATE"),
+  leaveController.update.bind(leaveController)
+);
+
+/**
+ * @swagger
+ * /leave/{id}:
+ *   get:
+ *     summary: Get Leave Request details by ID
+ *     description: Retrieve single leave application details by ID.
+ *     tags: [Leave]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Leave Application ID
+ *     responses:
+ *       200:
+ *         description: Leave application details
+ *       404:
+ *         description: Leave application not found
+ */
+router.get(
+  "/leave/:id",
+  authenticateMiddleware,
+  authorize({ roles: allRoles }),
+  leaveController.getById.bind(leaveController)
+);
+
 export default router;
 

@@ -5,6 +5,34 @@ import dataSource from "../config/database";
 import { LeaveRequest } from "../entities/leave.entity";
 import { Employee } from "../entities/employee.entity";
 import { TenantService } from "../middleware/tenantFilter.middleware";
+import { emitToUser, emitToCompany } from "../socket/socket";
+
+// ── Helper: emit real-time leave status event ──────────────────────────────
+function emitLeaveStatusChanged(leave: any, status: string, actorId?: number) {
+  try {
+    const payload = {
+      leaveId:     leave.id,
+      employee_id: leave.employee_id,
+      status,
+      leave_type:  leave.leave_type,
+      from_date:   leave.from_date,
+      to_date:     leave.to_date,
+      approved_by: actorId ?? leave.approved_by,
+      timestamp:   new Date().toISOString(),
+    };
+    // Notify the employee directly
+    if (leave.employee_id) {
+      emitToUser(leave.employee_id, "leave.status.changed", payload);
+    }
+    // Notify company admins / managers watching the leave dashboard
+    if (leave.company_id) {
+      emitToCompany(leave.company_id, "leave.status.changed", payload);
+    }
+  } catch (e) {
+    // Never crash the HTTP response just because socket emit failed
+    console.error("[LeaveController] socket emit failed:", e);
+  }
+}
 
 @Controller("/leave")
 export class LeaveController {
@@ -54,11 +82,17 @@ export class LeaveController {
       const id = Number(req.params.id);
       if (isNaN(id)) return res.status(400).json({ success: false, message: "Invalid leave ID" });
 
+      const actorId = req.user?.userId || req.user?.id || null;
       await repo.update(id, {
         status: "APPROVED",
-        approved_by: req.user?.userId || req.user?.id || null,
+        approved_by: actorId,
         approved_at: new Date().toISOString(),
       });
+
+      // Real-time notification to employee & company room
+      const leave = await repo.findOne({ where: { id } });
+      if (leave) emitLeaveStatusChanged(leave, "APPROVED", actorId);
+
       return res.json({ success: true, message: "Leave approved" });
     } catch (err: any) {
       console.error("[LeaveController] approve error:", err.message);
@@ -78,11 +112,17 @@ export class LeaveController {
       const id = Number(req.params.id);
       if (isNaN(id)) return res.status(400).json({ success: false, message: "Invalid leave ID" });
 
+      const actorId = req.user?.userId || req.user?.id || null;
       await repo.update(id, {
         status: "REJECTED",
-        approved_by: req.user?.userId || req.user?.id || null,
+        approved_by: actorId,
         approved_at: new Date().toISOString(),
       });
+
+      // Real-time notification to employee & company room
+      const leave = await repo.findOne({ where: { id } });
+      if (leave) emitLeaveStatusChanged(leave, "REJECTED", actorId);
+
       return res.json({ success: true, message: "Leave request rejected" });
     } catch (err: any) {
       console.error("[LeaveController] reject error:", err.message);
@@ -113,6 +153,81 @@ export class LeaveController {
       return res.status(500).json({ success: false, message: err.message || "Failed to delete leave" });
     }
   }
+
+  // ==========================================
+  // UPDATE LEAVE
+  // ==========================================
+  @Put("/update/:id")
+  @Put("/:id")
+  @Middleware([authenticateMiddleware])
+  @Swagger("Update Leave", "Update employee leave request details")
+  async update(req: any, res: Response) {
+    try {
+      const repo = dataSource.getRepository(LeaveRequest);
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ success: false, message: "Invalid leave ID" });
+
+      const where = TenantService.scopeWhere(req.user, { id });
+      const leave = await repo.findOne({ where });
+      if (!leave) return res.status(404).json({ success: false, message: "Leave request not found" });
+
+      const body = req.body || {};
+
+      if (body.leave_type !== undefined) leave.leave_type = body.leave_type;
+      if (body.from_date !== undefined) leave.from_date = body.from_date;
+      if (body.to_date !== undefined) leave.to_date = body.to_date;
+      if (body.total_days !== undefined) leave.total_days = Number(body.total_days) || leave.total_days;
+      if (body.reason !== undefined) leave.reason = body.reason;
+      if (body.employee_id !== undefined) leave.employee_id = Number(body.employee_id) || leave.employee_id;
+      if (body.company_id !== undefined) leave.company_id = Number(body.company_id) || leave.company_id;
+      if (body.branch_id !== undefined) leave.branch_id = Number(body.branch_id) || leave.branch_id;
+      const prevStatus = leave.status;
+      if (body.status !== undefined) {
+        leave.status = body.status;
+        if (body.status === "APPROVED" || body.status === "REJECTED") {
+          leave.approved_by = req.user?.userId || req.user?.id || null;
+          leave.approved_at = new Date().toISOString();
+        }
+      }
+
+      await repo.save(leave);
+
+      // Emit real-time event only when status actually changed
+      if (body.status !== undefined && body.status !== prevStatus &&
+          (body.status === "APPROVED" || body.status === "REJECTED" || body.status === "PENDING")) {
+        emitLeaveStatusChanged(leave, leave.status, req.user?.userId || req.user?.id || null);
+      }
+
+      return res.json({ success: true, message: "Leave request updated successfully", data: leave });
+    } catch (err: any) {
+      console.error("[LeaveController] update error:", err.message);
+      return res.status(500).json({ success: false, message: err.message || "Failed to update leave request" });
+    }
+  }
+
+  // ==========================================
+  // GET LEAVE BY ID
+  // ==========================================
+  @Get("/:id")
+  @Middleware([authenticateMiddleware])
+  @Swagger("Get Leave By ID", "Get leave request by ID")
+  async getById(req: any, res: Response) {
+    try {
+      const repo = dataSource.getRepository(LeaveRequest);
+      const id = Number(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ success: false, message: "Invalid leave ID" });
+
+      const where = TenantService.scopeWhere(req.user, { id });
+      const leave = await repo.findOne({ where });
+      if (!leave) return res.status(404).json({ success: false, message: "Leave request not found" });
+
+      return res.json({ success: true, data: leave });
+    } catch (err: any) {
+      console.error("[LeaveController] getById error:", err.message);
+      return res.status(500).json({ success: false, message: err.message || "Failed to get leave request" });
+    }
+  }
+
 
   // ==========================================
   // GET LEAVE BALANCES

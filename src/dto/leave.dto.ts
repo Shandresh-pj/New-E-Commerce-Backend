@@ -56,3 +56,42 @@ export class ApproveLeaveDto {
   @IsString()
   remark?: string;
 }
+
+export class UpdateLeaveDto {
+  @IsOptional()
+  @IsNumber()
+  employee_id?: number;
+
+  @IsOptional()
+  @IsNumber()
+  company_id?: number;
+
+  @IsOptional()
+  @IsNumber()
+  branch_id?: number;
+
+  @IsOptional()
+  @IsEnum(LeaveType, { message: `leave_type must be one of: ${Object.values(LeaveType).join(", ")}` })
+  leave_type?: LeaveType;
+
+  @IsOptional()
+  @IsString()
+  from_date?: string;
+
+  @IsOptional()
+  @IsString()
+  to_date?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  total_days?: number;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+
+  @IsOptional()
+  @IsEnum(LeaveStatus)
+  status?: LeaveStatus;
+}
