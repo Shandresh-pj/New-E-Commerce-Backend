@@ -180,6 +180,21 @@ export class PermissionService {
       branch: r.branch,
     }));
 
-    return { roles, permissions, menus };
+    const { password, refreshToken, verificationToken, ...safeUser } = user as any;
+
+    return {
+      user: {
+        ...safeUser,
+        isSuperAdmin: Boolean(user.isSuperAdmin),
+        userType: user.userType,
+        user_type: user.userType,
+      },
+      isSuperAdmin: Boolean(user.isSuperAdmin),
+      userType: user.userType,
+      user_type: user.userType,
+      roles,
+      permissions,
+      menus
+    };
   }
 }
