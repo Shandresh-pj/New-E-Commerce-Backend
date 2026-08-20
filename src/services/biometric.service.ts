@@ -17,7 +17,13 @@ import { NotificationType, NotificationSeverity } from "../entities/attendance_n
 // ═══════════════════════════════════════════════════════════════════════════
 export class BiometricService {
 
-  private notificationService = new NotificationService();
+  private _notificationService?: NotificationService;
+  private get notificationService(): NotificationService {
+    if (!this._notificationService) {
+      this._notificationService = new NotificationService();
+    }
+    return this._notificationService;
+  }
 
   // ─── Validate Incoming Device Request ─────────────────────────────────
   async validateDevice(deviceSerial: string, deviceIp?: string): Promise<BiometricDevice> {

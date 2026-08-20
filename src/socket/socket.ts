@@ -1,10 +1,8 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
-import { AttendanceService } from "../services/attendance.service";
 import { ChatService } from "../services/chat.service";
 
 // ─── Singleton service instances (not per-message) ─────────────────────────
-const attendanceService = new AttendanceService();
 const chatService = new ChatService();
 
 // Use the same allowed-origins list that HTTP CORS uses, so the socket
@@ -170,6 +168,8 @@ export const initializeSocket = (server: any) => {
             return;
           }
         }
+        const { AttendanceService } = require("../services/attendance.service");
+        const attendanceService = new AttendanceService();
         const metrics = await attendanceService.getLiveDashboard(data.company_id, data.branch_id);
         socket.emit("dashboard.metrics.update", metrics);
       } catch (err) {

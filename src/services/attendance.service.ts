@@ -22,7 +22,13 @@ import { io } from "../socket/socket";
 // ═══════════════════════════════════════════════════════════════════════════
 export class AttendanceService {
 
-  private notificationService = new NotificationService();
+  private _notificationService?: NotificationService;
+  private get notificationService(): NotificationService {
+    if (!this._notificationService) {
+      this._notificationService = new NotificationService();
+    }
+    return this._notificationService;
+  }
 
   // ─── Check-In ──────────────────────────────────────────────────────────
   async processCheckIn(payload: {
