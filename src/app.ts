@@ -29,8 +29,7 @@ app.use(helmet({
   contentSecurityPolicy: false, // Swagger and custom frontends might load inline scripts/assets
   crossOriginResourcePolicy: { policy: "cross-origin" },
 }));
-app.use(hpp());
-app.use(xssSanitizer);
+
 
 
 
@@ -101,6 +100,8 @@ app.use((req: any, res: any, next: any) => {
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(hpp());
+app.use(xssSanitizer);
 app.use("/uploads", (req, res, next) => {
   const cleanPath = req.path.replace(/^\/+/, "");
   if (!cleanPath.startsWith("images/") && !cleanPath.startsWith("videos/") && !cleanPath.startsWith("audios/") && !cleanPath.startsWith("documents/")) {

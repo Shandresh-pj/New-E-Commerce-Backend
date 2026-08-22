@@ -7,6 +7,7 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  Index,
 } from "typeorm";
 
 import { Product } from "./products";
@@ -16,6 +17,7 @@ export class ProductAttribute {
   @PrimaryGeneratedColumn()
   Id!: number;
 
+  @Index()
   @Column({ default: 0 })
   CompanyId!: number;
 
@@ -47,9 +49,11 @@ export class ProductAttributeValue {
   @PrimaryGeneratedColumn()
   Id!: number;
 
+  @Index()
   @Column({ default: 0 })
   CompanyId!: number;
 
+  @Index()
   @Column()
   ProductAttributeId!: number;
 
@@ -93,9 +97,11 @@ export class ProductAttributeValueProduct {
   @PrimaryGeneratedColumn()
   Id!: number;
 
+  @Index()
   @Column()
   ProductAttributeValueId!: number;
 
+  @Index()
   @Column()
   ProductId!: number;
 

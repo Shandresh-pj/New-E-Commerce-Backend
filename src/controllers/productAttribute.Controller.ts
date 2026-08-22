@@ -522,13 +522,13 @@ export class ProductAttributeValueController {
       await valueRepo.save(value);
 
       if (Array.isArray(product_ids) && product_ids.length > 0) {
-        for (const productId of product_ids) {
-          const link = linkRepo.create({
+        const linksToInsert = product_ids.map((productId) =>
+          linkRepo.create({
             ProductAttributeValueId: value.Id,
             ProductId: Number(productId),
-          });
-          await linkRepo.save(link);
-        }
+          })
+        );
+        await linkRepo.save(linksToInsert);
       }
 
       await queryRunner.commitTransaction();
@@ -628,14 +628,14 @@ export class ProductAttributeValueController {
 
       if (product_ids !== undefined) {
         await linkRepo.delete({ ProductAttributeValueId: Id });
-        if (Array.isArray(product_ids)) {
-          for (const productId of product_ids) {
-            const link = linkRepo.create({
+        if (Array.isArray(product_ids) && product_ids.length > 0) {
+          const linksToInsert = product_ids.map((productId) =>
+            linkRepo.create({
               ProductAttributeValueId: Id,
               ProductId: Number(productId),
-            });
-            await linkRepo.save(link);
-          }
+            })
+          );
+          await linkRepo.save(linksToInsert);
         }
       }
 

@@ -225,6 +225,8 @@ const validateAttributeValuePayloads = async (
   return allErrors;
 };
 
+import { In } from "typeorm";
+
 /**
  * Confirm every referenced ProductAttributeId / ProductAttributeValueId
  * pair actually exists and belongs together. Shared by `variants` and
@@ -236,35 +238,40 @@ const validateAttributeReferencePairs = async (
   label: string
 ): Promise<Record<string, string[]>> => {
   const errors: Record<string, string[]> = {};
+  if (!items || items.length === 0) return errors;
 
   const attributeRepo = manager.getRepository(ProductAttribute);
   const valueRepo = manager.getRepository(ProductAttributeValue);
 
-  for (let i = 0; i < items.length; i++) {
-    const item = coerceNumbers(items[i], [
-      "ProductAttributeId",
-      "ProductAttributeValueId",
-    ]);
+  const coercedItems = items.map((item) =>
+    coerceNumbers(item, ["ProductAttributeId", "ProductAttributeValueId"])
+  );
 
-    const attribute = await attributeRepo.findOne({
-      where: { Id: item.ProductAttributeId },
-    });
+  const attrIds = [...new Set(coercedItems.map((i) => i.ProductAttributeId).filter(Boolean))];
+  const valIds = [...new Set(coercedItems.map((i) => i.ProductAttributeValueId).filter(Boolean))];
 
-    if (!attribute) {
+  const foundAttributes = attrIds.length > 0
+    ? await attributeRepo.find({ where: { Id: In(attrIds) } })
+    : [];
+  const foundValues = valIds.length > 0
+    ? await valueRepo.find({ where: { Id: In(valIds) } })
+    : [];
+
+  const attrSet = new Set(foundAttributes.map((a: any) => a.Id));
+  const valMap = new Map<number, number>(foundValues.map((v: any) => [v.Id, v.ProductAttributeId]));
+
+  for (let i = 0; i < coercedItems.length; i++) {
+    const item = coercedItems[i];
+
+    if (!attrSet.has(item.ProductAttributeId)) {
       errors[`${label}[${i}].ProductAttributeId`] = [
         "ProductAttribute not found",
       ];
       continue;
     }
 
-    const value = await valueRepo.findOne({
-      where: {
-        Id: item.ProductAttributeValueId,
-        ProductAttributeId: item.ProductAttributeId,
-      },
-    });
-
-    if (!value) {
+    const parentAttrId = valMap.get(item.ProductAttributeValueId);
+    if (!parentAttrId || parentAttrId !== item.ProductAttributeId) {
       errors[`${label}[${i}].ProductAttributeValueId`] = [
         "ProductAttributeValue not found for the given ProductAttributeId",
       ];

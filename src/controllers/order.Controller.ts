@@ -451,7 +451,7 @@ export class OrderController {
     }
   }
   // ==========================================
-  // GET ALL ORDERS
+  // GET ALL ORDERS (WITH PAGINATION)
   // ==========================================
   @Get("/")
   public async getAll(req: any, res: Response) {
@@ -459,7 +459,11 @@ export class OrderController {
       const repo = dataSource.getRepository(Order);
       const where = TenantService.scopeWhere(req.user);
 
-      const orders = await repo.find({
+      const page = Number(req.query.page || 1);
+      const limit = Number(req.query.limit || 50);
+      const skip = (page - 1) * limit;
+
+      const [orders, total] = await repo.findAndCount({
         where,
         relations: {
           user: true,
@@ -468,12 +472,18 @@ export class OrderController {
           },
         },
         order: { id: "DESC" },
+        skip,
+        take: limit,
       });
 
       return res.json({
         success: true,
         data: orders,
-        order: true
+        order: true,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       });
     } catch (err: any) {
       console.error("[getAll Orders Error]:", err);

@@ -15,7 +15,7 @@ import {
 } from "express";
 
 import dataSource from "../config/database";
-import { Like } from "typeorm";
+import { Like, In } from "typeorm";
 import { Coupon, CouponProduct } from "../entities/coupons";
 import validate from "../middleware/validate";
 import { CreateCouponDto } from "../dto/coupon.dto";
@@ -127,15 +127,23 @@ export class CouponController {
         order: { id: "DESC" }
       });
 
-      const result = await Promise.all(
-        coupons.map(async (coupon) => {
-          const mappings = await mapRepo.find({ where: { coupon_id: coupon.id } });
-          return {
-            ...coupon,
-            product_ids: mappings.map(m => m.product_id)
-          };
-        })
-      );
+      const couponIds = coupons.map((c) => c.id);
+      const allMappings = couponIds.length > 0
+        ? await mapRepo.find({ where: { coupon_id: In(couponIds) } })
+        : [];
+
+      const mappingMap = new Map<number, number[]>();
+      for (const m of allMappings) {
+        if (!mappingMap.has(m.coupon_id)) {
+          mappingMap.set(m.coupon_id, []);
+        }
+        mappingMap.get(m.coupon_id)!.push(m.product_id);
+      }
+
+      const result = coupons.map((coupon) => ({
+        ...coupon,
+        product_ids: mappingMap.get(coupon.id) || [],
+      }));
 
       return response.json({
         success: true,

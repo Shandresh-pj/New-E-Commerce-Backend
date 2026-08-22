@@ -2,12 +2,13 @@ import { Request, Response, NextFunction } from "express";
 
 function cleanValue(val: any): any {
   if (typeof val === "string") {
-    // Escapes common HTML tags and strips dangerous script tags/JS URIs
+    // Strips dangerous script tags, inline event handlers, iframe/object tags, and javascript URIs
     return val
       .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, "")
+      .replace(/<iframe[^>]*>([\s\S]*?)<\/iframe>/gi, "")
+      .replace(/<object[^>]*>([\s\S]*?)<\/object>/gi, "")
       .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "")
-      .replace(/javascript:[^\s"']*/gi, "")
-      .replace(/<[^>]*>/g, ""); // Strip other raw HTML tags
+      .replace(/javascript:[^\s"']*/gi, "");
   }
   if (Array.isArray(val)) {
     return val.map(cleanValue);

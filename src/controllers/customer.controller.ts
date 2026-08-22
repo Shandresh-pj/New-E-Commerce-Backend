@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { In } from "typeorm";
 import bcrypt from "bcryptjs";
 import dataSource from "../config/database";
 import { User } from "../entities/user";
@@ -35,37 +36,47 @@ export class CustomerManagementController {
         .take(limit)
         .getManyAndCount();
 
-      // Aggregate order statistics per customer
-      const enriched = await Promise.all(
-        users.map(async (u) => {
-          const orders = await orderRepo.find({
-            where: { user_id: u.id },
+      // Aggregate order statistics per customer in a single query
+      const userIds = users.map((u) => u.id);
+      const orders = userIds.length > 0
+        ? await orderRepo.find({
+            where: { user_id: In(userIds) },
             order: { created_at: "DESC" },
-          });
+          })
+        : [];
 
-          const totalSpent = orders.reduce((sum, ord) => sum + Number(ord.total || 0), 0);
-          const totalOrders = orders.length;
-          const lastOrderDate = orders.length > 0 ? orders[0].created_at : null;
+      const ordersByUserMap = new Map<number, Order[]>();
+      for (const ord of orders) {
+        if (!ordersByUserMap.has(ord.user_id)) {
+          ordersByUserMap.set(ord.user_id, []);
+        }
+        ordersByUserMap.get(ord.user_id)!.push(ord);
+      }
 
-          return {
-            id: u.id,
-            name: u.name,
-            email: u.email,
-            phone: u.mobilenumber || "N/A",
-            mobilenumber: u.mobilenumber || "N/A",
-            address: u.address || "",
-            status: u.isActive ? "ACTIVE" : "INACTIVE",
-            isActive: u.isActive,
-            total_orders: totalOrders,
-            totalOrders,
-            total_spent: totalSpent,
-            totalSpent,
-            last_order_date: lastOrderDate,
-            lastOrderDate,
-            created_at: u.created_at,
-          };
-        })
-      );
+      const enriched = users.map((u) => {
+        const userOrders = ordersByUserMap.get(u.id) || [];
+        const totalSpent = userOrders.reduce((sum, ord) => sum + Number(ord.total || 0), 0);
+        const totalOrders = userOrders.length;
+        const lastOrderDate = userOrders.length > 0 ? userOrders[0].created_at : null;
+
+        return {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          phone: u.mobilenumber || "N/A",
+          mobilenumber: u.mobilenumber || "N/A",
+          address: u.address || "",
+          status: u.isActive ? "ACTIVE" : "INACTIVE",
+          isActive: u.isActive,
+          total_orders: totalOrders,
+          totalOrders,
+          total_spent: totalSpent,
+          totalSpent,
+          last_order_date: lastOrderDate,
+          lastOrderDate,
+          created_at: u.created_at,
+        };
+      });
 
       return res.json({
         success: true,

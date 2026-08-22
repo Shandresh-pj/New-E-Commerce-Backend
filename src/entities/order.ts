@@ -31,6 +31,7 @@ export class Order {
   @Column({ type: "int", nullable: true })
   product_id!: number | null;
 
+  @Index()
   @Column({ type: "varchar", length: 50 })
   status!: string;  // PENDING, CONFIRMED, FAILED
 
@@ -64,6 +65,7 @@ export class Order {
   @Column({ type: "int" })
   registration_id!: number;
 
+  @Index()
   @Column({ type: "int" })
   company_id!: number;
 
@@ -116,6 +118,7 @@ export class OrderItem {
   @Column({ type: "int" })
   order_id!: number;
 
+  @Index()
   @Column({ type: "int" })
   product_id!: number;
 

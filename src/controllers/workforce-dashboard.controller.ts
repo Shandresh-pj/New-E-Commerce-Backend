@@ -133,26 +133,36 @@ export class WorkforceDashboardController {
       const repo    = dataSource.getRepository(Attendance);
       const empRepo = dataSource.getRepository(Employee);
 
-      const where: any = TenantService.scopeWhere(req.user);
-      if (branch_id) where.branch_id = Number(branch_id);
+      const mmStr = String(month).padStart(2, "0");
+      const yyyyStr = String(year);
 
-      const records = await repo.find({ where, order: { employee_id: "ASC" } });
+      const qb = repo.createQueryBuilder("att");
+      TenantService.apply(req.user, qb, "att");
 
-      const filtered = records.filter((r) => {
-        if (!r.attendance_date) return false;
-        const parts = r.attendance_date.split(/[:-]/);
-        if (parts.length >= 3) {
-          const mm = parts[1];
-          const yyyy = parts[2] || parts[0];
-          return Number(mm) === Number(month) && Number(yyyy) === Number(year);
+      if (branch_id) {
+        qb.andWhere("att.branch_id = :branch_id", { branch_id: Number(branch_id) });
+      }
+
+      // Filter date format in SQL (supports DD:MM:YYYY or YYYY-MM-DD or DD-MM-YYYY)
+      qb.andWhere(
+        "(att.attendance_date LIKE :pat1 OR att.attendance_date LIKE :pat2 OR att.attendance_date LIKE :pat3)",
+        {
+          pat1: `%:${mmStr}:${yyyyStr}`,
+          pat2: `${yyyyStr}-${mmStr}-%`,
+          pat3: `%-${mmStr}-${yyyyStr}`,
         }
-        return false;
-      });
+      );
+
+      const records = await qb.orderBy("att.employee_id", "ASC").getMany();
+
+      const empIds = [...new Set(records.map((r) => r.employee_id))];
+      const employees = empIds.length > 0 ? await empRepo.find({ where: { id: In(empIds) } }) : [];
+      const empMap = new Map(employees.map((e) => [e.id, e]));
 
       const grouped: Record<number, any> = {};
-      for (const r of filtered) {
+      for (const r of records) {
         if (!grouped[r.employee_id]) {
-          const emp = await empRepo.findOne({ where: { id: r.employee_id } });
+          const emp = empMap.get(r.employee_id);
           grouped[r.employee_id] = {
             employee_id: r.employee_id,
             employee:    emp ? { name: emp.name, designation: emp.designation, employee_code: emp.employee_code } : null,
@@ -180,7 +190,7 @@ export class WorkforceDashboardController {
       return res.json({
         success: true,
         data: Object.values(grouped),
-        total_records: filtered.length,
+        total_records: records.length,
       });
     } catch (err: any) {
       console.error("[WorkforceDashboardController] monthlyReport error:", err.message);
