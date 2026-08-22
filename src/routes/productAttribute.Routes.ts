@@ -338,6 +338,8 @@ router.get("/product-attributes/:Id", authenticateMiddleware, (req, res, next) =
  *         description: Internal server error
  */
 router.put("/product-attributes/:Id", authenticateMiddleware, (req, res, next) => attributeController.update(req, res, next));
+router.post("/product-attributes/:Id", authenticateMiddleware, (req, res, next) => attributeController.update(req, res, next));
+router.patch("/product-attributes/:Id", authenticateMiddleware, (req, res, next) => attributeController.update(req, res, next));
 
 /**
  * @swagger
@@ -719,6 +721,8 @@ router.get("/product-attribute-values/:Id", authenticateMiddleware, (req, res, n
  *         description: Internal server error
  */
 router.put("/product-attribute-values/:Id", authenticateMiddleware, (req, res, next) => attributeValueController.update(req, res, next));
+router.post("/product-attribute-values/:Id", authenticateMiddleware, (req, res, next) => attributeValueController.update(req, res, next));
+router.patch("/product-attribute-values/:Id", authenticateMiddleware, (req, res, next) => attributeValueController.update(req, res, next));
 
 /**
  * @swagger
@@ -1043,6 +1047,8 @@ router.get("/product-attribute", authenticateMiddleware, (req, res, next) => att
 router.post("/product-attribute", authenticateMiddleware, (req, res, next) => attributeController.create(req, res, next));
 router.get("/product-attribute/:Id", authenticateMiddleware, (req, res, next) => attributeController.detail(req, res, next));
 router.put("/product-attribute/:Id", authenticateMiddleware, (req, res, next) => attributeController.update(req, res, next));
+router.post("/product-attribute/:Id", authenticateMiddleware, (req, res, next) => attributeController.update(req, res, next));
+router.patch("/product-attribute/:Id", authenticateMiddleware, (req, res, next) => attributeController.update(req, res, next));
 router.delete("/product-attribute/:Id", authenticateMiddleware, (req, res, next) => attributeController.deleteItem(req, res, next));
 
 // Singular /product-attribute-value mappings
@@ -1050,6 +1056,8 @@ router.get("/product-attribute-value", authenticateMiddleware, (req, res, next) 
 router.post("/product-attribute-value", authenticateMiddleware, (req, res, next) => attributeValueController.create(req, res, next));
 router.get("/product-attribute-value/:Id", authenticateMiddleware, (req, res, next) => attributeValueController.detail(req, res, next));
 router.put("/product-attribute-value/:Id", authenticateMiddleware, (req, res, next) => attributeValueController.update(req, res, next));
+router.post("/product-attribute-value/:Id", authenticateMiddleware, (req, res, next) => attributeValueController.update(req, res, next));
+router.patch("/product-attribute-value/:Id", authenticateMiddleware, (req, res, next) => attributeValueController.update(req, res, next));
 router.delete("/product-attribute-value/:Id", authenticateMiddleware, (req, res, next) => attributeValueController.deleteItem(req, res, next));
 
 // Singular /attribute-value mappings
@@ -1057,6 +1065,8 @@ router.get("/attribute-value", authenticateMiddleware, (req, res, next) => attri
 router.post("/attribute-value", authenticateMiddleware, (req, res, next) => attributeValueController.create(req, res, next));
 router.get("/attribute-value/:Id", authenticateMiddleware, (req, res, next) => attributeValueController.detail(req, res, next));
 router.put("/attribute-value/:Id", authenticateMiddleware, (req, res, next) => attributeValueController.update(req, res, next));
+router.post("/attribute-value/:Id", authenticateMiddleware, (req, res, next) => attributeValueController.update(req, res, next));
+router.patch("/attribute-value/:Id", authenticateMiddleware, (req, res, next) => attributeValueController.update(req, res, next));
 router.delete("/attribute-value/:Id", authenticateMiddleware, (req, res, next) => attributeValueController.deleteItem(req, res, next));
 
 export default router;
