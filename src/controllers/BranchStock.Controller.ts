@@ -28,27 +28,28 @@ export class BranchStockController {
   @Middleware([validate(UpdateBranchStockDto)])
   @Swagger("Update Branch Stock", "Add or Remove stock per branch")
   async update(req: any, res: Response, next: NextFunction) {
-
     const qr = dataSource.createQueryRunner();
     await qr.connect();
     await qr.startTransaction();
 
     try {
+      const companyId = Number(req.body.company_id || req.user?.companyId || req.user?.company_id || 1);
+      const userId = req.user?.userId || req.user?.id || 1;
 
       const result = await BranchStockService.updateStock({
         manager: qr.manager,
         ...req.body,
-        user_id: req.user.userId,
+        company_id: companyId,
+        user_id: userId,
       });
 
       await qr.commitTransaction();
 
       return res.json({
         success: true,
-        message: "Branch stock updated",
+        message: "Branch stock updated successfully",
         data: result,
       });
-
     } catch (err) {
       await qr.rollbackTransaction();
       next(err);
@@ -62,17 +63,50 @@ export class BranchStockController {
   async getAll(req: any, res: Response) {
     try {
       const repo = dataSource.getRepository(BranchStock);
-      const where = TenantService.scopeWhere(req.user);
+      const companyId = Number(req.user?.companyId || req.user?.company_id || 1);
+      const where: any = { ...TenantService.scopeWhere(req.user) };
 
-      const data = await repo.find({
+      if (req.query.branch_id) {
+        where.branch_id = Number(req.query.branch_id);
+      }
+      if (req.query.branch_name) {
+        where.branch_name = String(req.query.branch_name);
+      }
+
+      const branchStocks = await repo.find({
         where,
         relations: { product: true },
         order: { id: "DESC" },
       });
 
+      if (branchStocks.length === 0) {
+        // Fallback: populate default view from main products catalog if no branch stocks registered yet
+        const productRepo = dataSource.getRepository(Product);
+        const products = await productRepo.find({
+          where: { registration_id: companyId },
+          take: 50,
+        });
+
+        const fallbackData = products.map((p) => ({
+          id: p.id,
+          company_id: companyId,
+          branch_name: "Main Branch",
+          product_id: p.id,
+          product: p,
+          stock: Number(p.stock ?? p.stock_in_hand ?? 0),
+          created_at: p.created_at,
+          updated_at: p.updated_at,
+        }));
+
+        return res.json({
+          success: true,
+          data: fallbackData,
+        });
+      }
+
       return res.json({
         success: true,
-        data,
+        data: branchStocks,
       });
     } catch (err: any) {
       console.error("[getBranchStocks Error]:", err);
@@ -84,13 +118,27 @@ export class BranchStockController {
   async requestTransfer(req: any, res: Response, next: NextFunction) {
     try {
       const { from_branch, to_branch, product_id, quantity } = req.body;
-
       const user = req.user;
       const userId = user?.userId || user?.id || 1;
+      const companyId = Number(user?.companyId || user?.company_id || 1);
+
+      if (!from_branch || !to_branch || !product_id || !quantity) {
+        return res.status(400).json({
+          success: false,
+          message: "from_branch, to_branch, product_id, and quantity are required",
+        });
+      }
+
+      if (from_branch === to_branch) {
+        return res.status(400).json({
+          success: false,
+          message: "Source and destination branch cannot be the same",
+        });
+      }
 
       // Verify the product exists
       const productRepo = dataSource.getRepository(Product);
-      const product = await productRepo.findOneBy({ id: product_id });
+      const product = await productRepo.findOneBy({ id: Number(product_id) });
       if (!product) {
         return res.status(404).json({ success: false, message: "Product not found" });
       }
@@ -98,13 +146,13 @@ export class BranchStockController {
       // Check if from_branch actually has enough stock
       const branchStockRepo = dataSource.getRepository(BranchStock);
       const fromStock = await branchStockRepo.findOne({
-        where: { branch_name: from_branch, product_id },
+        where: { branch_name: from_branch, product_id: Number(product_id) },
       });
 
-      if (!fromStock || fromStock.stock < quantity) {
+      if (!fromStock || fromStock.stock < Number(quantity)) {
         return res.status(400).json({
           success: false,
-          message: `Insufficient stock in source branch "${from_branch}". Current stock: ${fromStock?.stock || 0}`
+          message: `Insufficient stock in source branch "${from_branch}". Current stock: ${fromStock?.stock || 0}`,
         });
       }
 
@@ -112,15 +160,15 @@ export class BranchStockController {
       const transfer = transferRepo.create({
         from_branch,
         to_branch,
-        product_id,
-        quantity,
+        product_id: Number(product_id),
+        quantity: Number(quantity),
         status: "Pending Approval",
         created_by: userId,
       });
 
       await transferRepo.save(transfer);
 
-      const companyRoom = `company_${fromStock.company_id}`;
+      const companyRoom = `company_${companyId}`;
 
       // Create notification for Admins
       try {
@@ -128,9 +176,9 @@ export class BranchStockController {
         const notification = await notificationRepo.save({
           message: `Branch stock transfer request: ${from_branch} -> ${to_branch} for "${product.name}" (Qty: ${quantity}) requires approval.`,
           type: "APPROVAL_REQUEST",
-          product_id,
+          product_id: Number(product_id),
           branch_name: from_branch,
-          quantity,
+          quantity: Number(quantity),
         });
 
         io.to(companyRoom).emit("new-notification", notification);
@@ -143,8 +191,8 @@ export class BranchStockController {
         transfer_id: transfer.id,
         from_branch,
         to_branch,
-        product_id,
-        quantity,
+        product_id: Number(product_id),
+        quantity: Number(quantity),
         status: transfer.status,
       });
 
@@ -186,18 +234,22 @@ export class BranchStockController {
       const transferId = Number(req.params.id);
       const { action, rejection_reason } = req.body; // action: 'APPROVE' | 'REJECT'
 
+      if (!transferId || isNaN(transferId)) {
+        return res.status(400).json({ success: false, message: "Invalid transfer ID" });
+      }
+
       const transferRepo = qr.manager.getRepository(BranchTransfer);
       const transfer = await transferRepo.findOne({
         where: { id: transferId },
-        relations: { product: true }
+        relations: { product: true },
       });
 
       if (!transfer) {
-        throw new Error("Branch transfer record not found");
+        return res.status(404).json({ success: false, message: "Branch transfer record not found" });
       }
 
       if (transfer.status !== "Pending Approval") {
-        throw new Error("This branch transfer is not pending approval");
+        return res.status(400).json({ success: false, message: "This branch transfer is not pending approval" });
       }
 
       const user = req.user;
@@ -207,14 +259,14 @@ export class BranchStockController {
       const refStock = await branchStockRepo.findOne({
         where: { branch_name: transfer.from_branch, product_id: transfer.product_id },
       });
-      const companyId = refStock?.company_id;
+      const companyId = refStock?.company_id || Number(user?.companyId || user?.company_id || 1);
 
       if (action === "APPROVE") {
         // Deduct from source branch
         let fromStock = refStock;
 
         if (!fromStock || fromStock.stock < transfer.quantity) {
-          throw new Error(`Insufficient stock in source branch "${transfer.from_branch}"`);
+          throw new Error(`Insufficient stock in source branch "${transfer.from_branch}". Current stock: ${fromStock?.stock || 0}`);
         }
 
         const oldFromStock = fromStock.stock;
@@ -228,7 +280,7 @@ export class BranchStockController {
 
         if (!toStock) {
           toStock = branchStockRepo.create({
-            company_id: fromStock.company_id,
+            company_id: companyId,
             branch_name: transfer.to_branch,
             product_id: transfer.product_id,
             stock: 0,
@@ -244,8 +296,8 @@ export class BranchStockController {
         transfer.approved_at = new Date();
 
         // Emit real-time updates for both branches
-        io.to(`company_${fromStock.company_id}`).emit("branch-stock-update", {
-          company_id: fromStock.company_id,
+        io.to(`company_${companyId}`).emit("branch-stock-update", {
+          company_id: companyId,
           branch_name: transfer.from_branch,
           product_id: transfer.product_id,
           oldStock: oldFromStock,
@@ -253,8 +305,8 @@ export class BranchStockController {
           action: "REMOVE",
         });
 
-        io.to(`company_${fromStock.company_id}`).emit("branch-stock-update", {
-          company_id: fromStock.company_id,
+        io.to(`company_${companyId}`).emit("branch-stock-update", {
+          company_id: companyId,
           branch_name: transfer.to_branch,
           product_id: transfer.product_id,
           oldStock: oldToStock,
@@ -265,12 +317,12 @@ export class BranchStockController {
         // Trigger low stock checks on source branch
         const threshold = 5;
         if (fromStock.stock <= threshold) {
-          io.to(`company_${fromStock.company_id}`).emit("low-stock-alert", {
-            company_id: fromStock.company_id,
+          io.to(`company_${companyId}`).emit("low-stock-alert", {
+            company_id: companyId,
             branch_name: transfer.from_branch,
             product_id: transfer.product_id,
             stock: fromStock.stock,
-            type: "LOW_STOCK"
+            type: "LOW_STOCK",
           });
 
           try {
@@ -282,7 +334,7 @@ export class BranchStockController {
               branch_name: transfer.from_branch,
               quantity: fromStock.stock,
             });
-            io.to(`company_${fromStock.company_id}`).emit("new-notification", notification);
+            io.to(`company_${companyId}`).emit("new-notification", notification);
           } catch (e) {
             console.error("Failed to save branch low stock alert notification:", e);
           }
@@ -291,7 +343,7 @@ export class BranchStockController {
         transfer.status = "Rejected";
         transfer.rejection_reason = rejection_reason || "No reason provided";
       } else {
-        throw new Error("Invalid transfer action");
+        return res.status(400).json({ success: false, message: "Invalid transfer action. Must be APPROVE or REJECT" });
       }
 
       await transferRepo.save(transfer);

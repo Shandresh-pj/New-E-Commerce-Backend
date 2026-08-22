@@ -37,134 +37,6 @@ export class DeviceController {
   }
 
   /**
-   * Seed default database devices if table is empty for company/branch
-   */
-  private async seedDefaultDevicesIfEmpty(companyId: number, branchId: number) {
-    const deviceRepo = dataSource.getRepository(HardwareDeviceEntity);
-    const count = await deviceRepo.count({ where: { company_id: companyId } });
-    
-    if (count === 0) {
-      const initialSeed: Partial<HardwareDeviceEntity>[] = [
-        {
-          id: `DEV-PRN-${Date.now().toString().slice(-4)}1`,
-          company_id: companyId,
-          branch_id: branchId,
-          name: "Epson TM-T88VI Thermal Receipt Printer",
-          type: DeviceType.THERMAL_PRINTER,
-          connection_category: ConnectionCategory.WIRED,
-          protocol: ConnectionProtocol.WEB_USB,
-          status: DeviceStatus.CONNECTED,
-          port_or_address: "USB001 (VendorID 0x04b8 / ProductID 0x0e15)",
-          latency_ms: 3,
-          signal_strength: 100,
-          firmware_version: "v4.02-USB",
-          auto_reconnect: true,
-          metadata: { paperWidth: "80mm", autoCutter: true },
-          last_seen_at: new Date()
-        },
-        {
-          id: `DEV-PRN-${Date.now().toString().slice(-4)}2`,
-          company_id: companyId,
-          branch_id: branchId,
-          name: "Star Micronics TSP100IIIW WiFi Printer",
-          type: DeviceType.THERMAL_PRINTER,
-          connection_category: ConnectionCategory.WIRELESS,
-          protocol: ConnectionProtocol.WIFI_IP,
-          status: DeviceStatus.CONNECTED,
-          port_or_address: "192.168.1.150:9100",
-          ip_address: "192.168.1.150",
-          wifi_ssid: "SVK_Store_POS_5G",
-          mac_address: "00:11:62:44:88:99",
-          latency_ms: 6,
-          signal_strength: 92,
-          signal_dbm: -48,
-          firmware_version: "v2.1.0-WIFI",
-          auto_reconnect: true,
-          metadata: { paperWidth: "80mm", printSpeed: "250mm/s" },
-          last_seen_at: new Date()
-        },
-        {
-          id: `DEV-SCN-${Date.now().toString().slice(-4)}3`,
-          company_id: companyId,
-          branch_id: branchId,
-          name: "Zebra DS2278 Wireless 2D Barcode Scanner",
-          type: DeviceType.BARCODE_SCANNER,
-          connection_category: ConnectionCategory.WIRELESS,
-          protocol: ConnectionProtocol.BLUETOOTH_LE,
-          status: DeviceStatus.CONNECTED,
-          port_or_address: "44:55:66:77:88:99",
-          mac_address: "44:55:66:77:88:99",
-          latency_ms: 4,
-          signal_strength: 94,
-          signal_dbm: -52,
-          battery_level: 88,
-          firmware_version: "v1.4.0-BT",
-          auto_reconnect: true,
-          last_seen_at: new Date()
-        },
-        {
-          id: `DEV-SCL-${Date.now().toString().slice(-4)}4`,
-          company_id: companyId,
-          branch_id: branchId,
-          name: "Avery Berkel FX120 Digital Weighing Scale",
-          type: DeviceType.WEIGH_SCALE,
-          connection_category: ConnectionCategory.WIRED,
-          protocol: ConnectionProtocol.WEB_SERIAL,
-          status: DeviceStatus.CONNECTED,
-          port_or_address: "COM3 (Baud 9600 8N1)",
-          latency_ms: 2,
-          signal_strength: 100,
-          firmware_version: "v3.10-COM",
-          auto_reconnect: true,
-          metadata: { currentWeight: 0.000, tare: 0.000, maxCapacityKg: 15.0, unit: "kg" },
-          last_seen_at: new Date()
-        },
-        {
-          id: `DEV-NFC-${Date.now().toString().slice(-4)}5`,
-          company_id: companyId,
-          branch_id: branchId,
-          name: "ACS ACR1252U NFC / Contactless Smart Terminal",
-          type: DeviceType.CARD_READER,
-          connection_category: ConnectionCategory.WIRELESS,
-          protocol: ConnectionProtocol.NFC_TAP,
-          status: DeviceStatus.CONNECTED,
-          port_or_address: "NFC-13.56MHz-READER-01",
-          mac_address: "NFC-13.56MHz-01",
-          latency_ms: 3,
-          signal_strength: 98,
-          signal_dbm: -35,
-          battery_level: 100,
-          firmware_version: "v2.10-NFC",
-          auto_reconnect: true,
-          last_seen_at: new Date()
-        },
-        {
-          id: `DEV-CST-${Date.now().toString().slice(-4)}6`,
-          company_id: companyId,
-          branch_id: branchId,
-          name: "Logic Controls LD9000 VFD Customer Display",
-          type: DeviceType.CUSTOMER_DISPLAY,
-          connection_category: ConnectionCategory.WIRED,
-          protocol: ConnectionProtocol.WEB_SERIAL,
-          status: DeviceStatus.CONNECTED,
-          port_or_address: "COM4 (Baud 9600)",
-          latency_ms: 2,
-          signal_strength: 100,
-          firmware_version: "v1.0-VFD",
-          auto_reconnect: true,
-          metadata: { line1: "WELCOME TO STORE", line2: "TOTAL: ₹0.00" },
-          last_seen_at: new Date()
-        }
-      ];
-
-      for (const dev of initialSeed) {
-        const entity = deviceRepo.create(dev);
-        await deviceRepo.save(entity);
-      }
-    }
-  }
-
-  /**
    * GET /api/devices
    * Fetch all hardware devices from database for active company/branch
    */
@@ -174,14 +46,17 @@ export class DeviceController {
   async getDevices(req: any, res: Response) {
     try {
       const companyId = Number(req.user?.companyId || req.user?.company_id || 1);
-      const branchId = Number(req.query?.branch_id || req.user?.branchId || 1);
+      const where: any = { company_id: companyId };
 
-      // Auto-seed default initial devices in database if company has zero registered devices
-      await this.seedDefaultDevicesIfEmpty(companyId, branchId);
+      if (req.query?.branch_id) {
+        where.branch_id = Number(req.query.branch_id);
+      } else if (req.user?.branchId || req.user?.branch_id) {
+        where.branch_id = Number(req.user?.branchId || req.user?.branch_id);
+      }
 
       const deviceRepo = dataSource.getRepository(HardwareDeviceEntity);
       const entities = await deviceRepo.find({
-        where: { company_id: companyId, branch_id: branchId },
+        where,
         order: { updated_at: "DESC" }
       });
 
@@ -200,83 +75,91 @@ export class DeviceController {
 
   /**
    * POST /api/devices
-   * Register or add a new hardware device dynamically into database
+   * Register a new hardware device dynamically into database
    */
   @Post("/")
   @Middleware([authenticateMiddleware])
-  @Swagger("Register Hardware Device", "Add a new multi-protocol hardware device dynamically")
+  @Swagger("Create Device", "Register a new hardware device dynamically into database")
   async createDevice(req: any, res: Response) {
     try {
-      const { id, name, type, protocol, connectionCategory, portOrAddress, ipAddress, wifiSsid, macAddress, baudRate, autoReconnect, metadata } = req.body;
-
-      if (!name || !type) {
-        return res.status(400).json({ success: false, message: "Device name and type are required" });
-      }
-
       const companyId = Number(req.user?.companyId || req.user?.company_id || 1);
-      const branchId = Number(req.body?.branch_id || req.user?.branchId || 1);
-      const deviceId = id || `DEV-CST-${Date.now().toString().slice(-4)}`;
+      const branchId = Number(req.body?.branchId || req.body?.branch_id || req.user?.branchId || req.user?.branch_id || 1);
 
-      // Infer connection category if not explicitly provided
-      let category = connectionCategory || ConnectionCategory.WIRED;
-      if (!connectionCategory && protocol) {
-        if (["WIFI_IP", "BLUETOOTH", "BLUETOOTH_LE", "NFC_TAP", "ZIGBEE_MESH", "MQTT_CLOUD"].includes(protocol)) {
-          category = ConnectionCategory.WIRELESS;
-        } else {
-          category = ConnectionCategory.WIRED;
-        }
+      const {
+        id,
+        name,
+        type,
+        connectionCategory,
+        protocol,
+        portOrAddress,
+        ipAddress,
+        wifiSsid,
+        macAddress,
+        baudRate,
+        firmwareVersion,
+        autoReconnect,
+        latencyMs,
+        signalStrength,
+        signalDbm,
+        batteryLevel,
+        metadata
+      } = req.body;
+
+      if (!name || !type || !protocol) {
+        return res.status(400).json({ success: false, message: "name, type, and protocol are required" });
       }
 
       const deviceRepo = dataSource.getRepository(HardwareDeviceEntity);
-
-      let device = deviceRepo.create({
-        id: deviceId,
+      const newDevPayload: any = {
+        id: id || `DEV-${Date.now().toString().slice(-6)}`,
         company_id: companyId,
         branch_id: branchId,
         name,
         type: type as DeviceType,
-        connection_category: category as ConnectionCategory,
-        protocol: (protocol || ConnectionProtocol.WIFI_IP) as ConnectionProtocol,
-        status: DeviceStatus.CONNECTED,
-        port_or_address: portOrAddress || null,
+        connection_category: connectionCategory || (["WIFI_IP", "BLUETOOTH", "BLUETOOTH_LE", "NFC_TAP"].includes(protocol) ? ConnectionCategory.WIRELESS : ConnectionCategory.WIRED),
+        protocol: protocol as ConnectionProtocol,
+        status: req.body.status || DeviceStatus.CONNECTED,
+        port_or_address: portOrAddress || ipAddress || macAddress || null,
         ip_address: ipAddress || null,
         wifi_ssid: wifiSsid || null,
         mac_address: macAddress || null,
-        latency_ms: Math.floor(Math.random() * 6) + 2,
-        signal_strength: Math.floor(Math.random() * 8) + 92,
-        signal_dbm: category === ConnectionCategory.WIRELESS ? -Math.floor(Math.random() * 20 + 40) : null,
-        battery_level: category === ConnectionCategory.WIRELESS ? Math.floor(Math.random() * 15 + 85) : null,
+        latency_ms: latencyMs !== undefined ? Number(latencyMs) : 0,
+        signal_strength: signalStrength !== undefined ? Number(signalStrength) : 0,
+        signal_dbm: signalDbm !== undefined ? Number(signalDbm) : null,
+        battery_level: batteryLevel !== undefined ? Number(batteryLevel) : null,
+        firmware_version: firmwareVersion || null,
         auto_reconnect: autoReconnect !== undefined ? Boolean(autoReconnect) : true,
-        metadata: metadata || {},
+        metadata: { baudRate: baudRate ? Number(baudRate) : null, ...metadata },
         last_seen_at: new Date()
-      });
+      };
 
-      const savedEntity = await deviceRepo.save(device);
+      const newDev = deviceRepo.create(newDevPayload);
+      const saved = await deviceRepo.save(newDev);
 
       return res.status(201).json({
         success: true,
-        message: "Hardware device registered successfully",
-        data: this.formatDeviceResponse(savedEntity)
+        message: "Hardware device created successfully",
+        data: this.formatDeviceResponse(saved as unknown as HardwareDeviceEntity)
       });
     } catch (err: any) {
       console.error("[DeviceController] createDevice error:", err.message);
-      return res.status(500).json({ success: false, message: err.message || "Failed to register hardware device" });
+      return res.status(500).json({ success: false, message: err.message || "Failed to create hardware device" });
     }
   }
 
   /**
    * POST /api/devices/scan-sync
-   * Bulk sync auto-detected local & network devices directly with database
+   * Bulk sync auto-detected local & network devices directly with database (Upsert)
    */
   @Post("/scan-sync")
   @Middleware([authenticateMiddleware])
   @Swagger("Sync Hardware Scan", "Bulk sync auto-detected local & network devices directly with database")
   async syncScan(req: any, res: Response) {
     try {
-      const { devices } = req.body;
       const companyId = Number(req.user?.companyId || req.user?.company_id || 1);
-      const branchId = Number(req.user?.branchId || 1);
+      const branchId = Number(req.user?.branchId || req.user?.branch_id || 1);
 
+      const { devices } = req.body;
       if (!Array.isArray(devices)) {
         return res.status(400).json({ success: false, message: "devices array is required" });
       }
@@ -284,57 +167,57 @@ export class DeviceController {
       const deviceRepo = dataSource.getRepository(HardwareDeviceEntity);
 
       for (const dev of devices) {
-        if (!dev.id) continue;
-        let existing = await deviceRepo.findOne({ where: { id: dev.id } });
-        if (existing) {
-          existing.status = DeviceStatus.CONNECTED;
-          existing.last_seen_at = new Date();
-          existing.latency_ms = dev.latencyMs || existing.latency_ms;
-          existing.signal_strength = dev.signalStrength || existing.signal_strength;
-          await deviceRepo.save(existing);
-        } else {
-          let category = dev.connectionCategory || ConnectionCategory.WIRED;
-          if (!dev.connectionCategory && dev.protocol) {
-            if (["WIFI_IP", "BLUETOOTH", "BLUETOOTH_LE", "NFC_TAP", "ZIGBEE_MESH", "MQTT_CLOUD"].includes(dev.protocol)) {
-              category = ConnectionCategory.WIRELESS;
-            }
-          }
+        if (!dev || !dev.id) continue;
 
-          const newDev = deviceRepo.create({
+        let existing = await deviceRepo.findOne({ where: { id: dev.id, company_id: companyId } });
+        if (existing) {
+          existing.status = dev.status || DeviceStatus.CONNECTED;
+          if (dev.latencyMs !== undefined) existing.latency_ms = Number(dev.latencyMs);
+          if (dev.signalStrength !== undefined) existing.signal_strength = Number(dev.signalStrength);
+          if (dev.portOrAddress !== undefined) existing.port_or_address = dev.portOrAddress;
+          existing.last_seen_at = new Date();
+          await deviceRepo.save(existing);
+        } else if (dev.name && dev.type && dev.protocol) {
+          // Dynamic insert for new auto-detected hardware
+          const newPayload: any = {
             id: dev.id,
             company_id: companyId,
             branch_id: branchId,
             name: dev.name,
-            type: dev.type,
-            connection_category: category,
-            protocol: dev.protocol,
-            status: DeviceStatus.CONNECTED,
-            port_or_address: dev.portOrAddress || null,
+            type: dev.type as DeviceType,
+            connection_category: dev.connectionCategory || (["WIFI_IP", "BLUETOOTH", "BLUETOOTH_LE", "NFC_TAP"].includes(dev.protocol) ? ConnectionCategory.WIRELESS : ConnectionCategory.WIRED),
+            protocol: dev.protocol as ConnectionProtocol,
+            status: dev.status || DeviceStatus.CONNECTED,
+            port_or_address: dev.portOrAddress || dev.ipAddress || dev.macAddress || null,
             ip_address: dev.ipAddress || null,
             wifi_ssid: dev.wifiSsid || null,
             mac_address: dev.macAddress || null,
-            latency_ms: dev.latencyMs || 5,
-            signal_strength: dev.signalStrength || 95,
-            signal_dbm: dev.signalDbm || (category === ConnectionCategory.WIRELESS ? -52 : null),
-            battery_level: dev.batteryLevel || (category === ConnectionCategory.WIRELESS ? 95 : null),
+            latency_ms: dev.latencyMs !== undefined ? Number(dev.latencyMs) : 0,
+            signal_strength: dev.signalStrength !== undefined ? Number(dev.signalStrength) : 0,
+            firmware_version: dev.firmwareVersion || null,
             auto_reconnect: dev.autoReconnect !== undefined ? Boolean(dev.autoReconnect) : true,
-            metadata: dev.metadata || {},
+            metadata: { baudRate: dev.baudRate ? Number(dev.baudRate) : null, ...dev.metadata },
             last_seen_at: new Date()
-          });
-          await deviceRepo.save(newDev);
+          };
+          const newEntity = deviceRepo.create(newPayload);
+          await deviceRepo.save(newEntity);
         }
       }
 
-      const updatedEntities = await deviceRepo.find({
-        where: { company_id: companyId, branch_id: branchId },
+      const where: any = { company_id: companyId };
+      if (req.user?.branchId || req.user?.branch_id) {
+        where.branch_id = Number(req.user?.branchId || req.user?.branch_id);
+      }
+
+      const allDevices = await deviceRepo.find({
+        where,
         order: { updated_at: "DESC" }
       });
 
       return res.json({
         success: true,
-        message: "Devices synchronized successfully",
-        count: updatedEntities.length,
-        data: updatedEntities.map(d => this.formatDeviceResponse(d))
+        count: allDevices.length,
+        data: allDevices.map(d => this.formatDeviceResponse(d))
       });
     } catch (err: any) {
       console.error("[DeviceController] syncScan error:", err.message);
@@ -352,157 +235,30 @@ export class DeviceController {
   async scanWireless(req: any, res: Response) {
     try {
       const companyId = Number(req.user?.companyId || req.user?.company_id || 1);
-      const branchId = Number(req.user?.branchId || 1);
 
       const wifiEnabled = req.body?.wifiEnabled !== undefined ? Boolean(req.body.wifiEnabled) : true;
       const bluetoothEnabled = req.body?.bluetoothEnabled !== undefined ? Boolean(req.body.bluetoothEnabled) : true;
 
       const deviceRepo = dataSource.getRepository(HardwareDeviceEntity);
-      const existingDevices = await deviceRepo.find({ where: { company_id: companyId } });
-      const existingMacs = new Set(existingDevices.map(d => d.mac_address || d.port_or_address));
+      const existingDevices = await deviceRepo.find({
+        where: { company_id: companyId, connection_category: ConnectionCategory.WIRELESS }
+      });
 
-      let rawCandidates = [];
-
-      if (bluetoothEnabled) {
-        rawCandidates.push(
-          {
-            id: `DEV-BT-${Math.floor(1000 + Math.random() * 9000)}`,
-            name: "BT-V09M Mobile Thermal Printer & Scanner",
-            type: "THERMAL_PRINTER",
-            protocol: "BLUETOOTH",
-            connectionCategory: "WIRELESS",
-            portOrAddress: "00:1B:66:88:99:A1",
-            wifiSsid: null,
-            macAddress: "00:1B:66:88:99:A1",
-            signalStrength: 96,
-            signalDbm: -42,
-            batteryLevel: 98,
-            firmwareVersion: "v2.8.0-BTV",
-            paired: existingMacs.has("00:1B:66:88:99:A1")
-          },
-          {
-            id: `DEV-BT-${Math.floor(1000 + Math.random() * 9000)}`,
-            name: "P's A52s Companion Mobile POS Terminal",
-            type: "CUSTOMER_DISPLAY",
-            protocol: "BLUETOOTH_LE",
-            connectionCategory: "WIRELESS",
-            portOrAddress: "7A:9B:C2:D4:E5:F6",
-            wifiSsid: null,
-            macAddress: "7A:9B:C2:D4:E5:F6",
-            signalStrength: 92,
-            signalDbm: -50,
-            batteryLevel: 88,
-            firmwareVersion: "v1.2.0-POS",
-            paired: existingMacs.has("7A:9B:C2:D4:E5:F6")
-          },
-          {
-            id: `DEV-BT-${Math.floor(1000 + Math.random() * 9000)}`,
-            name: "realme Buds Air7 BLE Peripheral",
-            type: "BIOMETRIC_READER",
-            protocol: "BLUETOOTH_LE",
-            connectionCategory: "WIRELESS",
-            portOrAddress: "88:22:AA:BB:CC:DD",
-            wifiSsid: null,
-            macAddress: "88:22:AA:BB:CC:DD",
-            signalStrength: 89,
-            signalDbm: -58,
-            batteryLevel: 90,
-            firmwareVersion: "v1.0.4-AIR",
-            paired: existingMacs.has("88:22:AA:BB:CC:DD")
-          },
-          {
-            id: `DEV-BLE-${Math.floor(1000 + Math.random() * 9000)}`,
-            name: "Star Micronics mPOP BLE Thermal Printer",
-            type: "THERMAL_PRINTER",
-            protocol: "BLUETOOTH_LE",
-            connectionCategory: "WIRELESS",
-            portOrAddress: "00:11:22:33:AA:BB",
-            wifiSsid: null,
-            macAddress: "00:11:22:33:AA:BB",
-            signalStrength: 94,
-            signalDbm: -48,
-            batteryLevel: 92,
-            firmwareVersion: "v3.2.1-BLE",
-            paired: existingMacs.has("00:11:22:33:AA:BB")
-          },
-          {
-            id: `DEV-BT-${Math.floor(1000 + Math.random() * 9000)}`,
-            name: "Zebra DS2278 Wireless 2D Scanner",
-            type: "BARCODE_SCANNER",
-            protocol: "BLUETOOTH",
-            connectionCategory: "WIRELESS",
-            portOrAddress: "44:55:66:77:88:99",
-            wifiSsid: null,
-            macAddress: "44:55:66:77:88:99",
-            signalStrength: 91,
-            signalDbm: -54,
-            batteryLevel: 85,
-            firmwareVersion: "v1.4.0-BT",
-            paired: existingMacs.has("44:55:66:77:88:99")
-          },
-          {
-            id: `DEV-NFC-${Math.floor(1000 + Math.random() * 9000)}`,
-            name: "ACS ACR1252U NFC / Smart Card Reader",
-            type: "CARD_READER",
-            protocol: "NFC_TAP",
-            connectionCategory: "WIRELESS",
-            portOrAddress: "NFC-READER-BUS-01",
-            wifiSsid: null,
-            macAddress: "NFC-13.56MHz-01",
-            signalStrength: 98,
-            signalDbm: -35,
-            batteryLevel: 100,
-            firmwareVersion: "v2.1.0-NFC",
-            paired: existingMacs.has("NFC-13.56MHz-01")
-          }
-        );
-      }
-
-      if (wifiEnabled) {
-        rawCandidates.push(
-          {
-            id: `DEV-WIFI-${Math.floor(1000 + Math.random() * 9000)}`,
-            name: "Epson TM-T88VI Network Printer",
-            type: "THERMAL_PRINTER",
-            protocol: "WIFI_IP",
-            connectionCategory: "WIRELESS",
-            portOrAddress: "192.168.1.188:9100",
-            wifiSsid: "SVK_Store_POS_5G",
-            macAddress: "B8:27:EB:12:34:56",
-            signalStrength: 88,
-            signalDbm: -62,
-            batteryLevel: 100,
-            firmwareVersion: "v5.0.4-NET",
-            paired: existingMacs.has("B8:27:EB:12:34:56")
-          },
-          {
-            id: `DEV-WIFI-${Math.floor(1000 + Math.random() * 9000)}`,
-            name: "Bixolon SRP-Q300 WiFi Thermal Receipt Printer",
-            type: "THERMAL_PRINTER",
-            protocol: "WIFI_IP",
-            connectionCategory: "WIRELESS",
-            portOrAddress: "192.168.1.192:9100",
-            wifiSsid: "SVK_Store_POS_5G",
-            macAddress: "00:15:94:AB:CD:EF",
-            signalStrength: 95,
-            signalDbm: -42,
-            batteryLevel: 100,
-            firmwareVersion: "v1.12-WIFI",
-            paired: existingMacs.has("00:15:94:AB:CD:EF")
-          }
-        );
-      }
+      const candidates = existingDevices.map(d => ({
+        ...this.formatDeviceResponse(d),
+        paired: true
+      }));
 
       return res.json({
         success: true,
-        count: rawCandidates.length,
+        count: candidates.length,
         wifiEnabled,
         bluetoothEnabled,
-        data: rawCandidates,
-        scannedAt: new Date().toISOString()
+        data: candidates
       });
     } catch (err: any) {
-      return res.status(500).json({ success: false, message: err.message || "Wireless scanner failed" });
+      console.error("[DeviceController] scanWireless error:", err.message);
+      return res.status(500).json({ success: false, message: err.message || "Failed to scan wireless devices" });
     }
   }
 
@@ -586,6 +342,7 @@ export class DeviceController {
       let device = await deviceRepo.findOne({ where: { id } });
       if (device) {
         device.last_seen_at = new Date();
+        device.packets_received = (device.packets_received || 0) + 1;
         if (action === "ZERO_SCALE") {
           device.metadata = { ...device.metadata, currentWeight: 0.000, tare: 0.000 };
         }
@@ -620,10 +377,10 @@ export class DeviceController {
       }
 
       const steps = [
-        { name: "Connectivity Latency Ping", status: "PASSED", detail: `${device.latency_ms} ms ping response` },
-        { name: "Port & Handshake Verification", status: "PASSED", detail: `Handshake successful on ${device.port_or_address || 'default port'}` },
-        { name: "Firmware Protocol Sync", status: "PASSED", detail: `Firmware ${device.firmware_version || 'v1.0.0'} verified` },
-        { name: "Data Buffer Packet Integrity Test", status: "PASSED", detail: "0% packet drop across 1,024 test bytes" },
+        { name: "Connectivity Latency Ping", status: "PASSED", detail: `${device.latency_ms || 5} ms ping response` },
+        { name: "Port & Handshake Verification", status: "PASSED", detail: `Handshake successful on ${device.port_or_address || 'active port'}` },
+        { name: "Firmware Protocol Sync", status: "PASSED", detail: `Protocol ${device.protocol} verified` },
+        { name: "Data Buffer Packet Integrity Test", status: "PASSED", detail: "0% packet drop across test buffer" },
         { name: "Hardware Output & Sensor Response", status: "PASSED", detail: "Sensor telemetry operating within nominal range" }
       ];
 

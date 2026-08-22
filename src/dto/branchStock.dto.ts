@@ -17,8 +17,9 @@ export enum StockAction {
 }
 
 export class UpdateBranchStockDto {
+  @IsOptional()
   @IsNumber()
-  company_id!: number;
+  company_id?: number;
 
   @IsString()
   @IsNotEmpty()
@@ -39,15 +40,17 @@ export class UpdateBranchStockDto {
   reason?: string;  // audit note
 }
 
-export class TransferStockDto {
+export class RequestTransferDto {
+  @IsString()
+  @IsNotEmpty()
+  from_branch!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  to_branch!: string;
+
   @IsNumber()
   product_id!: number;
-
-  @IsNumber()
-  from_branch_id!: number;
-
-  @IsNumber()
-  to_branch_id!: number;
 
   @IsNumber()
   @Min(1)
@@ -56,4 +59,14 @@ export class TransferStockDto {
   @IsOptional()
   @IsString()
   note?: string;
+}
+
+export class ApproveTransferDto {
+  @IsString()
+  @IsNotEmpty()
+  action!: "APPROVE" | "REJECT";
+
+  @IsOptional()
+  @IsString()
+  rejection_reason?: string;
 }

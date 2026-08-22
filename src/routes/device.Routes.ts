@@ -165,6 +165,36 @@ router.delete("/devices/:id", authenticateMiddleware, deviceController.deleteDev
 
 /**
  * @swagger
+ * /devices/scan-wireless:
+ *   post:
+ *     summary: Wireless Radar Radar Scan
+ *     description: Scan for nearby Bluetooth BLE, Wi-Fi IP, and NFC tap devices.
+ *     tags: [Hardware Devices]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               wifiEnabled:
+ *                 type: boolean
+ *                 example: true
+ *               bluetoothEnabled:
+ *                 type: boolean
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Wireless scan completed successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.post("/devices/scan-wireless", authenticateMiddleware, deviceController.scanWireless.bind(deviceController));
+
+/**
+ * @swagger
  * /devices/{id}/telemetry:
  *   post:
  *     summary: Log Hardware Telemetry Event
@@ -193,5 +223,30 @@ router.delete("/devices/:id", authenticateMiddleware, deviceController.deleteDev
  *         description: Telemetry logged successfully
  */
 router.post("/devices/:id/telemetry", authenticateMiddleware, deviceController.recordTelemetry.bind(deviceController));
+
+/**
+ * @swagger
+ * /devices/{id}/diagnostic-suite:
+ *   post:
+ *     summary: Run Hardware Diagnostic Suite
+ *     description: Execute end-to-end multi-step diagnostic runner with database sync.
+ *     tags: [Hardware Devices]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Diagnostic suite completed successfully
+ *       404:
+ *         description: Device not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post("/devices/:id/diagnostic-suite", authenticateMiddleware, deviceController.runDiagnosticSuite.bind(deviceController));
 
 export default router;

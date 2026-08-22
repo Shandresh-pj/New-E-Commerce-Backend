@@ -15,29 +15,35 @@ export class BranchStockService {
   }: any) {
 
     const repo = manager.getRepository(BranchStock);
+    const numCompanyId = Number(company_id || 1);
+    const numProductId = Number(product_id);
+    const numQty = Number(quantity || 0);
 
     let stock = await repo.findOne({
-      where: { company_id, branch_name, product_id },
+      where: { company_id: numCompanyId, branch_name, product_id: numProductId },
     });
 
     if (!stock) {
       stock = repo.create({
-        company_id,
+        company_id: numCompanyId,
         branch_name,
-        product_id,
+        product_id: numProductId,
         stock: 0,
       });
     }
 
-    const oldStock = stock.stock;
+    const oldStock = Number(stock.stock || 0);
 
     if (action === "ADD") {
-      stock.stock += quantity;
+      stock.stock = oldStock + numQty;
+    } else if (action === "SET") {
+      stock.stock = numQty;
     } else {
-      if (stock.stock < quantity) {
-        throw new Error("Insufficient branch stock");
+      // REMOVE / DEDUCT
+      if (oldStock < numQty) {
+        throw new Error(`Insufficient branch stock in "${branch_name}". Available: ${oldStock}, Requested removal: ${numQty}`);
       }
-      stock.stock -= quantity;
+      stock.stock = oldStock - numQty;
     }
 
     await repo.save(stock);
@@ -45,10 +51,10 @@ export class BranchStockService {
     const newStock = stock.stock;
 
     // ================= REAL TIME COMPANY DASHBOARD =================
-    io.to(`company_${company_id}`).emit("branch-stock-update", {
-      company_id,
+    io.to(`company_${numCompanyId}`).emit("branch-stock-update", {
+      company_id: numCompanyId,
       branch_name,
-      product_id,
+      product_id: numProductId,
       oldStock,
       newStock,
       action,
@@ -57,17 +63,17 @@ export class BranchStockService {
     // ================= BRANCH PANEL =================
     io.to(`branch_${branch_name}`).emit("branch-stock-update", {
       branch_name,
-      product_id,
+      product_id: numProductId,
       oldStock,
       newStock,
     });
 
     // ================= LOW STOCK ALERT =================
     if (newStock <= 5) {
-      io.to(`company_${company_id}`).emit("low-stock-alert", {
-        company_id,
+      io.to(`company_${numCompanyId}`).emit("low-stock-alert", {
+        company_id: numCompanyId,
         branch_name,
-        product_id,
+        product_id: numProductId,
         stock: newStock,
       });
     }

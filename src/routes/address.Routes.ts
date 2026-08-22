@@ -1,18 +1,16 @@
-import { Router, Request, Response, NextFunction } from "express";
-import { JwtPayload } from "jsonwebtoken";
-import dataSource from "../config/database";
-import { UserAddress } from "../entities/userAddress";
-import { Register } from "../entities/register";
+import { Router } from "express";
+import { profileController } from "../controllers";
 import authenticateMiddleware from "../middleware/authenticate.middleware";
-interface AuthRequest extends Request {
-  user?: string | JwtPayload;
-}
+import { authorize } from "../middleware/authorize";
 
 const router = Router();
 
-function getUserId(req: AuthRequest): number {
-  return Number((req.user as JwtPayload)?.id);
-}
+/**
+ * @swagger
+ * tags:
+ *   name: Address
+ *   description: Customer & User Saved Delivery Addresses Management
+ */
 
 /**
  * @swagger
@@ -20,8 +18,8 @@ function getUserId(req: AuthRequest): number {
  *   get:
  *     tags:
  *       - Address
- *     summary: Get all addresses
- *     description: Returns all saved delivery addresses for the logged-in user
+ *     summary: Get all user addresses
+ *     description: Returns all saved delivery addresses for the authenticated user
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -75,24 +73,14 @@ function getUserId(req: AuthRequest): number {
  *                         example: true
  *       401:
  *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
  */
 router.get(
   "/address",
   authenticateMiddleware,
-  async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-      const userId = getUserId(req);
-
-      const addresses = await dataSource.getRepository(UserAddress).find({
-        where: { userId },
-        order: { isDefault: "DESC", created_at: "DESC" },
-      }); 
-
-      return res.json({ success: true, message: "Addresses fetched successfully", data: addresses });
-    } catch (error) {
-      next(error);
-    }
-  }
+  authorize(),
+  profileController.getAddresses.bind(profileController)
 );
 
 /**
@@ -101,8 +89,8 @@ router.get(
  *   post:
  *     tags:
  *       - Address
- *     summary: Add new address
- *     description: Create a new delivery address for the logged-in user
+ *     summary: Add new delivery address
+ *     description: Create a new delivery address for the authenticated user
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -156,56 +144,16 @@ router.get(
  *         description: Missing required fields
  *       401:
  *         description: Unauthorized
+ *       404:
+ *         description: User account not found
+ *       500:
+ *         description: Internal server error
  */
 router.post(
   "/address",
   authenticateMiddleware,
-  async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-      const userId = getUserId(req);
-
-      const { label, name, phone, line1, line2, city, state, pincode, isDefault, receiver_type, receiverType } = req.body;
-
-      if (!name || !phone || !line1 || !city || !state || !pincode) {
-        return res.status(400).json({ success: false, message: "Missing required fields" });
-      }
-
-      const userExists = await dataSource.getRepository(Register).findOne({ where: { id: userId } });
-      if (!userExists) {
-        return res.status(404).json({ success: false, message: "User not found" });
-      }
-
-      const repository = dataSource.getRepository(UserAddress);
-
-      if (isDefault) {
-        await repository.update({ userId }, { isDefault: false });
-      }
-
-      const address = repository.create({
-        userId,
-        label: label || "Home",
-        name,
-        phone,
-        line1,
-        line2: line2 || "",
-        city,
-        state,
-        pincode,
-        isDefault: !!isDefault,
-        receiverType: receiver_type || receiverType || "myself",
-      });
-
-      await repository.save(address);
-
-      return res.status(201).json({
-        success: true,
-        message: "Address saved successfully",
-        data: address,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
+  authorize(),
+  profileController.addAddress.bind(profileController)
 );
 
 /**
@@ -215,7 +163,7 @@ router.post(
  *     tags:
  *       - Address
  *     summary: Update address
- *     description: Update an existing delivery address
+ *     description: Update an existing delivery address for the authenticated user
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -224,19 +172,13 @@ router.post(
  *         required: true
  *         schema:
  *           type: integer
+ *         description: Address ID
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - phone
- *               - line1
- *               - city
- *               - state
- *               - pincode
  *             properties:
  *               label:
  *                 type: string
@@ -268,51 +210,18 @@ router.post(
  *     responses:
  *       200:
  *         description: Address updated successfully
- *       404:
- *         description: Address not found
  *       401:
  *         description: Unauthorized
+ *       404:
+ *         description: Address not found
+ *       500:
+ *         description: Internal server error
  */
 router.put(
   "/address/:id",
   authenticateMiddleware,
-  async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-      const userId = getUserId(req);
-
-      const { label, name, phone, line1, line2, city, state, pincode, isDefault, receiver_type, receiverType } = req.body;
-      const repository = dataSource.getRepository(UserAddress);
-
-      const address = await repository.findOne({
-        where: { id: Number(req.params.id), userId },
-      });
-
-      if (!address) {
-        return res.status(404).json({ success: false, message: "Address not found" });
-      }
-
-      if (isDefault) {
-        await repository.update({ userId }, { isDefault: false });
-      }
-
-      await repository.update(Number(req.params.id), {
-        label: label || address.label,
-        name: name || address.name,
-        phone: phone || address.phone,
-        line1: line1 || address.line1,
-        line2: line2 ?? address.line2,
-        city: city || address.city,
-        state: state || address.state,
-        pincode: pincode || address.pincode,
-        isDefault: !!isDefault,
-        receiverType: receiver_type || receiverType || address.receiverType,
-      });
-
-      return res.json({ success: true, message: "Address updated successfully" });
-    } catch (error) {
-      next(error);
-    }
-  }
+  authorize(),
+  profileController.updateAddress.bind(profileController)
 );
 
 /**
@@ -322,7 +231,7 @@ router.put(
  *     tags:
  *       - Address
  *     summary: Delete address
- *     description: Delete a saved delivery address
+ *     description: Delete a saved delivery address by ID
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -331,37 +240,22 @@ router.put(
  *         required: true
  *         schema:
  *           type: integer
+ *         description: Address ID
  *     responses:
  *       200:
  *         description: Address deleted successfully
- *       404:
- *         description: Address not found
  *       401:
  *         description: Unauthorized
+ *       404:
+ *         description: Address not found
+ *       500:
+ *         description: Internal server error
  */
 router.delete(
   "/address/:id",
   authenticateMiddleware,
-  async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-      const userId = getUserId(req);
-
-      const repository = dataSource.getRepository(UserAddress);
-
-      const result = await repository.delete({
-        id: Number(req.params.id),
-        userId,
-      });
-
-      if (!result.affected) {
-        return res.status(404).json({ success: false, message: "Address not found" });
-      }
-
-      return res.json({ success: true, message: "Address deleted successfully" });
-    } catch (error) {
-      next(error);
-    }
-  }
+  authorize(),
+  profileController.deleteAddress.bind(profileController)
 );
 
 /**
@@ -370,8 +264,8 @@ router.delete(
  *   patch:
  *     tags:
  *       - Address
- *     summary: Set default address
- *     description: Mark an address as the default delivery address
+ *     summary: Set default delivery address
+ *     description: Mark an address as the default delivery address for the user
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -380,49 +274,22 @@ router.delete(
  *         required: true
  *         schema:
  *           type: integer
- *     requestBody:
- *       required: false
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               isDefault:
- *                 type: boolean
- *                 example: true
+ *         description: Address ID
  *     responses:
  *       200:
- *         description: Default address updated
- *       404:
- *         description: Address not found
+ *         description: Default address updated successfully
  *       401:
  *         description: Unauthorized
+ *       404:
+ *         description: Address not found
+ *       500:
+ *         description: Internal server error
  */
 router.patch(
   "/address/:id/default",
   authenticateMiddleware,
-  async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-      const userId = getUserId(req);
-
-      const repository = dataSource.getRepository(UserAddress);
-
-      const address = await repository.findOne({
-        where: { id: Number(req.params.id), userId },
-      });
-
-      if (!address) {
-        return res.status(404).json({ success: false, message: "Address not found" });
-      }
-
-      await repository.update({ userId }, { isDefault: false });
-      await repository.update(Number(req.params.id), { isDefault: true });
-
-      return res.json({ success: true, message: "Default address updated" });
-    } catch (error) {
-      next(error);
-    }
-  }
+  authorize(),
+  profileController.setDefaultAddress.bind(profileController)
 );
 
 export default router;
