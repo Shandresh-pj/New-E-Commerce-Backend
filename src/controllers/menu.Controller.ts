@@ -1,3 +1,4 @@
+import { Raw } from "typeorm";
 import {
   Controller,
   Post,
@@ -29,22 +30,46 @@ export class MenuController {
     try {
 
       const { name, path, icon } = req.body;
+      const cleanName = String(name || '').trim();
+      const cleanPath = String(path || '').trim();
+
+      if (!cleanName || !cleanPath) {
+        await queryRunner.rollbackTransaction();
+        return res.status(400).json({
+          success: false,
+          message: "Menu name and route path are required"
+        });
+      }
 
       const menuRepo = queryRunner.manager.getRepository(Menu);
       const permissionRepo = queryRunner.manager.getRepository(Permission);
 
-      const exists = await menuRepo.findOne({ where: { name } });
+      const existsName = await menuRepo.findOne({
+        where: { name: Raw(alias => `LOWER(${alias}) = :name`, { name: cleanName.toLowerCase() }) }
+      });
 
-      if (exists) {
+      if (existsName) {
         await queryRunner.rollbackTransaction();
         return res.status(409).json({
           success: false,
-          message: "Menu already exists"
+          message: "A menu with this name already exists"
+        });
+      }
+
+      const existsPath = await menuRepo.findOne({
+        where: { path: Raw(alias => `LOWER(${alias}) = :path`, { path: cleanPath.toLowerCase() }) }
+      });
+
+      if (existsPath) {
+        await queryRunner.rollbackTransaction();
+        return res.status(409).json({
+          success: false,
+          message: "A menu with this route path already exists"
         });
       }
 
       const menu = await menuRepo.save(
-        menuRepo.create({ name, path, icon })
+        menuRepo.create({ name: cleanName, path: cleanPath, icon })
       );
 
       // Auto create permissions
@@ -104,11 +129,20 @@ export class MenuController {
       const createdMenus = [];
 
       for (const item of items) {
-        const { name, path, icon } = item;
-        
+        const name = String(item.name || '').trim();
+        const path = String(item.path || '').trim();
+        const icon = item.icon || '';
+        if (!name || !path) continue;
+
         // Skip existing to prevent conflicts in bulk insert
-        const exists = await menuRepo.findOne({ where: { name } });
-        if (exists) continue;
+        const existsName = await menuRepo.findOne({
+          where: { name: Raw(alias => `LOWER(${alias}) = :name`, { name: name.toLowerCase() }) }
+        });
+        const existsPath = await menuRepo.findOne({
+          where: { path: Raw(alias => `LOWER(${alias}) = :path`, { path: path.toLowerCase() }) }
+        });
+
+        if (existsName || existsPath) continue;
 
         const menu = await menuRepo.save(menuRepo.create({ name, path, icon }));
         
@@ -227,6 +261,8 @@ async update(req: any, res: any) {
 
     const id = Number(req.params.id);
     const { name, path, icon } = req.body;
+    const cleanName = name !== undefined ? String(name).trim() : undefined;
+    const cleanPath = path !== undefined ? String(path).trim() : undefined;
 
     const repo = dataSource.getRepository(Menu);
 
@@ -241,25 +277,36 @@ async update(req: any, res: any) {
       });
     }
 
-    // Prevent duplicate menu name
-    if (name && name !== menu.name) {
-
-      const exists = await repo.findOne({
-        where: { name }
+    if (cleanName && cleanName.toLowerCase() !== (menu.name || '').toLowerCase()) {
+      const existsName = await repo.findOne({
+        where: { name: Raw(alias => `LOWER(${alias}) = :name`, { name: cleanName.toLowerCase() }) }
       });
 
-      if (exists) {
+      if (existsName) {
         return res.status(409).json({
           success: false,
-          message: "Menu name already exists"
+          message: "A menu with this name already exists"
+        });
+      }
+    }
+
+    if (cleanPath && cleanPath.toLowerCase() !== (menu.path || '').toLowerCase()) {
+      const existsPath = await repo.findOne({
+        where: { path: Raw(alias => `LOWER(${alias}) = :path`, { path: cleanPath.toLowerCase() }) }
+      });
+
+      if (existsPath) {
+        return res.status(409).json({
+          success: false,
+          message: "A menu with this route path already exists"
         });
       }
     }
 
     repo.merge(menu, {
-      name,
-      path,
-      icon
+      ...(cleanName !== undefined && { name: cleanName }),
+      ...(cleanPath !== undefined && { path: cleanPath }),
+      ...(icon !== undefined && { icon })
     });
 
     await repo.save(menu);
