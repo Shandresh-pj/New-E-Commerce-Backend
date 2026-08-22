@@ -58,7 +58,7 @@ const errorHandler = (
   }
 
   /* =========================
-     MYSQL ERRORS
+     DATABASE & UNIQUE ERRORS
   ========================= */
   if (error.code === "ER_DUP_ENTRY" || error.code === "23505") {
     statusCode = 409;
@@ -67,10 +67,21 @@ const errorHandler = (
 
   if (
     error.code === "ER_NO_REFERENCED_ROW_2" ||
-    error.code === "ER_ROW_IS_REFERENCED_2"
+    error.code === "ER_ROW_IS_REFERENCED_2" ||
+    error.code === "23503"
   ) {
     statusCode = 400;
-    message = "Foreign key constraint failed";
+    message = "Foreign key constraint failed or referenced record does not exist";
+  }
+
+  if (error.code === "22P02") {
+    statusCode = 400;
+    message = "Invalid parameters or invalid ID data format";
+  }
+
+  if (error.code === "23502") {
+    statusCode = 400;
+    message = "Required column value cannot be null";
   }
 
   /* =========================
@@ -85,9 +96,9 @@ const errorHandler = (
      DATABASE ERROR
   ========================= */
   if (error.sqlMessage) {
-    statusCode = 500;
+    statusCode = statusCode === 500 ? 400 : statusCode;
     message = isProd
-      ? "Database Error"
+      ? "Database Query Error"
       : error.sqlMessage;
   }
 

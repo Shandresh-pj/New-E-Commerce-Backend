@@ -509,8 +509,8 @@ const payload = {
   branch_id:
     userRoles[0]?.branch?.id ?? userRoles[0]?.branch_id ?? null,
   roles: userRoles.map(x => ({
-    roleId: x.role.id,
-    name:   x.role.name
+    roleId: x.role?.id ?? x.role_id ?? 0,
+    name:   x.role?.name ?? ""
   })),
 };
 
