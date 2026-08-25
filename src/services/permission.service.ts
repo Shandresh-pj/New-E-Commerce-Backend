@@ -129,6 +129,8 @@ export class PermissionService {
         name: rp.permission.menu.name,
         path: rp.permission.menu.path,
         icon: rp.permission.menu.icon,
+        webIcon: rp.permission.menu.webIcon || rp.permission.menu.icon,
+        appIcon: rp.permission.menu.appIcon || rp.permission.menu.icon,
       },
     }));
 
@@ -137,6 +139,8 @@ export class PermissionService {
       name: rp.permission.menu.name,
       path: rp.permission.menu.path,
       icon: rp.permission.menu.icon,
+      webIcon: rp.permission.menu.webIcon || rp.permission.menu.icon,
+      appIcon: rp.permission.menu.appIcon || rp.permission.menu.icon,
     }));
 
     // remove duplicate menus

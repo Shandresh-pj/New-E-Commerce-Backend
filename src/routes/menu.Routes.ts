@@ -160,7 +160,15 @@ router.get(
  *                 description: "**REQUIRED** Angular/React route path"
  *               icon:
  *                 type: string
- *                 example: "box-icon"
+ *                 example: "bi-box-seam-fill"
+ *               webIcon:
+ *                 type: string
+ *                 example: "bi-box-seam-fill"
+ *                 description: "Bootstrap or Web CSS icon class"
+ *               appIcon:
+ *                 type: string
+ *                 example: "inventory_2"
+ *                 description: "Mobile App / Material icon key"
  *               parent_id:
  *                 type: integer
  *                 nullable: true

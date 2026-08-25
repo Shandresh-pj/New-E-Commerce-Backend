@@ -127,8 +127,12 @@ export const checkDeviceHeartbeats = async () => {
         console.log(`[Cron] checkDeviceHeartbeats — device ${device.device_serial} went offline`);
       }
     }
-  } catch (err) {
-    console.error("[Cron] checkDeviceHeartbeats — error:", err);
+  } catch (err: any) {
+    if (err?.message?.includes('Connection terminated') || err?.message?.includes('connection timeout')) {
+      console.warn("[Cron] checkDeviceHeartbeats — DB connection transiently unavailable, retrying next cycle.");
+    } else {
+      console.error("[Cron] checkDeviceHeartbeats — error:", err);
+    }
   }
 };
 

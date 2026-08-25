@@ -43,6 +43,12 @@ export class Menu {
   @Column({ type: "varchar", length: 100, nullable: true })
   icon!: string | null;
 
+  @Column({ type: "varchar", length: 100, nullable: true })
+  webIcon!: string | null;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  appIcon!: string | null;
+
   @Column({ type: "boolean", default: true })
   isActive!: boolean;
 

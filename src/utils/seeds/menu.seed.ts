@@ -2,53 +2,57 @@ import { Menu, Permission, PermissionType } from "../../entities/menu";
 import dataSource from "../../config/database";
 
 const menusToSeed = [
-  { name: "Profit & Loss", path: "/profit-loss", icon: "monetization_on" },
-  { name: "Admin", path: "/admin", icon: "admin_panel_settings" },
-  { name: "Branch", path: "/branch", icon: "account_tree" },
-  { name: "Employee", path: "/employees", icon: "badge" },
-  { name: "Roles", path: "/roles", icon: "security" },
-  { name: "Role Access", path: "/role-access", icon: "lock_person" },
-  { name: "Profile", path: "/profile", icon: "person" },
-  { name: "Menu Bar", path: "/menubar", icon: "menu" },
-  { name: "Status", path: "/status", icon: "toggle_on" },
-  { name: "Product Attribute", path: "/product-attribute", icon: "sell" },
-  { name: "Attribute Value", path: "/attribute-value", icon: "label" },
-  { name: "Category", path: "/category", icon: "category" },
-  { name: "Product", path: "/product", icon: "inventory_2" },
-  { name: "Orders", path: "/orders", icon: "shopping_cart" },
-  { name: "Change Password", path: "/change-password", icon: "key" },
-  { name: "Audit Logs", path: "/audit-logs", icon: "receipt_long" },
-  { name: "Alerts", path: "/alerts", icon: "notifications_active" },
-  { name: "Attendance", path: "/attendance", icon: "history" },
-  { name: "Branch Stocks", path: "/branch-stocks", icon: "store" },
-  { name: "Stocks", path: "/stocks", icon: "warehouse" },
-  { name: "Payroll", path: "/payroll", icon: "payments" },
-  { name: "Leave", path: "/leave", icon: "event_busy" },
-  { name: "Delivery Tracking", path: "/delivery-tracking", icon: "local_shipping" },
-  { name: "Payments", path: "/payments", icon: "account_balance_wallet" },
-  { name: "Notifications", path: "/notifications", icon: "notifications" },
-  { name: "Workforce Console", path: "/workforce", icon: "tune" },
-  { name: "Shifts & Schedules", path: "/shifts", icon: "schedule" },
-  { name: "Break Deduction Rules", path: "/break-policies", icon: "free_breakfast" },
-  { name: "Biometric Sensors & Terminals", path: "/biometric", icon: "fingerprint" },
-  { name: "GPS Geofencing Boundaries", path: "/geofencing", icon: "location_on" },
-  { name: "Company Calendar", path: "/calendar", icon: "calendar_month" },
-  { name: "KYC Document Vault", path: "/employee-documents", icon: "folder_shared" },
-  { name: "Translation Console", path: "/translations", icon: "translate" },
-  { name: "Workforce Requests", path: "/workforce-requests", icon: "assignment" },
-  { name: "Invoice Generator", path: "/invoices", icon: "description" },
-  { name: "Workflow Approvals", path: "/approvals", icon: "approval" },
-  { name: "CRM Contacts", path: "/crm-contacts", icon: "contacts" },
-  { name: "Secure Communications", path: "/communication", icon: "chat-dots" },
-  { name: "Team Meetings & Calls", path: "/communication/meetings", icon: "camera-video" },
-  { name: "Mobility Executive Cockpit", path: "/dashboard/mobility-dashboard", icon: "car-front" },
-  { name: "Ride & Taxi Booking", path: "/dashboard/ride-booking", icon: "steering-wheel" },
-  { name: "Car Rental & Subscriptions", path: "/dashboard/car-rental", icon: "key" },
-  { name: "Parcel & Freight Logistics", path: "/dashboard/parcel-logistics", icon: "truck-front" },
-  { name: "Fleet Asset & GPS Control", path: "/dashboard/fleet-management", icon: "radar" },
-  { name: "Corporate & School Transit", path: "/dashboard/corporate-transport", icon: "building-gear" },
-  { name: "Live GPS Telemetry & Replay", path: "/dashboard/live-tracking", icon: "geo-alt" },
-  { name: "KYC & Vehicle Verification", path: "/dashboard/vehicle-driver-verification", icon: "person-check" }
+  { name: 'Admin', path: '/admin', icon: 'admin_panel_settings', webIcon: 'bi-shield-lock-fill', appIcon: 'admin_panel_settings' },
+  { name: 'Branches', path: '/branch', icon: 'account_tree', webIcon: 'bi-building-fill', appIcon: 'account_tree' },
+  { name: 'Employees', path: '/employees', icon: 'badge', webIcon: 'bi-people-fill', appIcon: 'badge' },
+  { name: 'Roles', path: '/roles', icon: 'security', webIcon: 'bi-key-fill', appIcon: 'security' },
+  { name: 'Role Access', path: '/role-access', icon: 'lock_person', webIcon: 'bi-shield-check', appIcon: 'lock_person' },
+  { name: 'Profile', path: '/profile', icon: 'person', webIcon: 'bi-person-badge-fill', appIcon: 'person' },
+  { name: 'Menu Management', path: '/menubar', icon: 'menu', webIcon: 'bi-list-stars', appIcon: 'menu' },
+  { name: 'Statuses', path: '/status', icon: 'toggle_on', webIcon: 'bi-check2-square', appIcon: 'toggle_on' },
+  { name: 'Attributes', path: '/product-attribute', icon: 'sell', webIcon: 'bi-sliders', appIcon: 'sell' },
+  { name: 'Categories', path: '/category', icon: 'category', webIcon: 'bi-folder-fill', appIcon: 'category' },
+  { name: 'Products', path: '/product', icon: 'inventory_2', webIcon: 'bi-box-seam-fill', appIcon: 'inventory_2' },
+  { name: 'Units Master', path: '/units', icon: 'square_foot', webIcon: 'bi-rulers', appIcon: 'square_foot' },
+  { name: 'Orders', path: '/orders', icon: 'shopping_cart', webIcon: 'bi-bag-check-fill', appIcon: 'shopping_cart' },
+  { name: 'Coupons', path: '/coupons', icon: 'confirmation_number', webIcon: 'bi-ticket-perforated-fill', appIcon: 'confirmation_number' },
+  { name: 'Change Password', path: '/change-password', icon: 'key', webIcon: 'bi-lock-fill', appIcon: 'key' },
+  { name: 'Audit Logs', path: '/audit-logs', icon: 'receipt_long', webIcon: 'bi-clock-history', appIcon: 'receipt_long' },
+  { name: 'Alerts', path: '/alerts', icon: 'notifications_active', webIcon: 'bi-exclamation-triangle-fill', appIcon: 'notifications_active' },
+  { name: 'Attendance', path: '/attendance', icon: 'history', webIcon: 'bi-calendar-check-fill', appIcon: 'history' },
+  { name: 'Branch Inventory', path: '/branch-stocks', icon: 'store', webIcon: 'bi-houses-fill', appIcon: 'store' },
+  { name: 'Stock Control', path: '/stocks', icon: 'warehouse', webIcon: 'bi-boxes', appIcon: 'warehouse' },
+  { name: 'Payroll', path: '/payroll', icon: 'payments', webIcon: 'bi-cash-coin', appIcon: 'payments' },
+  { name: 'Leave Management', path: '/leave', icon: 'event_busy', webIcon: 'bi-airplane-fill', appIcon: 'event_busy' },
+  { name: 'Deliveries', path: '/delivery-tracking', icon: 'local_shipping', webIcon: 'bi-truck', appIcon: 'local_shipping' },
+  { name: 'Payments', path: '/payments', icon: 'account_balance_wallet', webIcon: 'bi-credit-card-2-front-fill', appIcon: 'account_balance_wallet' },
+  { name: 'Notifications', path: '/notifications', icon: 'notifications', webIcon: 'bi-bell-fill', appIcon: 'notifications' },
+  { name: 'Workforce', path: '/workforce', icon: 'tune', webIcon: 'bi-gear-wide-connected', appIcon: 'tune' },
+  { name: 'Invoices', path: '/invoices', icon: 'description', webIcon: 'bi-file-earmark-text-fill', appIcon: 'description' },
+  { name: 'Approvals', path: '/approvals', icon: 'approval', webIcon: 'bi-patch-check-fill', appIcon: 'approval' },
+  { name: 'Workforce Requests', path: '/workforce-requests', icon: 'assignment', webIcon: 'bi-briefcase-fill', appIcon: 'assignment' },
+  { name: 'CRM Contacts', path: '/crm-contacts', icon: 'contacts', webIcon: 'bi-person-rolodex', appIcon: 'contacts' },
+  { name: 'Profit & Loss', path: '/profit-loss', icon: 'monetization_on', webIcon: 'bi-pie-chart-fill', appIcon: 'monetization_on' },
+  { name: 'Plan Admin', path: '/manage-subscription-plans', icon: 'diamond', webIcon: 'bi-gem', appIcon: 'diamond' },
+  { name: 'Subscription', path: '/subscription-plans', icon: 'star', webIcon: 'bi-star-fill', appIcon: 'star' },
+  { name: 'Billing', path: '/billing-history', icon: 'receipt', webIcon: 'bi-receipt', appIcon: 'receipt' },
+  { name: 'Plan Coupons', path: '/subscription-coupons', icon: 'card_giftcard', webIcon: 'bi-ticket-detailed-fill', appIcon: 'card_giftcard' },
+  { name: 'Checkout', path: '/checkout', icon: 'payment', webIcon: 'bi-credit-card-fill', appIcon: 'payment' },
+  { name: 'Calendar', path: '/calendar', icon: 'calendar_month', webIcon: 'bi-calendar-event-fill', appIcon: 'calendar_month' },
+  { name: 'Documents', path: '/employee-documents', icon: 'folder_shared', webIcon: 'bi-file-earmark-check-fill', appIcon: 'folder_shared' },
+  { name: 'Translations', path: '/translations', icon: 'translate', webIcon: 'bi-translate', appIcon: 'translate' },
+  { name: 'POS Terminal', path: '/pos-billing', icon: 'point_of_sale', webIcon: 'bi-calculator-fill', appIcon: 'point_of_sale' },
+  { name: 'Devices', path: '/devices', icon: 'devices', webIcon: 'bi-cpu-fill', appIcon: 'devices' },
+  { name: 'Chat', path: '/communication', icon: 'forum', webIcon: 'bi-chat-dots-fill', appIcon: 'forum' },
+  { name: 'Meetings', path: '/communication/meetings', icon: 'videocam', webIcon: 'bi-camera-video-fill', appIcon: 'videocam' },
+  { name: 'Mobility Hub', path: '/mobility-dashboard', icon: 'directions_car', webIcon: 'bi-car-front-fill', appIcon: 'directions_car' },
+  { name: 'Rides', path: '/ride-booking', icon: 'local_taxi', webIcon: 'bi-steering-wheel', appIcon: 'local_taxi' },
+  { name: 'Car Rentals', path: '/car-rental', icon: 'car_rental', webIcon: 'bi-key-fill', appIcon: 'car_rental' },
+  { name: 'Logistics', path: '/parcel-logistics', icon: 'local_shipping', webIcon: 'bi-truck-front-fill', appIcon: 'local_shipping' },
+  { name: 'Fleet', path: '/fleet-management', icon: 'radar', webIcon: 'bi-radar', appIcon: 'radar' },
+  { name: 'Transit', path: '/corporate-transport', icon: 'directions_bus', webIcon: 'bi-building-fill-gear', appIcon: 'directions_bus' },
+  { name: 'Live Tracking', path: '/live-tracking', icon: 'location_searching', webIcon: 'bi-geo-alt-fill', appIcon: 'location_searching' },
+  { name: 'Driver Verification', path: '/vehicle-driver-verification', icon: 'verified_user', webIcon: 'bi-person-check-fill', appIcon: 'verified_user' }
 ];
 
 export async function seedMenus() {
@@ -75,11 +79,30 @@ export async function seedMenus() {
           name: item.name,
           path: item.path,
           icon: item.icon,
+          webIcon: item.webIcon,
+          appIcon: item.appIcon,
           isActive: true
         });
         menu = await menuRepo.save(menu);
         console.log(`🌱 [Seed] Created Menu: ${menu.name} (ID: ${menu.id})`);
         seededCount++;
+      } else {
+        let updated = false;
+        if (menu.name !== item.name) {
+          menu.name = item.name;
+          updated = true;
+        }
+        if (!menu.webIcon || menu.webIcon !== item.webIcon) {
+          menu.webIcon = item.webIcon;
+          updated = true;
+        }
+        if (!menu.appIcon || menu.appIcon !== item.appIcon) {
+          menu.appIcon = item.appIcon;
+          updated = true;
+        }
+        if (updated) {
+          await menuRepo.save(menu);
+        }
       }
 
       const existingPermissions = await permissionRepo.find({

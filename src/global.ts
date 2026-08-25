@@ -44,6 +44,7 @@ import { Coupon, CouponProduct }                       from "./entities/coupons"
 import { StockLog }                                    from "./entities/stock";
 import { LowStockAlert }                               from "./entities/lowstock";
 import { ProductUnitConversion }                       from "./entities/unit.entity";
+import { UnitOption }                                  from "./entities/unitOption.entity";
 import { StockLedger }                                 from "./entities/stock_ledger.entity";
 
 // Delivery
@@ -163,6 +164,7 @@ export const ALL_ENTITIES = [
   StockLog,
   LowStockAlert,
   ProductUnitConversion,
+  UnitOption,
   StockLedger,
 
   // Delivery

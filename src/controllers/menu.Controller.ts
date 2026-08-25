@@ -29,9 +29,12 @@ export class MenuController {
 
     try {
 
-      const { name, path, icon } = req.body;
+      const { name, path, icon, webIcon, appIcon } = req.body;
       const cleanName = String(name || '').trim();
       const cleanPath = String(path || '').trim();
+      const finalWebIcon = webIcon !== undefined ? webIcon : (icon || null);
+      const finalAppIcon = appIcon !== undefined ? appIcon : (icon || null);
+      const finalIcon = icon !== undefined ? icon : (webIcon || appIcon || null);
 
       if (!cleanName || !cleanPath) {
         await queryRunner.rollbackTransaction();
@@ -69,7 +72,13 @@ export class MenuController {
       }
 
       const menu = await menuRepo.save(
-        menuRepo.create({ name: cleanName, path: cleanPath, icon })
+        menuRepo.create({
+          name: cleanName,
+          path: cleanPath,
+          icon: finalIcon,
+          webIcon: finalWebIcon,
+          appIcon: finalAppIcon
+        })
       );
 
       // Auto create permissions
@@ -132,6 +141,8 @@ export class MenuController {
         const name = String(item.name || '').trim();
         const path = String(item.path || '').trim();
         const icon = item.icon || '';
+        const webIcon = item.webIcon || icon || '';
+        const appIcon = item.appIcon || icon || '';
         if (!name || !path) continue;
 
         // Skip existing to prevent conflicts in bulk insert
@@ -144,7 +155,7 @@ export class MenuController {
 
         if (existsName || existsPath) continue;
 
-        const menu = await menuRepo.save(menuRepo.create({ name, path, icon }));
+        const menu = await menuRepo.save(menuRepo.create({ name, path, icon, webIcon, appIcon }));
         
         const permissions = actions.map(action =>
           permissionRepo.create({ menu_id: menu.id, action })
@@ -260,7 +271,7 @@ async update(req: any, res: any) {
   try {
 
     const id = Number(req.params.id);
-    const { name, path, icon } = req.body;
+    const { name, path, icon, webIcon, appIcon } = req.body;
     const cleanName = name !== undefined ? String(name).trim() : undefined;
     const cleanPath = path !== undefined ? String(path).trim() : undefined;
 
@@ -306,7 +317,9 @@ async update(req: any, res: any) {
     repo.merge(menu, {
       ...(cleanName !== undefined && { name: cleanName }),
       ...(cleanPath !== undefined && { path: cleanPath }),
-      ...(icon !== undefined && { icon })
+      ...(icon !== undefined && { icon }),
+      ...(webIcon !== undefined && { webIcon }),
+      ...(appIcon !== undefined && { appIcon })
     });
 
     await repo.save(menu);
