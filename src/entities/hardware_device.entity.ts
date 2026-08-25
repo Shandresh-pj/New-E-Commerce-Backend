@@ -43,6 +43,27 @@ export enum DeviceStatus {
   FAULTY = "FAULTY"
 }
 
+export enum ConnectionState {
+  DISCOVERING = "DISCOVERING",
+  DISCOVERED = "DISCOVERED",
+  PAIRING = "PAIRING",
+  CONNECTING = "CONNECTING",
+  CONNECTED = "CONNECTED",
+  DEGRADED = "DEGRADED",
+  RECONNECTING = "RECONNECTING",
+  DISCONNECTED = "DISCONNECTED",
+  ERROR = "ERROR",
+  UNSUPPORTED = "UNSUPPORTED",
+  PERMISSION_REQUIRED = "PERMISSION_REQUIRED"
+}
+
+export enum HealthState {
+  HEALTHY = "HEALTHY",
+  DEGRADED = "DEGRADED",
+  ERROR = "ERROR",
+  UNKNOWN = "UNKNOWN"
+}
+
 @Entity("hardware_devices")
 export class HardwareDeviceEntity {
 
@@ -72,6 +93,12 @@ export class HardwareDeviceEntity {
   @Column({ type: "enum", enum: DeviceStatus, default: DeviceStatus.CONNECTED })
   status!: DeviceStatus;
 
+  @Column({ type: "enum", enum: ConnectionState, default: ConnectionState.CONNECTED })
+  connection_state!: ConnectionState;
+
+  @Column({ type: "enum", enum: HealthState, default: HealthState.HEALTHY })
+  health_state!: HealthState;
+
   @Column({ type: "varchar", length: 255, nullable: true })
   port_or_address!: string | null;
 
@@ -99,11 +126,26 @@ export class HardwareDeviceEntity {
   @Column({ type: "boolean", default: true })
   auto_reconnect!: boolean;
 
+  @Column({ type: "boolean", default: false })
+  agent_connected!: boolean;
+
+  @Column({ type: "boolean", default: true })
+  hardware_detected!: boolean;
+
   @Column({ type: "varchar", length: 50, nullable: true })
   firmware_version!: string | null;
 
+  @Column({ type: "varchar", length: 100, nullable: true })
+  error_code!: string | null;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
+  device_fingerprint!: string | null;
+
   @Column({ type: "json", nullable: true })
   metadata!: any;
+
+  @Column({ type: "json", nullable: true })
+  capabilities!: any;
 
   @CreateDateColumn()
   created_at!: Date;
@@ -116,4 +158,7 @@ export class HardwareDeviceEntity {
 
   @Column({ type: "timestamp", nullable: true })
   last_seen_at!: Date | null;
+
+  @Column({ type: "timestamp", nullable: true })
+  last_telemetry_at!: Date | null;
 }
