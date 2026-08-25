@@ -848,6 +848,7 @@ export class ProductController {
       const qb = repo
         .createQueryBuilder("product")
         .leftJoinAndSelect("product.creator", "creator")
+        .leftJoinAndSelect("product.unitConversions", "unitConversions")
         .leftJoinAndSelect("product.variants", "variants")
         .leftJoinAndSelect("variants.ProductAttribute", "variantAttr")
         .leftJoinAndSelect("variants.ProductAttributeValue", "variantAttrVal")
@@ -1366,6 +1367,8 @@ export class ProductController {
         }));
       }
 
+      let savedUnitConversions: ProductUnitConversion[] | undefined;
+
       if (hasUnitConversionsField) {
         const ucRepo = qr.manager.getRepository(ProductUnitConversion);
         await ucRepo.delete({ product_id: productId });
@@ -1381,7 +1384,9 @@ export class ProductController {
               is_purchase_unit: uc.is_purchase_unit !== false,
             })
           );
-          await ucRepo.save(ucEntities);
+          savedUnitConversions = await ucRepo.save(ucEntities);
+        } else {
+          savedUnitConversions = [];
         }
       }
 
@@ -1391,6 +1396,9 @@ export class ProductController {
       if (savedVariants) responseData.variants = savedVariants;
       if (savedAttributeValues !== undefined) {
         responseData.attribute_values = savedAttributeValues;
+      }
+      if (savedUnitConversions !== undefined) {
+        responseData.unitConversions = savedUnitConversions;
       }
 
       io.emit("product-updated", responseData);

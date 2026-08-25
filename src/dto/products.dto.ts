@@ -219,6 +219,27 @@ export class CreateProductDto {
   branch_id?: any;
 
   @IsOptional()
+  registrationId?: any;
+
+  @IsOptional()
+  image?: any;
+
+  @IsOptional()
+  images?: any;
+
+  @IsOptional()
+  video?: any;
+
+  @IsOptional()
+  existing_image?: any;
+
+  @IsOptional()
+  existing_images?: any;
+
+  @IsOptional()
+  existing_video?: any;
+
+  @IsOptional()
   @IsString()
   manufacture_date?: string;
 
@@ -338,6 +359,27 @@ export class UpdateProductDto {
 
   @IsOptional()
   branch_id?: any;
+
+  @IsOptional()
+  registration_id?: any;
+
+  @IsOptional()
+  registrationId?: any;
+
+  @IsOptional()
+  image?: any;
+
+  @IsOptional()
+  images?: any;
+
+  @IsOptional()
+  video?: any;
+
+  @IsOptional()
+  existing_image?: any;
+
+  @IsOptional()
+  existing_video?: any;
 
   @IsOptional()
   @IsString()
