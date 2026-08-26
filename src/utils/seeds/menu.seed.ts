@@ -52,7 +52,17 @@ const menusToSeed = [
   { name: 'Fleet', path: '/fleet-management', icon: 'radar', webIcon: 'bi-radar', appIcon: 'radar' },
   { name: 'Transit', path: '/corporate-transport', icon: 'directions_bus', webIcon: 'bi-building-fill-gear', appIcon: 'directions_bus' },
   { name: 'Live Tracking', path: '/live-tracking', icon: 'location_searching', webIcon: 'bi-geo-alt-fill', appIcon: 'location_searching' },
-  { name: 'Driver Verification', path: '/vehicle-driver-verification', icon: 'verified_user', webIcon: 'bi-person-check-fill', appIcon: 'verified_user' }
+  { name: 'Driver Verification', path: '/vehicle-driver-verification', icon: 'verified_user', webIcon: 'bi-person-check-fill', appIcon: 'verified_user' },
+  // Healthcare ERP Menus
+  { name: 'Doctors', path: '/doctors', icon: 'medical_services', webIcon: 'bi-person-badge-fill', appIcon: 'medical_services' },
+  { name: 'Patients', path: '/patients', icon: 'personal_injury', webIcon: 'bi-people-fill', appIcon: 'personal_injury' },
+  { name: 'Appointments', path: '/appointments', icon: 'event_available', webIcon: 'bi-calendar-check-fill', appIcon: 'event_available' },
+  { name: 'Consultations', path: '/consultations', icon: 'health_and_safety', webIcon: 'bi-clipboard2-pulse-fill', appIcon: 'health_and_safety' },
+  { name: 'Prescriptions', path: '/prescriptions', icon: 'prescriptions', webIcon: 'bi-file-earmark-medical-fill', appIcon: 'prescriptions' },
+  { name: 'Medicines', path: '/medicines', icon: 'medication', webIcon: 'bi-capsule', appIcon: 'medication' },
+  { name: 'Pharmacy POS', path: '/pharmacy-pos', icon: 'point_of_sale', webIcon: 'bi-receipt-cutoff', appIcon: 'point_of_sale' },
+  { name: 'Stock Approvals', path: '/stock-approvals', icon: 'fact_check', webIcon: 'bi-box-seam-fill', appIcon: 'fact_check' },
+  { name: 'Medicine Expiry', path: '/medicine-expiry', icon: 'running_with_errors', webIcon: 'bi-exclamation-octagon-fill', appIcon: 'running_with_errors' }
 ];
 
 export async function seedMenus() {
