@@ -7,6 +7,11 @@ export enum UserType {
   SHOPKEEPER     = "Shopkeeper",
   DELIVERY_BOY   = "Delivery_Boy",
   CUSTOMER       = "Customer",
+  // ── Healthcare ERP roles ──────────────────────────────────────────────
+  HOSPITAL_ADMIN = "Hospital_Admin",
+  DOCTOR         = "Doctor",
+  PHARMACIST     = "Pharmacist",
+  RECEPTIONIST   = "Receptionist",
 }
 
 export enum StatusType {
@@ -38,4 +43,9 @@ export const ROLE_PERMISSIONS: Record<UserType, {
   [UserType.SHOPKEEPER]:     { canCreate: true,  canRead: true,  canUpdate: true,  canDelete: false, canApprove: false },
   [UserType.DELIVERY_BOY]:   { canCreate: false, canRead: true,  canUpdate: true,  canDelete: false, canApprove: false },
   [UserType.CUSTOMER]:       { canCreate: true,  canRead: true,  canUpdate: true,  canDelete: true,  canApprove: false },
+  // ── Healthcare roles ──────────────────────────────────────────────────
+  [UserType.HOSPITAL_ADMIN]: { canCreate: true,  canRead: true,  canUpdate: true,  canDelete: true,  canApprove: true  },
+  [UserType.DOCTOR]:         { canCreate: true,  canRead: true,  canUpdate: true,  canDelete: false, canApprove: false },
+  [UserType.PHARMACIST]:     { canCreate: true,  canRead: true,  canUpdate: true,  canDelete: false, canApprove: true  },
+  [UserType.RECEPTIONIST]:   { canCreate: true,  canRead: true,  canUpdate: false, canDelete: false, canApprove: false },
 };

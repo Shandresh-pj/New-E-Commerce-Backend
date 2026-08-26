@@ -135,5 +135,19 @@ export const paymentCheckoutController    = new PaymentCheckoutController();
 import { MobilityController } from "./mobility.Controller";
 export const mobilityController           = new MobilityController();
 
+// ── Healthcare ERP ──────────────────────────────────────────────────────────
+import { DoctorController, PatientController, AppointmentController } from "./healthcare.controller";
+import {
+  ConsultationController, PrescriptionController, MedicineController,
+  PharmacyPosController, StockApprovalHcController, MedicineExpiryController,
+} from "./healthcare2.controller";
 
-
+export const doctorController          = new DoctorController();
+export const patientController         = new PatientController();
+export const appointmentController     = new AppointmentController();
+export const consultationController    = new ConsultationController();
+export const prescriptionController    = new PrescriptionController();
+export const medicineController        = new MedicineController();
+export const pharmacyPosController     = new PharmacyPosController();
+export const stockApprovalHcController = new StockApprovalHcController();
+export const medicineExpiryController  = new MedicineExpiryController();

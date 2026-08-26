@@ -117,6 +117,14 @@ import { ChatMessage }                                 from "./entities/chat_mes
 import { CallSession }                                 from "./entities/call_session.entity";
 import { CallParticipant }                            from "./entities/call_participant.entity";
 
+// Healthcare ERP
+import { Doctor, Patient, Appointment }                from "./entities/healthcare.entity";
+import {
+  Consultation, PrescriptionItem, Prescription,
+  Medicine, MedicineSale, MedicineSaleItem,
+  HealthcareStockApproval,
+}                                                      from "./entities/healthcare2.entity";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ALL_ENTITIES — the authoritative list registered with TypeORM.
 // Add any new entity class here; database.ts will pick it up automatically.
@@ -241,6 +249,18 @@ export const ALL_ENTITIES = [
   ChatMessage,
   CallSession,
   CallParticipant,
+
+  // Healthcare ERP
+  Doctor,
+  Patient,
+  Appointment,
+  Consultation,
+  Prescription,
+  PrescriptionItem,
+  Medicine,
+  MedicineSale,
+  MedicineSaleItem,
+  HealthcareStockApproval,
 ] as const;
 
 /* ============================================================
