@@ -113,13 +113,16 @@ const {
   phone,
   address,
   role_id,
+  adminType,           // 'Admin' | 'Hospital_Admin'
   razorpay_key_id,
   razorpay_key_secret
 } = req.body;
 
 const gst_number = req.body.gst_number || null;
 
-
+// Map frontend adminType to backend UserType enum
+const resolvedUserType: UserType =
+  adminType === 'Hospital_Admin' ? UserType.HOSPITAL_ADMIN : UserType.ADMIN;
 
 
 // =====================================
@@ -254,7 +257,7 @@ crypto.randomUUID();
 // CREATE COMPANY ADMIN USER
 // =====================================
 
-const companyAdmin=
+const companyAdmin =
 userRepo.create({
 
 name:
@@ -281,8 +284,7 @@ isActive:true,
 
 isSuperAdmin:false,
 
-userType:
-UserType.ADMIN
+userType: resolvedUserType
 
 });
 

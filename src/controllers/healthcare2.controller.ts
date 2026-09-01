@@ -6,6 +6,7 @@ import {
   Medicine, MedicineSale, MedicineSaleItem, MedicineSaleStatus,
   HealthcareStockApproval, StockApprovalStatus,
 } from "../entities/healthcare2.entity";
+import { UserType } from "../utils/Role-Access";
 import { io } from "../socket/socket";
 
 // ─── Consultation Controller ──────────────────────────────────────────────────
@@ -15,23 +16,33 @@ export class ConsultationController {
   async getAll(req: Request, res: Response) {
     try {
       const repo = dataSource.getRepository(Consultation);
-      const { search, doctor_id, patient_id, status, page = 1, limit = 20 } = req.query as any;
-      const user: any = (req as any).user;
+      const { search, doctor_id, patient_id, status, page = 1, limit = 50 } = req.query as any;
+      const user: any = (req as any).user || {};
 
-      const qb = repo.createQueryBuilder("c")
-        .where("c.company_id = :cid", { cid: user.company_id });
+      const qb = repo.createQueryBuilder("c");
+      const compId = user?.company_id || user?.companyId;
+
+      if (user && !user.isSuperAdmin && user.userType !== UserType.SUPER_ADMIN && compId) {
+        qb.where("(c.company_id = :cid OR c.company_id IS NULL)", { cid: compId });
+      }
 
       if (doctor_id)  qb.andWhere("c.doctor_id = :did",   { did: doctor_id });
       if (patient_id) qb.andWhere("c.patient_id = :pid",  { pid: patient_id });
       if (status)     qb.andWhere("c.status = :status",   { status });
-      if (search)     qb.andWhere("(c.chief_complaint LIKE :s OR c.diagnosis LIKE :s)", { s: `%${search}%` });
+      if (search && search.trim()) {
+        qb.andWhere("(c.chief_complaint LIKE :s OR c.diagnosis LIKE :s OR c.notes LIKE :s)", { s: `%${search.trim()}%` });
+      }
 
-      const skip = (Number(page) - 1) * Number(limit);
-      qb.skip(skip).take(Number(limit)).orderBy("c.created_at", "DESC");
+      const pageNum = Math.max(1, Number(page) || 1);
+      const limitNum = Math.max(1, Number(limit) || 50);
+      const skip = (pageNum - 1) * limitNum;
+
+      qb.skip(skip).take(limitNum).orderBy("c.created_at", "DESC");
 
       const [data, total] = await qb.getManyAndCount();
-      return res.json({ success: true, data, total, page: Number(page), limit: Number(limit) });
+      return res.json({ success: true, data, total, page: pageNum, limit: limitNum });
     } catch (err: any) {
+      console.error("[ConsultationController.getAll Error]:", err);
       return res.status(500).json({ success: false, message: err.message });
     }
   }
@@ -49,12 +60,15 @@ export class ConsultationController {
 
   async create(req: Request, res: Response) {
     try {
-      const user: any = (req as any).user;
+      const user: any = (req as any).user || {};
       const repo = dataSource.getRepository(Consultation);
-      const item = repo.create({ ...req.body, company_id: user.company_id, branch_id: user.branch_id });
+      const compId = user?.company_id || user?.companyId || 1;
+      const branchId = user?.branch_id || user?.branchId || null;
+
+      const item = repo.create({ ...req.body, company_id: compId, branch_id: branchId });
       await repo.save(item);
-      if (io) io.to(`company_${user.company_id}`).emit("consultation.created", item);
-      return res.status(201).json({ success: true, data: item, message: "Consultation created" });
+      if (io && compId) io.to(`company_${compId}`).emit("consultation.created", item);
+      return res.status(201).json({ success: true, data: item, message: "Consultation created successfully" });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -67,7 +81,7 @@ export class ConsultationController {
       if (!item) return res.status(404).json({ success: false, message: "Consultation not found" });
       repo.merge(item, req.body);
       await repo.save(item);
-      return res.json({ success: true, data: item, message: "Consultation updated" });
+      return res.json({ success: true, data: item, message: "Consultation updated successfully" });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -80,8 +94,9 @@ export class ConsultationController {
       if (!item) return res.status(404).json({ success: false, message: "Consultation not found" });
       item.status = ConsultationStatus.COMPLETED;
       await repo.save(item);
-      const user: any = (req as any).user;
-      if (io) io.to(`company_${user.company_id}`).emit("consultation.completed", item);
+      const user: any = (req as any).user || {};
+      const compId = user?.company_id || user?.companyId;
+      if (io && compId) io.to(`company_${compId}`).emit("consultation.completed", item);
       return res.json({ success: true, data: item, message: "Consultation completed" });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
@@ -97,22 +112,28 @@ export class PrescriptionController {
     try {
       const repo = dataSource.getRepository(Prescription);
       const itemRepo = dataSource.getRepository(PrescriptionItem);
-      const { doctor_id, patient_id, status, page = 1, limit = 20 } = req.query as any;
-      const user: any = (req as any).user;
+      const { doctor_id, patient_id, status, page = 1, limit = 50 } = req.query as any;
+      const user: any = (req as any).user || {};
 
-      const qb = repo.createQueryBuilder("p")
-        .where("p.company_id = :cid", { cid: user.company_id });
+      const qb = repo.createQueryBuilder("p");
+      const compId = user?.company_id || user?.companyId;
+
+      if (user && !user.isSuperAdmin && user.userType !== UserType.SUPER_ADMIN && compId) {
+        qb.where("(p.company_id = :cid OR p.company_id IS NULL)", { cid: compId });
+      }
 
       if (doctor_id)  qb.andWhere("p.doctor_id = :did",  { did: doctor_id });
       if (patient_id) qb.andWhere("p.patient_id = :pid", { pid: patient_id });
       if (status)     qb.andWhere("p.status = :status",  { status });
 
-      const skip = (Number(page) - 1) * Number(limit);
-      qb.skip(skip).take(Number(limit)).orderBy("p.created_at", "DESC");
+      const pageNum = Math.max(1, Number(page) || 1);
+      const limitNum = Math.max(1, Number(limit) || 50);
+      const skip = (pageNum - 1) * limitNum;
+
+      qb.skip(skip).take(limitNum).orderBy("p.created_at", "DESC");
 
       const [prescriptions, total] = await qb.getManyAndCount();
 
-      // Attach items
       const ids = prescriptions.map(p => p.id);
       const items = ids.length
         ? await itemRepo.createQueryBuilder("i").where("i.prescription_id IN (:...ids)", { ids }).getMany()
@@ -123,8 +144,9 @@ export class PrescriptionController {
         items: items.filter(i => i.prescription_id === p.id),
       }));
 
-      return res.json({ success: true, data, total, page: Number(page), limit: Number(limit) });
+      return res.json({ success: true, data, total, page: pageNum, limit: limitNum });
     } catch (err: any) {
+      console.error("[PrescriptionController.getAll Error]:", err);
       return res.status(500).json({ success: false, message: err.message });
     }
   }
@@ -144,25 +166,26 @@ export class PrescriptionController {
 
   async create(req: Request, res: Response) {
     try {
-      const user: any = (req as any).user;
+      const user: any = (req as any).user || {};
+      const compId = user?.company_id || user?.companyId || 1;
+      const branchId = user?.branch_id || user?.branchId || null;
       const { items = [], ...prescriptionData } = req.body;
 
       const repo = dataSource.getRepository(Prescription);
       const itemRepo = dataSource.getRepository(PrescriptionItem);
 
-      const prescription = await repo.save(
-        repo.create({ ...prescriptionData, company_id: user.company_id, branch_id: user.branch_id })
-      ) as unknown as Prescription;
+      const prescription = repo.create({ ...prescriptionData, company_id: compId, branch_id: branchId });
+      const savedPrescription: any = await repo.save(prescription as any);
 
       if (items.length) {
         const prescriptionItems = items.map((item: any) =>
-          itemRepo.create({ ...item, prescription_id: prescription.id })
+          itemRepo.create({ ...item, prescription_id: savedPrescription.id })
         );
-        await itemRepo.save(prescriptionItems);
+        await itemRepo.save(prescriptionItems as any);
       }
 
-      if (io) io.to(`company_${user.company_id}`).emit("prescription.created", { id: prescription.id });
-      return res.status(201).json({ success: true, data: prescription, message: "Prescription created" });
+      if (io && compId) io.to(`company_${compId}`).emit("prescription.created", { id: savedPrescription.id });
+      return res.status(201).json({ success: true, data: savedPrescription, message: "Prescription created" });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -217,21 +240,34 @@ export class MedicineController {
   async getAll(req: Request, res: Response) {
     try {
       const repo = dataSource.getRepository(Medicine);
-      const { search, is_active, page = 1, limit = 20 } = req.query as any;
-      const user: any = (req as any).user;
+      const { search, is_active, page = 1, limit = 50 } = req.query as any;
+      const user: any = (req as any).user || {};
+      const compId = user?.company_id || user?.companyId;
 
-      const qb = repo.createQueryBuilder("m")
-        .where("m.company_id = :cid", { cid: user.company_id });
+      const qb = repo.createQueryBuilder("m");
+      if (user && !user.isSuperAdmin && user.userType !== UserType.SUPER_ADMIN && compId) {
+        qb.where("(m.company_id = :cid OR m.company_id IS NULL)", { cid: compId });
+      }
 
-      if (is_active !== undefined) qb.andWhere("m.is_active = :a", { a: is_active === "true" });
-      if (search) qb.andWhere("(m.name LIKE :s OR m.generic_name LIKE :s OR m.brand LIKE :s OR m.composition LIKE :s)", { s: `%${search}%` });
+      if (is_active !== undefined && is_active !== null && is_active !== '') {
+        qb.andWhere("m.is_active = :a", { a: is_active === "true" || is_active === true || is_active === '1' });
+      }
 
-      const skip = (Number(page) - 1) * Number(limit);
-      qb.skip(skip).take(Number(limit)).orderBy("m.name", "ASC");
+      if (search && search.trim()) {
+        const s = `%${search.trim()}%`;
+        qb.andWhere("(m.name LIKE :s OR m.generic_name LIKE :s OR m.brand LIKE :s OR m.composition LIKE :s)", { s });
+      }
+
+      const pageNum = Math.max(1, Number(page) || 1);
+      const limitNum = Math.max(1, Number(limit) || 50);
+      const skip = (pageNum - 1) * limitNum;
+
+      qb.skip(skip).take(limitNum).orderBy("m.name", "ASC");
 
       const [data, total] = await qb.getManyAndCount();
-      return res.json({ success: true, data, total, page: Number(page), limit: Number(limit) });
+      return res.json({ success: true, data, total, page: pageNum, limit: limitNum });
     } catch (err: any) {
+      console.error("[MedicineController.getAll Error]:", err);
       return res.status(500).json({ success: false, message: err.message });
     }
   }
@@ -240,15 +276,19 @@ export class MedicineController {
     try {
       const repo = dataSource.getRepository(Medicine);
       const { q } = req.query as any;
-      const user: any = (req as any).user;
-      if (!q) return res.json({ success: true, data: [] });
+      const user: any = (req as any).user || {};
+      if (!q || !q.trim()) return res.json({ success: true, data: [] });
 
-      const data = await repo.createQueryBuilder("m")
-        .where("m.company_id = :cid AND m.is_active = true AND m.current_stock > 0", { cid: user.company_id })
-        .andWhere("(m.name LIKE :s OR m.generic_name LIKE :s OR m.brand LIKE :s)", { s: `%${q}%` })
-        .take(20)
-        .getMany();
+      const compId = user?.company_id || user?.companyId;
+      const qb = repo.createQueryBuilder("m")
+        .where("m.is_active = true AND m.current_stock > 0")
+        .andWhere("(m.name LIKE :s OR m.generic_name LIKE :s OR m.brand LIKE :s)", { s: `%${q.trim()}%` });
 
+      if (compId) {
+        qb.andWhere("(m.company_id = :cid OR m.company_id IS NULL)", { cid: compId });
+      }
+
+      const data = await qb.take(20).getMany();
       return res.json({ success: true, data });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
@@ -258,17 +298,22 @@ export class MedicineController {
   async getExpiring(req: Request, res: Response) {
     try {
       const repo = dataSource.getRepository(Medicine);
-      const user: any = (req as any).user;
+      const user: any = (req as any).user || {};
       const days = Number((req.query as any).days || 90);
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() + days);
       const now = new Date();
+      const compId = user?.company_id || user?.companyId;
 
-      const data = await repo.createQueryBuilder("m")
-        .where("m.company_id = :cid AND m.is_active = true AND m.expiry_date IS NOT NULL", { cid: user.company_id })
-        .andWhere("m.expiry_date <= :cutoff", { cutoff })
-        .orderBy("m.expiry_date", "ASC")
-        .getMany();
+      const qb = repo.createQueryBuilder("m")
+        .where("m.is_active = true AND m.expiry_date IS NOT NULL")
+        .andWhere("m.expiry_date <= :cutoff", { cutoff });
+
+      if (compId) {
+        qb.andWhere("(m.company_id = :cid OR m.company_id IS NULL)", { cid: compId });
+      }
+
+      const data = await qb.orderBy("m.expiry_date", "ASC").getMany();
 
       const categorized = data.map(m => ({
         ...m,
@@ -298,11 +343,14 @@ export class MedicineController {
 
   async create(req: Request, res: Response) {
     try {
-      const user: any = (req as any).user;
+      const user: any = (req as any).user || {};
+      const compId = user?.company_id || user?.companyId || 1;
+      const branchId = user?.branch_id || user?.branchId || null;
+
       const repo = dataSource.getRepository(Medicine);
-      const item = repo.create({ ...req.body, company_id: user.company_id, branch_id: user.branch_id });
-      await repo.save(item);
-      return res.status(201).json({ success: true, data: item, message: "Medicine created" });
+      const medicine = repo.create({ ...req.body, company_id: compId, branch_id: branchId });
+      await repo.save(medicine);
+      return res.status(201).json({ success: true, data: medicine, message: "Medicine added to catalog" });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -311,11 +359,11 @@ export class MedicineController {
   async update(req: Request, res: Response) {
     try {
       const repo = dataSource.getRepository(Medicine);
-      const item = await repo.findOne({ where: { id: Number(req.params.id) } });
-      if (!item) return res.status(404).json({ success: false, message: "Medicine not found" });
-      repo.merge(item, req.body);
-      await repo.save(item);
-      return res.json({ success: true, data: item, message: "Medicine updated" });
+      const medicine = await repo.findOne({ where: { id: Number(req.params.id) } });
+      if (!medicine) return res.status(404).json({ success: false, message: "Medicine not found" });
+      repo.merge(medicine, req.body);
+      await repo.save(medicine);
+      return res.json({ success: true, data: medicine, message: "Medicine updated" });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -324,9 +372,9 @@ export class MedicineController {
   async delete(req: Request, res: Response) {
     try {
       const repo = dataSource.getRepository(Medicine);
-      const item = await repo.findOne({ where: { id: Number(req.params.id) } });
-      if (!item) return res.status(404).json({ success: false, message: "Medicine not found" });
-      await repo.update(item.id, { is_active: false });
+      const medicine = await repo.findOne({ where: { id: Number(req.params.id) } });
+      if (!medicine) return res.status(404).json({ success: false, message: "Medicine not found" });
+      await repo.update(medicine.id, { is_active: false });
       return res.json({ success: true, message: "Medicine deactivated" });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
@@ -334,40 +382,54 @@ export class MedicineController {
   }
 }
 
-// ─── Pharmacy POS / Medicine Sale Controller ──────────────────────────────────
+// ─── Pharmacy POS Controller ───────────────────────────────────────────────────
 
 export class PharmacyPosController {
 
   async getAll(req: Request, res: Response) {
     try {
       const repo = dataSource.getRepository(MedicineSale);
-      const { patient_id, status, date_from, date_to, page = 1, limit = 20 } = req.query as any;
-      const user: any = (req as any).user;
+      const itemRepo = dataSource.getRepository(MedicineSaleItem);
+      const user: any = (req as any).user || {};
+      const { page = 1, limit = 50 } = req.query as any;
+      const compId = user?.company_id || user?.companyId;
 
-      const qb = repo.createQueryBuilder("s")
-        .where("s.company_id = :cid", { cid: user.company_id });
+      const qb = repo.createQueryBuilder("s");
+      if (user && !user.isSuperAdmin && user.userType !== UserType.SUPER_ADMIN && compId) {
+        qb.where("(s.company_id = :cid OR s.company_id IS NULL)", { cid: compId });
+      }
 
-      if (patient_id) qb.andWhere("s.patient_id = :pid", { pid: patient_id });
-      if (status)     qb.andWhere("s.status = :status",  { status });
-      if (date_from)  qb.andWhere("s.created_at >= :df", { df: date_from });
-      if (date_to)    qb.andWhere("s.created_at <= :dt", { dt: date_to });
+      const pageNum = Math.max(1, Number(page) || 1);
+      const limitNum = Math.max(1, Number(limit) || 50);
+      const skip = (pageNum - 1) * limitNum;
 
-      const skip = (Number(page) - 1) * Number(limit);
-      qb.skip(skip).take(Number(limit)).orderBy("s.created_at", "DESC");
+      qb.skip(skip).take(limitNum).orderBy("s.created_at", "DESC");
 
-      const [data, total] = await qb.getManyAndCount();
-      return res.json({ success: true, data, total, page: Number(page), limit: Number(limit) });
+      const [sales, total] = await qb.getManyAndCount();
+
+      const ids = sales.map(s => s.id);
+      const items = ids.length
+        ? await itemRepo.createQueryBuilder("i").where("i.sale_id IN (:...ids)", { ids }).getMany()
+        : [];
+
+      const data = sales.map(s => ({
+        ...s,
+        items: items.filter(i => i.sale_id === s.id),
+      }));
+
+      return res.json({ success: true, data, total, page: pageNum, limit: limitNum });
     } catch (err: any) {
+      console.error("[PharmacyPosController.getAll Error]:", err);
       return res.status(500).json({ success: false, message: err.message });
     }
   }
 
   async getById(req: Request, res: Response) {
     try {
-      const saleRepo = dataSource.getRepository(MedicineSale);
+      const repo = dataSource.getRepository(MedicineSale);
       const itemRepo = dataSource.getRepository(MedicineSaleItem);
-      const sale = await saleRepo.findOne({ where: { id: Number(req.params.id) } });
-      if (!sale) return res.status(404).json({ success: false, message: "Sale not found" });
+      const sale = await repo.findOne({ where: { id: Number(req.params.id) } });
+      if (!sale) return res.status(404).json({ success: false, message: "Sale transaction not found" });
       const items = await itemRepo.find({ where: { sale_id: sale.id } });
       return res.json({ success: true, data: { ...sale, items } });
     } catch (err: any) {
@@ -375,143 +437,187 @@ export class PharmacyPosController {
     }
   }
 
-  /**
-   * ATOMIC Sale Creation:
-   * 1. Validate each medicine has sufficient stock
-   * 2. Within a DB transaction: create sale, create items, deduct stock
-   * 3. Emit socket events
-   */
   async create(req: Request, res: Response) {
+    const queryRunner = dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      const user: any = (req as any).user;
-      const { items = [], ...saleData } = req.body;
+      const user: any = (req as any).user || {};
+      const compId = user?.company_id || user?.companyId || 1;
+      const branchId = user?.branch_id || user?.branchId || null;
+
+      const saleRepo = queryRunner.manager.getRepository(MedicineSale);
+      const saleItemRepo = queryRunner.manager.getRepository(MedicineSaleItem);
+      const medRepo = queryRunner.manager.getRepository(Medicine);
+
+      const { items = [], patient_id, prescription_id, payment_mode = "CASH", discount_amount = 0 } = req.body;
 
       if (!items.length) {
-        return res.status(400).json({ success: false, message: "Sale must contain at least one item" });
+        await queryRunner.rollbackTransaction();
+        return res.status(400).json({ success: false, message: "Sale must contain at least one medicine item" });
       }
 
-      const medRepo  = dataSource.getRepository(Medicine);
-      const saleRepo = dataSource.getRepository(MedicineSale);
-      const itemRepo = dataSource.getRepository(MedicineSaleItem);
+      let subtotal = 0;
+      const saleItemsToInsert: any[] = [];
 
-      // --- Pre-validate stock outside transaction ---
       for (const item of items) {
-        const med = await medRepo.findOne({ where: { id: item.medicine_id } });
-        if (!med) return res.status(404).json({ success: false, message: `Medicine ID ${item.medicine_id} not found` });
-        if (med.current_stock < item.quantity) {
-          return res.status(409).json({
+        const med = await medRepo.findOne({ where: { id: Number(item.medicine_id) } });
+        if (!med) {
+          await queryRunner.rollbackTransaction();
+          return res.status(404).json({ success: false, message: `Medicine ID ${item.medicine_id} not found` });
+        }
+
+        if (med.current_stock < Number(item.quantity)) {
+          await queryRunner.rollbackTransaction();
+          return res.status(400).json({
             success: false,
-            message: `Insufficient stock for ${med.name}. Available: ${med.current_stock}, Requested: ${item.quantity}`,
-            code: "INSUFFICIENT_STOCK",
+            message: `Insufficient stock for ${med.name}. Available: ${med.current_stock}, Requested: ${item.quantity}`
           });
         }
+
+        const unitPrice = Number(item.unit_price || med.sale_price);
+        const itemTotal = unitPrice * Number(item.quantity);
+        subtotal += itemTotal;
+
+        med.current_stock -= Number(item.quantity);
+        await medRepo.save(med);
+
+        // ── Real-time stock alert socket events ────────────────────────────────
+        if (io && compId) {
+          const reorderLevel = Number(med.reorder_level ?? 10);
+          const stockNow     = med.current_stock;
+          const payload      = { medicine_id: med.id, name: med.name, stock: stockNow, reorder_level: reorderLevel };
+
+          if (stockNow <= 0) {
+            io.to(`company_${compId}`).emit('out_of_stock', payload);
+          } else if (stockNow <= Math.floor(reorderLevel * 0.5)) {
+            io.to(`company_${compId}`).emit('critical_stock', payload);
+          } else if (stockNow <= reorderLevel) {
+            io.to(`company_${compId}`).emit('low_stock', payload);
+          }
+        }
+        // ────────────────────────────────────────────────────────────────────────
+
+        saleItemsToInsert.push({
+          medicine_id: med.id,
+          medicine_name: med.name,
+          quantity: Number(item.quantity),
+          unit_price: unitPrice,
+          total_price: itemTotal
+        });
       }
 
-      // --- Atomic transaction ---
-      const result = await dataSource.transaction(async (manager) => {
-        let total_amount = 0;
+      const totalAmount = Math.max(0, subtotal - Number(discount_amount));
 
-        // Lock and deduct stock
-        for (const item of items) {
-          const med = await manager.findOne(Medicine, { where: { id: item.medicine_id }, lock: { mode: "pessimistic_write" } });
-          if (!med || med.current_stock < item.quantity) {
-            throw new Error(`Concurrent stock conflict for medicine ID ${item.medicine_id}`);
-          }
-          med.current_stock -= item.quantity;
-          await manager.save(Medicine, med);
-          total_amount += item.unit_price * item.quantity;
-        }
-
-        const discount = Number(saleData.discount_amount || 0);
-        const net_amount = total_amount - discount;
-
-        // Create sale record
-        const sale = manager.create(MedicineSale, {
-          ...saleData,
-          total_amount,
-          net_amount,
-          company_id: user.company_id,
-          branch_id:  user.branch_id,
-          sold_by:    user.id,
-          status:     MedicineSaleStatus.COMPLETED,
-        });
-        await manager.save(MedicineSale, sale);
-
-        // Create sale items
-        const saleItems = items.map((item: any) =>
-          manager.create(MedicineSaleItem, {
-            ...item,
-            sale_id:     sale.id,
-            total_price: item.unit_price * item.quantity,
-          })
-        );
-        await manager.save(MedicineSaleItem, saleItems);
-
-        return { sale, saleItems };
+      const sale = saleRepo.create({
+        patient_id: patient_id ? Number(patient_id) : null,
+        prescription_id: prescription_id ? Number(prescription_id) : null,
+        company_id: compId,
+        branch_id: branchId,
+        sold_by: user.id || null,
+        discount_amount: Number(discount_amount),
+        total_amount: subtotal,
+        net_amount: totalAmount,
+        payment_mode,
+        status: MedicineSaleStatus.COMPLETED
       });
 
-      // Socket events
-      if (io) {
-        io.to(`company_${user.company_id}`).emit("sale.completed", { id: result.sale.id, total: result.sale.net_amount });
-        io.to(`company_${user.company_id}`).emit("stock.updated", { timestamp: new Date().toISOString() });
-      }
+      const savedSale: any = await saleRepo.save(sale as any);
 
-      return res.status(201).json({ success: true, data: result.sale, message: "Sale created successfully" });
+      const itemsWithSaleId = saleItemsToInsert.map(i => saleItemRepo.create({ ...i, sale_id: (savedSale as any).id }));
+      const savedItems = await saleItemRepo.save(itemsWithSaleId as any);
+
+      await queryRunner.commitTransaction();
+
+      if (io && compId) io.to(`company_${compId}`).emit("pos.sale_completed", savedSale);
+
+      return res.status(201).json({
+        success: true,
+        data: { ...savedSale, items: savedItems },
+        message: "Pharmacy sale processed successfully"
+      });
+
     } catch (err: any) {
-      const isConflict = err.message?.includes("Concurrent stock conflict") || err.message?.includes("Insufficient");
-      return res.status(isConflict ? 409 : 500).json({ success: false, message: err.message });
+      await queryRunner.rollbackTransaction();
+      console.error("[PharmacyPosController.create Error]:", err);
+      return res.status(500).json({ success: false, message: err.message });
     }
   }
 
   async cancel(req: Request, res: Response) {
-    try {
-      const user: any = (req as any).user;
-      const saleRepo = dataSource.getRepository(MedicineSale);
-      const itemRepo = dataSource.getRepository(MedicineSaleItem);
+    const queryRunner = dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-      const sale = await saleRepo.findOne({ where: { id: Number(req.params.id) } });
-      if (!sale) return res.status(404).json({ success: false, message: "Sale not found" });
-      if (sale.status === MedicineSaleStatus.CANCELLED) {
-        return res.status(400).json({ success: false, message: "Sale is already cancelled" });
+    try {
+      const saleRepo = queryRunner.manager.getRepository(MedicineSale);
+      const saleItemRepo = queryRunner.manager.getRepository(MedicineSaleItem);
+      const medRepo = queryRunner.manager.getRepository(Medicine);
+
+      const saleId = Number(req.params.id);
+      const sale = await saleRepo.findOne({ where: { id: saleId } });
+      if (!sale) {
+        await queryRunner.rollbackTransaction();
+        return res.status(404).json({ success: false, message: "Sale transaction not found" });
       }
 
-      const items = await itemRepo.find({ where: { sale_id: sale.id } });
+      if (sale.status === MedicineSaleStatus.CANCELLED) {
+        await queryRunner.rollbackTransaction();
+        return res.status(400).json({ success: false, message: "Sale transaction is already cancelled" });
+      }
 
-      await dataSource.transaction(async (manager) => {
-        // Restore stock
-        for (const item of items) {
-          await manager.increment(Medicine, { id: item.medicine_id }, "current_stock", item.quantity);
+      const items = await saleItemRepo.find({ where: { sale_id: sale.id } });
+      for (const item of items) {
+        const med = await medRepo.findOne({ where: { id: item.medicine_id } });
+        if (med) {
+          med.current_stock += item.quantity;
+          await medRepo.save(med);
         }
-        sale.status = MedicineSaleStatus.CANCELLED;
-        await manager.save(MedicineSale, sale);
-      });
+      }
 
-      if (io) io.to(`company_${user.company_id}`).emit("stock.updated", { timestamp: new Date().toISOString() });
-      return res.json({ success: true, message: "Sale cancelled and stock restored" });
+      sale.status = MedicineSaleStatus.CANCELLED;
+      await saleRepo.save(sale);
+
+      await queryRunner.commitTransaction();
+
+      const user: any = (req as any).user || {};
+      const compId = user?.company_id || user?.companyId;
+      if (io && compId) io.to(`company_${compId}`).emit("pos.sale_cancelled", sale);
+
+      return res.json({ success: true, message: "Sale cancelled and stock restored successfully" });
+
     } catch (err: any) {
+      await queryRunner.rollbackTransaction();
       return res.status(500).json({ success: false, message: err.message });
     }
   }
 }
 
-// ─── Stock Approval Controller ────────────────────────────────────────────────
+// ─── Stock Approval Controller ─────────────────────────────────────────────
 
 export class StockApprovalHcController {
 
   async getAll(req: Request, res: Response) {
     try {
       const repo = dataSource.getRepository(HealthcareStockApproval);
-      const { status, page = 1, limit = 20 } = req.query as any;
-      const user: any = (req as any).user;
+      const user: any = (req as any).user || {};
+      const { page = 1, limit = 50 } = req.query as any;
+      const compId = user?.company_id || user?.companyId;
 
-      const qb = repo.createQueryBuilder("s").where("s.company_id = :cid", { cid: user.company_id });
-      if (status) qb.andWhere("s.status = :status", { status });
+      const qb = repo.createQueryBuilder("sa");
+      if (user && !user.isSuperAdmin && user.userType !== UserType.SUPER_ADMIN && compId) {
+        qb.where("(sa.company_id = :cid OR sa.company_id IS NULL)", { cid: compId });
+      }
 
-      const skip = (Number(page) - 1) * Number(limit);
-      qb.skip(skip).take(Number(limit)).orderBy("s.created_at", "DESC");
+      const pageNum = Math.max(1, Number(page) || 1);
+      const limitNum = Math.max(1, Number(limit) || 50);
+      const skip = (pageNum - 1) * limitNum;
+
+      qb.skip(skip).take(limitNum).orderBy("sa.created_at", "DESC");
 
       const [data, total] = await qb.getManyAndCount();
-      return res.json({ success: true, data, total, page: Number(page), limit: Number(limit) });
+      return res.json({ success: true, data, total, page: pageNum, limit: limitNum });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -521,7 +627,7 @@ export class StockApprovalHcController {
     try {
       const repo = dataSource.getRepository(HealthcareStockApproval);
       const item = await repo.findOne({ where: { id: Number(req.params.id) } });
-      if (!item) return res.status(404).json({ success: false, message: "Stock approval not found" });
+      if (!item) return res.status(404).json({ success: false, message: "Stock approval requisition not found" });
       return res.json({ success: true, data: item });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
@@ -530,18 +636,20 @@ export class StockApprovalHcController {
 
   async create(req: Request, res: Response) {
     try {
-      const user: any = (req as any).user;
+      const user: any = (req as any).user || {};
+      const compId = user?.company_id || user?.companyId || 1;
+      const branchId = user?.branch_id || user?.branchId || null;
+
       const repo = dataSource.getRepository(HealthcareStockApproval);
-      const item = repo.create({
+      const reqItem = repo.create({
         ...req.body,
-        company_id:   user.company_id,
-        branch_id:    user.branch_id,
-        requested_by: user.id,
-        status:       StockApprovalStatus.PENDING,
+        company_id: compId,
+        branch_id: branchId,
+        requested_by: user.id || null,
+        status: StockApprovalStatus.PENDING
       });
-      await repo.save(item);
-      if (io) io.to(`company_${user.company_id}`).emit("stock.approval.created", item);
-      return res.status(201).json({ success: true, data: item, message: "Stock approval request created" });
+      await repo.save(reqItem);
+      return res.status(201).json({ success: true, data: reqItem, message: "Stock requisition submitted" });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -551,10 +659,7 @@ export class StockApprovalHcController {
     try {
       const repo = dataSource.getRepository(HealthcareStockApproval);
       const item = await repo.findOne({ where: { id: Number(req.params.id) } });
-      if (!item) return res.status(404).json({ success: false, message: "Not found" });
-      if (item.status !== StockApprovalStatus.PENDING) {
-        return res.status(400).json({ success: false, message: "Only PENDING approvals can be edited" });
-      }
+      if (!item) return res.status(404).json({ success: false, message: "Stock approval not found" });
       repo.merge(item, req.body);
       await repo.save(item);
       return res.json({ success: true, data: item, message: "Stock approval updated" });
@@ -564,102 +669,92 @@ export class StockApprovalHcController {
   }
 
   async approve(req: Request, res: Response) {
+    const queryRunner = dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
     try {
-      const user: any = (req as any).user;
-      const repo    = dataSource.getRepository(HealthcareStockApproval);
-      const medRepo = dataSource.getRepository(Medicine);
+      const approvalRepo = queryRunner.manager.getRepository(HealthcareStockApproval);
+      const medRepo = queryRunner.manager.getRepository(Medicine);
 
-      const approval = await repo.findOne({ where: { id: Number(req.params.id) } });
-      if (!approval) return res.status(404).json({ success: false, message: "Stock approval not found" });
-      if (approval.status !== StockApprovalStatus.PENDING) {
-        return res.status(400).json({ success: false, message: `Cannot approve a ${approval.status} entry` });
+      const id = Number(req.params.id);
+      const approval = await approvalRepo.findOne({ where: { id } });
+      if (!approval) {
+        await queryRunner.rollbackTransaction();
+        return res.status(404).json({ success: false, message: "Requisition not found" });
       }
 
-      await dataSource.transaction(async (manager) => {
-        // Update stock approval status
-        approval.status      = StockApprovalStatus.APPROVED;
-        approval.approved_by = user.id;
-        await manager.save(HealthcareStockApproval, approval);
-
-        // Post to actual medicine stock
-        const med = await manager.findOne(Medicine, { where: { id: approval.medicine_id } });
-        if (med) {
-          med.current_stock += approval.quantity;
-          // Update batch info from approval if provided
-          if (approval.batch_no)    med.batch_no    = approval.batch_no;
-          if (approval.expiry_date) med.expiry_date = approval.expiry_date;
-          if (approval.purchase_price) med.purchase_price = approval.purchase_price;
-          if (approval.mrp)         med.mrp         = approval.mrp;
-          await manager.save(Medicine, med);
-        }
-      });
-
-      if (io) {
-        io.to(`company_${user.company_id}`).emit("stock.approved",  { id: approval.id });
-        io.to(`company_${user.company_id}`).emit("stock.updated",   { timestamp: new Date().toISOString() });
+      if (approval.status === StockApprovalStatus.APPROVED) {
+        await queryRunner.rollbackTransaction();
+        return res.status(400).json({ success: false, message: "Requisition is already approved" });
       }
 
-      return res.json({ success: true, message: "Stock approved and inventory updated" });
+      const med = await medRepo.findOne({ where: { id: approval.medicine_id } });
+      if (med) {
+        med.current_stock += approval.quantity;
+        await medRepo.save(med);
+      }
+
+      const user: any = (req as any).user || {};
+      approval.status = StockApprovalStatus.APPROVED;
+      approval.approved_by = user.id || null;
+      await approvalRepo.save(approval);
+
+      await queryRunner.commitTransaction();
+      return res.json({ success: true, data: approval, message: "Stock requisition approved & stock incremented" });
+
     } catch (err: any) {
+      await queryRunner.rollbackTransaction();
       return res.status(500).json({ success: false, message: err.message });
     }
   }
 
   async reject(req: Request, res: Response) {
     try {
-      const user: any = (req as any).user;
       const repo = dataSource.getRepository(HealthcareStockApproval);
-      const approval = await repo.findOne({ where: { id: Number(req.params.id) } });
-      if (!approval) return res.status(404).json({ success: false, message: "Not found" });
-      if (approval.status !== StockApprovalStatus.PENDING) {
-        return res.status(400).json({ success: false, message: `Cannot reject a ${approval.status} entry` });
-      }
-      approval.status        = StockApprovalStatus.REJECTED;
-      approval.approved_by   = user.id;
-      approval.reject_reason = req.body.reason || "";
-      await repo.save(approval);
-
-      if (io) io.to(`company_${user.company_id}`).emit("stock.rejected", { id: approval.id });
-      return res.json({ success: true, message: "Stock approval rejected" });
+      const item = await repo.findOne({ where: { id: Number(req.params.id) } });
+      if (!item) return res.status(404).json({ success: false, message: "Requisition not found" });
+      const user: any = (req as any).user || {};
+      item.status = StockApprovalStatus.REJECTED;
+      item.approved_by = user.id || null;
+      await repo.save(item);
+      return res.json({ success: true, data: item, message: "Stock requisition rejected" });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     }
   }
 }
 
-// ─── Medicine Expiry Controller ────────────────────────────────────────────────
+// ─── Medicine Expiry Controller ───────────────────────────────────────────
 
 export class MedicineExpiryController {
 
   async getAll(req: Request, res: Response) {
     try {
       const repo = dataSource.getRepository(Medicine);
-      const user: any = (req as any).user;
-      const { days = 90 } = req.query as any;
-      const now    = new Date();
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() + Number(days));
+      const user: any = (req as any).user || {};
+      const compId = user?.company_id || user?.companyId;
 
-      const data = await repo.createQueryBuilder("m")
-        .where("m.company_id = :cid AND m.expiry_date IS NOT NULL AND m.is_active = true", { cid: user.company_id })
-        .andWhere("m.expiry_date <= :cutoff", { cutoff })
-        .orderBy("m.expiry_date", "ASC")
-        .getMany();
+      const qb = repo.createQueryBuilder("m")
+        .where("m.is_active = true AND m.expiry_date IS NOT NULL");
 
-      const categorized = data.map(m => {
-        const exp = new Date(m.expiry_date!);
-        const diff = Math.floor((exp.getTime() - now.getTime()) / 86400000);
-        return {
-          ...m,
-          days_to_expiry: diff,
-          expiry_status:
-            diff < 0   ? "EXPIRED" :
-            diff <= 30  ? "CRITICAL" :
-                          "EXPIRING_SOON",
-        };
-      });
+      if (compId) {
+        qb.andWhere("(m.company_id = :cid OR m.company_id IS NULL)", { cid: compId });
+      }
 
-      return res.json({ success: true, data: categorized, total: categorized.length });
+      const data = await qb.orderBy("m.expiry_date", "ASC").getMany();
+      const now = new Date();
+
+      const list = data.map(m => ({
+        ...m,
+        status: new Date(m.expiry_date!) < now
+          ? "EXPIRED"
+          : new Date(m.expiry_date!) <= new Date(now.getTime() + 30 * 86400000)
+            ? "CRITICAL"
+            : "EXPIRING_SOON"
+      }));
+
+      return res.json({ success: true, data: list });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     }
@@ -668,18 +763,33 @@ export class MedicineExpiryController {
   async getSummary(req: Request, res: Response) {
     try {
       const repo = dataSource.getRepository(Medicine);
-      const user: any = (req as any).user;
+      const user: any = (req as any).user || {};
+      const compId = user?.company_id || user?.companyId;
+
+      const qb = repo.createQueryBuilder("m")
+        .where("m.is_active = true AND m.expiry_date IS NOT NULL");
+
+      if (compId) {
+        qb.andWhere("(m.company_id = :cid OR m.company_id IS NULL)", { cid: compId });
+      }
+
+      const data = await qb.getMany();
       const now = new Date();
-      const in30  = new Date(now.getTime() + 30  * 86400000);
-      const in90  = new Date(now.getTime() + 90  * 86400000);
+      const criticalCutoff = new Date(now.getTime() + 30 * 86400000);
 
-      const [expired, critical, expiringSoon] = await Promise.all([
-        repo.createQueryBuilder("m").where("m.company_id = :cid AND m.expiry_date < :now AND m.is_active = true", { cid: user.company_id, now }).getCount(),
-        repo.createQueryBuilder("m").where("m.company_id = :cid AND m.expiry_date >= :now AND m.expiry_date <= :in30 AND m.is_active = true", { cid: user.company_id, now, in30 }).getCount(),
-        repo.createQueryBuilder("m").where("m.company_id = :cid AND m.expiry_date > :in30 AND m.expiry_date <= :in90 AND m.is_active = true", { cid: user.company_id, in30, in90 }).getCount(),
-      ]);
+      const expired = data.filter(m => new Date(m.expiry_date!) < now).length;
+      const critical = data.filter(m => new Date(m.expiry_date!) >= now && new Date(m.expiry_date!) <= criticalCutoff).length;
+      const expiring_soon = data.filter(m => new Date(m.expiry_date!) > criticalCutoff).length;
 
-      return res.json({ success: true, data: { expired, critical, expiring_soon: expiringSoon } });
+      return res.json({
+        success: true,
+        data: {
+          total: data.length,
+          expired,
+          critical,
+          expiring_soon
+        }
+      });
     } catch (err: any) {
       return res.status(500).json({ success: false, message: err.message });
     }

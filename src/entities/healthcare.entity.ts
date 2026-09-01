@@ -40,6 +40,9 @@ export class Doctor extends AbstractBaseEntity {
   @Column({ type: "text", nullable: true })
   bio!: string | null;
 
+  @Column({ type: "decimal", precision: 10, scale: 2, default: 0, nullable: true })
+  consultation_fee!: number | null;
+
   @Column({ type: "varchar", length: 500, nullable: true })
   image!: string | null;
 

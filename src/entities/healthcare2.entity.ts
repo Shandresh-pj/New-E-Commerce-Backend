@@ -179,6 +179,12 @@ export class Medicine extends AbstractBaseEntity {
   @Column({ type: "date", nullable: true })
   expiry_date!: Date | null;
 
+  @Column({ type: "date", nullable: true })
+  manufacture_date!: Date | null;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  prescription_control!: string | null;   // e.g. "OTC", "Prescription Only", "Schedule H", "Schedule X"
+
   @Column({ type: "decimal", precision: 10, scale: 2, default: 0 })
   mrp!: number;
 
