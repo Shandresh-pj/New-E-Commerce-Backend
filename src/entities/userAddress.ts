@@ -52,6 +52,12 @@ export class UserAddress extends BaseEntity {
   @Column({ name: "is_default", type: "boolean", default: false })
   isDefault!: boolean;
 
+  @Column("decimal", { precision: 10, scale: 7, nullable: true })
+  latitude?: number | null;
+
+  @Column("decimal", { precision: 10, scale: 7, nullable: true })
+  longitude?: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 

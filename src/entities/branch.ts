@@ -35,6 +35,12 @@ export class Branch {
   @Column({ type: "boolean", default: true })
   isActive!: boolean;
 
+  @Column("decimal", { precision: 10, scale: 7, nullable: true })
+  latitude?: number | null;
+
+  @Column("decimal", { precision: 10, scale: 7, nullable: true })
+  longitude?: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   created_at!: Date;
 

@@ -53,6 +53,16 @@ const router = Router();
  *                 type: string
  *                 example: "Anna Salai, Chennai, TN"
  *                 description: "**REQUIRED** Physical location or address"
+ *               latitude:
+ *                 type: number
+ *                 format: float
+ *                 example: 13.0827000
+ *                 description: Optional branch GPS latitude
+ *               longitude:
+ *                 type: number
+ *                 format: float
+ *                 example: 80.2707000
+ *                 description: Optional branch GPS longitude
  *               email:
  *                 type: string
  *                 format: email
@@ -284,6 +294,14 @@ router.get(
  *               location:
  *                 type: string
  *                 example: "Madurai"
+ *               latitude:
+ *                 type: number
+ *                 format: float
+ *                 example: 9.9252000
+ *               longitude:
+ *                 type: number
+ *                 format: float
+ *                 example: 78.1198000
  *               email:
  *                 type: string
  *                 format: email
