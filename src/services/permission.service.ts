@@ -19,12 +19,23 @@ export class PermissionService {
       // Super Admin receives unconstrained access across all menus & actions
       if (user.isSuperAdmin) return true;
 
-      const userRoles = await userRoleRepo.find({
+      let userRoles = await userRoleRepo.find({
         where: { user_id: userId },
         relations: { role: true, company: true, branch: true },
       });
 
-      if (!userRoles.length) return false;
+      if (!userRoles.length) {
+        const roleId = 8; // Default customer role
+        userRoles = [
+          {
+            role: { id: roleId, name: "Customer" },
+            role_id: roleId,
+            user_id: user.id,
+            company: null,
+            branch: null,
+          } as any,
+        ];
+      }
 
       const { permissions } = await this.resolveAccess(user, userRoles);
 
@@ -76,7 +87,8 @@ export class PermissionService {
     const scopeConditions: any[] = [];
 
     for (const ur of userRoles) {
-      const roleId = ur.role.id;
+      const roleId = ur.role?.id ?? ur.role_id;
+      if (!roleId) continue;
       const companyId = ur.company?.id ?? ur.company_id ?? null;
       const branchId = ur.branch?.id ?? ur.branch_id ?? null;
 

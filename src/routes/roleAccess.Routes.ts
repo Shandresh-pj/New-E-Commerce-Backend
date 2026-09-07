@@ -262,7 +262,6 @@ router.post(
 router.get(
   "/role-access",
   authenticateMiddleware,
-  authorize({ roles: adminRoles }),
   roleAccessController.getAll.bind(roleAccessController)
 );
 
@@ -293,7 +292,6 @@ router.get(
 router.get(
   "/role-access/role/:role_id",
   authenticateMiddleware,
-  authorize({ roles: adminRoles }),
   roleAccessController.getByRole.bind(roleAccessController)
 );
 

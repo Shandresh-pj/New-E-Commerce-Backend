@@ -83,7 +83,6 @@ router.get(
   "/profile/all",
   authenticateMiddleware,
   authorize({
-    roles: [UserType.SUPER_ADMIN, UserType.ADMIN, UserType.CUSTOMER],
     menu: "Profile",
     action: "READ"
   }),
@@ -123,7 +122,10 @@ router.get(
 router.get(
   "/profile/:id",
   authenticateMiddleware,
-  authorize(),
+  authorize({
+    menu: "Profile",
+    action: "READ"
+  }),
   profileController.getById.bind(profileController)
 );
 
