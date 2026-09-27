@@ -71,6 +71,14 @@ const router = Router();
  *                       isDefault:
  *                         type: boolean
  *                         example: true
+ *                       latitude:
+ *                         type: number
+ *                         format: float
+ *                         example: 12.9716000
+ *                       longitude:
+ *                         type: number
+ *                         format: float
+ *                         example: 77.5946000
  *       401:
  *         description: Unauthorized
  *       500:
@@ -137,6 +145,14 @@ router.get(
  *               receiver_type:
  *                 type: string
  *                 example: "myself"
+ *               latitude:
+ *                 type: number
+ *                 format: float
+ *                 example: 12.9716000
+ *               longitude:
+ *                 type: number
+ *                 format: float
+ *                 example: 77.5946000
  *     responses:
  *       201:
  *         description: Address saved successfully
@@ -207,6 +223,14 @@ router.post(
  *               isDefault:
  *                 type: boolean
  *                 example: false
+ *               latitude:
+ *                 type: number
+ *                 format: float
+ *                 example: 12.9716000
+ *               longitude:
+ *                 type: number
+ *                 format: float
+ *                 example: 77.5946000
  *     responses:
  *       200:
  *         description: Address updated successfully

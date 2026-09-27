@@ -549,7 +549,7 @@ authenticateMiddleware
         return res.status(401).json({ success: false, message: "Unauthorized or invalid user session" });
       }
 
-      const { label, name, phone, line1, line2, city, state, pincode, isDefault, receiver_type, receiverType } = req.body;
+      const { label, name, phone, line1, line2, city, state, pincode, isDefault, receiver_type, receiverType, latitude, longitude, lat, lng } = req.body;
 
       if (!name || !phone || !line1 || !city || !state || !pincode) {
         return res.status(400).json({ success: false, message: "Missing required address fields" });
@@ -572,6 +572,9 @@ authenticateMiddleware
         await repository.update({ userId }, { isDefault: false });
       }
 
+      const parsedLat = latitude !== undefined && latitude !== null ? Number(latitude) : (lat !== undefined && lat !== null ? Number(lat) : null);
+      const parsedLng = longitude !== undefined && longitude !== null ? Number(longitude) : (lng !== undefined && lng !== null ? Number(lng) : null);
+
       const address = repository.create({
         userId,
         label: label || "Home",
@@ -584,6 +587,8 @@ authenticateMiddleware
         pincode,
         isDefault: !!isDefault,
         receiverType: receiver_type || receiverType || "myself",
+        latitude: parsedLat !== null && !isNaN(parsedLat) ? parsedLat : null,
+        longitude: parsedLng !== null && !isNaN(parsedLng) ? parsedLng : null,
       });
 
       await repository.save(address);
@@ -611,7 +616,7 @@ authenticateMiddleware
         return res.status(400).json({ success: false, message: "Invalid address ID" });
       }
 
-      const { label, name, phone, line1, line2, city, state, pincode, isDefault, receiver_type, receiverType } = req.body;
+      const { label, name, phone, line1, line2, city, state, pincode, isDefault, receiver_type, receiverType, latitude, longitude, lat, lng } = req.body;
       const repository = dataSource.getRepository(UserAddress);
 
       const address = await repository.findOne({
@@ -626,6 +631,9 @@ authenticateMiddleware
         await repository.update({ userId }, { isDefault: false });
       }
 
+      const parsedLat = latitude !== undefined && latitude !== null ? Number(latitude) : (lat !== undefined && lat !== null ? Number(lat) : undefined);
+      const parsedLng = longitude !== undefined && longitude !== null ? Number(longitude) : (lng !== undefined && lng !== null ? Number(lng) : undefined);
+
       await repository.update(addressId, {
         label: label || address.label,
         name: name || address.name,
@@ -637,6 +645,8 @@ authenticateMiddleware
         pincode: pincode || address.pincode,
         isDefault: isDefault !== undefined ? !!isDefault : address.isDefault,
         receiverType: receiver_type || receiverType || address.receiverType,
+        latitude: parsedLat !== undefined ? (!isNaN(parsedLat) ? parsedLat : null) : address.latitude,
+        longitude: parsedLng !== undefined ? (!isNaN(parsedLng) ? parsedLng : null) : address.longitude,
       });
 
       const updated = await repository.findOneBy({ id: addressId });

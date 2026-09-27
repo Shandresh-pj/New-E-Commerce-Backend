@@ -39,6 +39,16 @@ export class CreateBranchDto {
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  longitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
   role_id?: number;
 }
 
@@ -62,6 +72,16 @@ export class UpdateBranchDto {
   @IsString()
   @MaxLength(500)
   location?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  longitude?: number;
 
   @IsOptional()
   @IsBoolean()

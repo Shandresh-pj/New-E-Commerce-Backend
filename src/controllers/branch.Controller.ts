@@ -58,10 +58,17 @@ public async create(req: any, res: any) {
       company_id,
       name,
       location,
+      latitude,
+      longitude,
+      lat,
+      lng,
       email,
       phone,
       role_id
     } = req.body;
+
+    const parsedLat = latitude !== undefined && latitude !== null ? Number(latitude) : (lat !== undefined && lat !== null ? Number(lat) : null);
+    const parsedLng = longitude !== undefined && longitude !== null ? Number(longitude) : (lng !== undefined && lng !== null ? Number(lng) : null);
 
     // Company check
     const company = await companyRepo.findOne({
@@ -105,6 +112,8 @@ public async create(req: any, res: any) {
       company: { id: company_id },
       name,
       location,
+      latitude: parsedLat !== null && !isNaN(parsedLat) ? parsedLat : null,
+      longitude: parsedLng !== null && !isNaN(parsedLng) ? parsedLng : null,
       email,
       phone
     });
@@ -308,9 +317,14 @@ public async update(req: any, res: any) {
       });
     }
 
+    const parsedLat = req.body.latitude !== undefined && req.body.latitude !== null ? Number(req.body.latitude) : (req.body.lat !== undefined && req.body.lat !== null ? Number(req.body.lat) : undefined);
+    const parsedLng = req.body.longitude !== undefined && req.body.longitude !== null ? Number(req.body.longitude) : (req.body.lng !== undefined && req.body.lng !== null ? Number(req.body.lng) : undefined);
+
     repo.merge(branch, {
       name: req.body.name,
       location: req.body.location,
+      latitude: parsedLat !== undefined ? (!isNaN(parsedLat) ? parsedLat : null) : branch.latitude,
+      longitude: parsedLng !== undefined ? (!isNaN(parsedLng) ? parsedLng : null) : branch.longitude,
       email: req.body.email,
       phone: req.body.phone
     });
