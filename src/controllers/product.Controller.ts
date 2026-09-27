@@ -525,6 +525,7 @@ export class ProductController {
         category,
         registration_id,
         product_type,
+        sale_channel,
         stock_in_hand,
         status,
         low_stock_threshold,
@@ -567,6 +568,7 @@ export class ProductController {
           category,
           registration_id: registration_id || user.userId,
           product_type,
+          sale_channel: sale_channel || "both",
           stock_in_hand,
           status: status || "active",
           low_stock_threshold: low_stock_threshold !== undefined ? Number(low_stock_threshold) : 5,
@@ -639,6 +641,7 @@ export class ProductController {
         category,
         registration_id: registration_id || user.userId,
         product_type,
+        sale_channel: sale_channel || "both",
         stock_in_hand,
         status: status || "active",
         approval_status: ProductApprovalStatus.PUBLISHED,
@@ -913,6 +916,25 @@ export class ProductController {
         });
       }
 
+      // ── Sale Channel Filter ────────────────────────────────────────────────
+      // "online"  → show products with sale_channel IN ('online', 'both')
+      // "offline" → show products with sale_channel IN ('offline', 'both')
+      // "both"    → show only products explicitly tagged 'both'
+      // (no param) → return all channels
+      if (req.query.sale_channel) {
+        const sc = String(req.query.sale_channel).toLowerCase();
+        if (sc === "online") {
+          qb.andWhere("product.sale_channel IN (:...sc)", { sc: ["online", "both"] });
+          countQb.andWhere("product.sale_channel IN (:...sc)", { sc: ["online", "both"] });
+        } else if (sc === "offline") {
+          qb.andWhere("product.sale_channel IN (:...sc)", { sc: ["offline", "both"] });
+          countQb.andWhere("product.sale_channel IN (:...sc)", { sc: ["offline", "both"] });
+        } else if (sc === "both") {
+          qb.andWhere("product.sale_channel = :sc", { sc: "both" });
+          countQb.andWhere("product.sale_channel = :sc", { sc: "both" });
+        }
+      }
+
       if (req.query.category) {
         qb.andWhere("product.category = :category", {
           category: req.query.category,
@@ -1170,6 +1192,7 @@ export class ProductController {
           stock: body.stock !== undefined ? Number(body.stock) : product.stock,
           category: body.category ?? product.category,
           product_type: body.product_type ?? product.product_type,
+          sale_channel: body.sale_channel ?? product.sale_channel,
           stock_in_hand: body.stock_in_hand !== undefined ? Number(body.stock_in_hand) : product.stock_in_hand,
           status: body.status ?? product.status,
           low_stock_threshold: body.low_stock_threshold !== undefined ? Number(body.low_stock_threshold) : product.low_stock_threshold,
@@ -1240,6 +1263,7 @@ export class ProductController {
       product.category = body.category ?? product.category;
       product.registration_id = body.registration_id ?? product.registration_id;
       product.product_type = body.product_type ?? product.product_type;
+      if (body.sale_channel !== undefined) product.sale_channel = body.sale_channel;
       product.stock_in_hand = body.stock_in_hand ?? product.stock_in_hand;
       product.status = body.status ?? product.status;
       if (body.base_unit !== undefined) product.base_unit = body.base_unit;

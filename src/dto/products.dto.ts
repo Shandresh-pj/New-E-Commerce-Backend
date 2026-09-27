@@ -22,6 +22,12 @@ export enum ProductType {
   VARIANT = "variant",
 }
 
+export enum SaleChannel {
+  ONLINE  = "online",
+  OFFLINE = "offline",
+  BOTH    = "both",
+}
+
 export enum ProductStatus {
   ACTIVE            = "active",
   INACTIVE          = "inactive",
@@ -151,6 +157,10 @@ export class CreateProductDto {
   @IsOptional()
   @IsEnum(ProductType)
   product_type?: ProductType;
+
+  @IsOptional()
+  @IsEnum(SaleChannel)
+  sale_channel?: SaleChannel;
 
   @IsOptional()
   @IsNumber()
@@ -285,6 +295,10 @@ export class UpdateProductDto {
   @IsOptional()
   @IsEnum(ProductType)
   product_type?: ProductType;
+
+  @IsOptional()
+  @IsEnum(SaleChannel)
+  sale_channel?: SaleChannel;
 
   @IsOptional()
   @IsNumber()

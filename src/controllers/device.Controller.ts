@@ -70,151 +70,29 @@ export class DeviceController {
     };
   }
 
-  /**
-   * GET /api/devices
-   * Fetch all hardware devices for authenticated tenant (Company & Branch)
-   */
   @Get("/")
   @Middleware([authenticateMiddleware])
   @Swagger("Get Devices", "Fetch all connected and registered hardware devices for authenticated company and branch")
   async getDevices(req: any, res: Response) {
     try {
       const { companyId, branchId } = this.getTenantContext(req);
+
       const where: any = { company_id: companyId };
       if (branchId) where.branch_id = branchId;
 
+      // ?connected=true → return only CONNECTED devices (default for the fleet dashboard)
+      const connectedOnly = req.query?.connected === "true";
+      if (connectedOnly) {
+        where.status = DeviceStatus.CONNECTED;
+      }
+
       const deviceRepo = dataSource.getRepository(HardwareDeviceEntity);
-      let entities = await deviceRepo.find({
+      const entities = await deviceRepo.find({
         where,
         order: { updated_at: "DESC" }
       });
 
-      // Auto-seed initial default hardware devices into database if company has 0 devices
-      if (entities.length === 0) {
-        const defaultDevices: Partial<HardwareDeviceEntity>[] = [
-          {
-            id: `DEV-PRN-${companyId}-01`,
-            company_id: companyId,
-            branch_id: branchId || 1,
-            name: "Epson TM-T88VI Thermal POS Printer",
-            type: DeviceType.THERMAL_PRINTER,
-            connection_category: ConnectionCategory.WIRED,
-            protocol: ConnectionProtocol.WEB_USB,
-            status: DeviceStatus.CONNECTED,
-            connection_state: ConnectionState.CONNECTED,
-            health_state: HealthState.HEALTHY,
-            port_or_address: "USB-PRN-01",
-            firmware_version: "v4.02-USB",
-            auto_reconnect: true,
-            hardware_detected: true,
-            latency_ms: 3,
-            signal_strength: 100
-          },
-          {
-            id: `DEV-SCN-${companyId}-02`,
-            company_id: companyId,
-            branch_id: branchId || 1,
-            name: "Zebra DS2278 Wireless 2D Barcode Scanner",
-            type: DeviceType.BARCODE_SCANNER,
-            connection_category: ConnectionCategory.WIRELESS,
-            protocol: ConnectionProtocol.BLUETOOTH_LE,
-            status: DeviceStatus.CONNECTED,
-            connection_state: ConnectionState.CONNECTED,
-            health_state: HealthState.HEALTHY,
-            port_or_address: "44:55:66:77:88:99",
-            mac_address: "44:55:66:77:88:99",
-            firmware_version: "v1.4.0-BT",
-            auto_reconnect: true,
-            hardware_detected: true,
-            latency_ms: 4,
-            signal_strength: 94,
-            signal_dbm: -52,
-            battery_level: 88
-          },
-          {
-            id: `DEV-SCL-${companyId}-03`,
-            company_id: companyId,
-            branch_id: branchId || 1,
-            name: "Avery Berkel FX120 Digital Weighing Scale",
-            type: DeviceType.WEIGH_SCALE,
-            connection_category: ConnectionCategory.WIRED,
-            protocol: ConnectionProtocol.WEB_SERIAL,
-            status: DeviceStatus.CONNECTED,
-            connection_state: ConnectionState.CONNECTED,
-            health_state: HealthState.HEALTHY,
-            port_or_address: "COM3",
-            firmware_version: "v3.10-COM",
-            auto_reconnect: true,
-            hardware_detected: true,
-            latency_ms: 2,
-            signal_strength: 100
-          },
-          {
-            id: `DEV-NFC-${companyId}-04`,
-            company_id: companyId,
-            branch_id: branchId || 1,
-            name: "ACS ACR1252U NFC / Contactless Terminal",
-            type: DeviceType.CARD_READER,
-            connection_category: ConnectionCategory.WIRELESS,
-            protocol: ConnectionProtocol.NFC_TAP,
-            status: DeviceStatus.CONNECTED,
-            connection_state: ConnectionState.CONNECTED,
-            health_state: HealthState.HEALTHY,
-            port_or_address: "NFC-13.56MHz-READER-01",
-            firmware_version: "v2.10-NFC",
-            auto_reconnect: true,
-            hardware_detected: true,
-            latency_ms: 3,
-            signal_strength: 98,
-            signal_dbm: -35,
-            battery_level: 100
-          },
-          {
-            id: `DEV-VFD-${companyId}-05`,
-            company_id: companyId,
-            branch_id: branchId || 1,
-            name: "Logic Controls LD9000 VFD Customer Display",
-            type: DeviceType.CUSTOMER_DISPLAY,
-            connection_category: ConnectionCategory.WIRED,
-            protocol: ConnectionProtocol.WEB_SERIAL,
-            status: DeviceStatus.CONNECTED,
-            connection_state: ConnectionState.CONNECTED,
-            health_state: HealthState.HEALTHY,
-            port_or_address: "COM4",
-            firmware_version: "v1.0-VFD",
-            auto_reconnect: true,
-            hardware_detected: true,
-            latency_ms: 2,
-            signal_strength: 100
-          },
-          {
-            id: `DEV-CAS-${companyId}-06`,
-            company_id: companyId,
-            branch_id: branchId || 1,
-            name: "APG Heavy Duty 24V RJ11 Cash Drawer",
-            type: DeviceType.CASH_DRAWER,
-            connection_category: ConnectionCategory.WIRED,
-            protocol: ConnectionProtocol.WEB_USB,
-            status: DeviceStatus.CONNECTED,
-            connection_state: ConnectionState.CONNECTED,
-            health_state: HealthState.HEALTHY,
-            port_or_address: "RJ11-COIL-01",
-            firmware_version: "v1.0-RJ11",
-            auto_reconnect: true,
-            hardware_detected: true,
-            latency_ms: 1,
-            signal_strength: 100
-          }
-        ];
-
-        for (const dev of defaultDevices) {
-          const created = deviceRepo.create(dev as HardwareDeviceEntity);
-          await deviceRepo.save(created);
-        }
-
-        entities = await deviceRepo.find({ where, order: { updated_at: "DESC" } });
-      }
-
+      // No static seed — return empty array if company has no real devices yet
       const formattedDevices = entities.map(d => this.formatDeviceResponse(d));
 
       return res.json({
@@ -228,6 +106,8 @@ export class DeviceController {
       return res.status(status).json({ success: false, message: err.message || "Failed to fetch hardware devices" });
     }
   }
+
+
 
   /**
    * POST /api/devices

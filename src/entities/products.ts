@@ -11,7 +11,7 @@ import { ProductApproval } from "./productApproval";
 import { ProductUnitConversion } from "./unit.entity";
 import { User }        from "./user";
 import { Category }    from "./category";
-import { ProductType, ProductStatus, ProductApprovalStatus } from "../dto/products.dto";
+import { ProductType, ProductStatus, ProductApprovalStatus, SaleChannel } from "../dto/products.dto";
 
 @Entity("products_table_1")
 export class Product {
@@ -66,6 +66,9 @@ export class Product {
 
   @Column({ type: "enum", enum: ProductType, default: ProductType.SINGLE })
   product_type!: ProductType;
+
+  @Column({ type: "enum", enum: SaleChannel, default: SaleChannel.BOTH })
+  sale_channel!: SaleChannel;
 
   @Column({ type: "int", default: 0 })
   stock_in_hand!: number;
