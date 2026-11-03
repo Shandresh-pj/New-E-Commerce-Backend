@@ -12,60 +12,128 @@ import { startAttendanceCron } from "./utils/attendance.cron";
 import { EmailService } from "./utils/sendEmailOtp";
 import { redisClient } from "./config/redis";
 
-// â”€â”€â”€ Critical Environment Validation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Check for JWT_SECRET and provide fallback for JWT_REFRESH_SECRET if not explicitly set.
-const REQUIRED_ENV_VARS = ["JWT_SECRET"];
-const missing = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
-if (missing.length > 0) {
-  console.error(`âŒ [Startup] Missing required environment variables: ${missing.join(", ")}`);
-  console.error("âŒ [Startup] Server cannot start safely. Please set these variables in your Render dashboard.");
+// =============================================================================
+// ENVIRONMENT VALIDATION
+// =============================================================================
+// Runs at startup BEFORE any server/db code. Missing critical vars = hard stop.
+// ALL variables below must be set in Render Dashboard -> Environment.
+// =============================================================================
+
+const isProduction = process.env.NODE_ENV === "production";
+
+// ---------------------------------------------------------------------------
+// SECTION 1: Hard-required vars — server cannot start without these
+// ---------------------------------------------------------------------------
+const REQUIRED_ALWAYS: string[] = [
+  "JWT_SECRET",          // signs access tokens
+  "JWT_REFRESH_SECRET",  // signs refresh tokens
+];
+
+const REQUIRED_IN_PRODUCTION: string[] = [
+  "NODE_ENV",            // must be "production"
+  "PRODUCTION_DB_URL",   // Aiven PostgreSQL connection string
+  "DB_SYNC",             // must be "false" in production
+  "RESEND_API_KEY",      // email delivery
+  "EMAIL_FROM",          // sender address
+  "CORS_ORIGIN",         // allowed frontend origins
+  "FRONTEND_URL",        // used in email links
+  "APP_BASE_URL",        // used in email links
+];
+
+// Check always-required vars
+const missingAlways = REQUIRED_ALWAYS.filter((k) => !process.env[k]);
+if (missingAlways.length > 0) {
+  console.error(`[Startup] FATAL: Missing required env vars: ${missingAlways.join(", ")}`);
+  console.error("[Startup] Set these in Render Dashboard -> Environment before deploying.");
   process.exit(1);
 }
 
-if (!process.env.JWT_REFRESH_SECRET) {
-  process.env.JWT_REFRESH_SECRET = process.env.JWT_SECRET || "fallback_refresh_secret_key_2026";
-  console.log("â„¹ï¸ [Startup] JWT_REFRESH_SECRET not explicitly set; defaulting to JWT_SECRET fallback.");
-}
-
-// â”€â”€â”€ Production Safety Checks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-if (process.env.NODE_ENV === "production") {
-  if (!process.env.DATABASE_URL && !process.env.PRODUCTION_DB_URL) {
-    console.error("âŒ [Startup] Production database URL is not set! Set DATABASE_URL or PRODUCTION_DB_URL in the Render dashboard.");
+// Check production-only required vars
+if (isProduction) {
+  const missingProd = REQUIRED_IN_PRODUCTION.filter((k) => !process.env[k]);
+  if (missingProd.length > 0) {
+    console.error(`[Startup] FATAL: Missing production env vars: ${missingProd.join(", ")}`);
+    console.error("[Startup] Add all listed vars in Render Dashboard -> Environment.");
     process.exit(1);
   }
-  if (!process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_WEBHOOK_SECRET === "YourWebhookSecretHere") {
-    console.warn("âš ï¸ [Startup] RAZORPAY_WEBHOOK_SECRET is not set or is a placeholder. Webhook verification will be DISABLED. Set a real secret from the Razorpay Dashboard.");
-  }
-  if (process.env.RAZORPAY_KEY_ID?.startsWith("rzp_test_")) {
-    console.warn("âš ï¸ [Startup] RAZORPAY_KEY_ID is a TEST key. Live payments will fail. Use a live key (rzp_live_...) in production.");
-  }
-  if (String(process.env.DB_SYNC).toLowerCase() === "true") {
-    console.warn("âš ï¸ [Startup] DB_SYNC=true in production is dangerous! TypeORM synchronize can drop columns. Use migrations instead.");
-  }
 }
 
-// â”€â”€â”€ Global Error Safety Net â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Catch any unhandled promise rejections before they silently crash the process.
+// ---------------------------------------------------------------------------
+// SECTION 2: JWT_REFRESH_SECRET fallback (non-critical, but log it)
+// ---------------------------------------------------------------------------
+if (!process.env.JWT_REFRESH_SECRET) {
+  process.env.JWT_REFRESH_SECRET = process.env.JWT_SECRET!;
+  console.warn("[Startup] JWT_REFRESH_SECRET not set — falling back to JWT_SECRET value.");
+}
+
+// ---------------------------------------------------------------------------
+// SECTION 3: Production security warnings (non-fatal, but important)
+// ---------------------------------------------------------------------------
+if (isProduction) {
+
+  // DB_SYNC must be false — hard block is also in database.ts, double-checked here
+  if (String(process.env.DB_SYNC).toLowerCase() === "true") {
+    console.error("[Startup] FATAL: DB_SYNC=true in production can DROP database columns!");
+    console.error("[Startup] Set DB_SYNC=false in Render Dashboard immediately.");
+    process.exit(1);
+  }
+
+  // PRODUCTION_DB_URL must point to postgres, not local mysql
+  const dbUrl = process.env.PRODUCTION_DB_URL || "";
+  if (dbUrl.startsWith("mysql://") || dbUrl.includes("127.0.0.1") || dbUrl.includes("localhost")) {
+    console.error("[Startup] FATAL: PRODUCTION_DB_URL points to a local database in production!");
+    console.error("[Startup] Set PRODUCTION_DB_URL to the Aiven PostgreSQL connection string.");
+    process.exit(1);
+  }
+
+  // Razorpay webhook secret placeholder
+  if (
+    !process.env.RAZORPAY_WEBHOOK_SECRET ||
+    process.env.RAZORPAY_WEBHOOK_SECRET === "YourWebhookSecretHere"
+  ) {
+    console.warn("[Startup] WARNING: RAZORPAY_WEBHOOK_SECRET is a placeholder. Webhook verification DISABLED.");
+    console.warn("[Startup]          Set a real secret from the Razorpay Dashboard -> Webhooks.");
+  }
+
+  // Razorpay test key in production
+  if (process.env.RAZORPAY_KEY_ID?.startsWith("rzp_test_")) {
+    console.warn("[Startup] WARNING: RAZORPAY_KEY_ID is a TEST key. Live payments will FAIL.");
+    console.warn("[Startup]          Replace with rzp_live_... key in Render Dashboard.");
+  }
+
+  // DATABASE_URL should not be set in production (it is the local MySQL URL)
+  if (process.env.DATABASE_URL) {
+    console.warn("[Startup] WARNING: DATABASE_URL is set in production environment.");
+    console.warn("[Startup]          DATABASE_URL = local MySQL. In production only PRODUCTION_DB_URL is used.");
+    console.warn("[Startup]          Consider removing DATABASE_URL from Render Dashboard to avoid confusion.");
+  }
+
+  console.log("[Startup] Environment validation passed. All required production vars are set.");
+}
+
+// =============================================================================
+// GLOBAL ERROR SAFETY NET
+// =============================================================================
 process.on("unhandledRejection", (reason: any) => {
-  console.error("âŒ [Process] Unhandled Promise Rejection:", reason?.message || reason);
-  // Do NOT exit â€” log and continue. Only fatal rejections should kill the server.
+  console.error("[Process] Unhandled Promise Rejection:", reason?.message || reason);
+  // Do NOT exit — log and continue. Only fatal rejections should kill the server.
 });
 
 process.on("uncaughtException", (error: Error) => {
-  console.error("âŒ [Process] Uncaught Exception:", error.message);
+  console.error("[Process] Uncaught Exception:", error.message);
   console.error(error.stack);
-  // Uncaught exceptions leave the process in an undefined state â€” exit and let Render restart.
+  // Uncaught exceptions leave the process in an undefined state.
+  // Exit and let Render auto-restart.
   process.exit(1);
 });
 
-// â”€â”€â”€ Database Initialization â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// global.ts exports ALL_ENTITIES and database.ts registers them with TypeORM.
-// DB_SYNC=true  â†’ TypeORM will create/alter tables on every startup (default in dev).
-// DB_SYNC=false â†’ Auto-detects missing tables and syncs if empty; otherwise skips sync for safety.
+// =============================================================================
+// DATABASE INITIALIZATION
+// =============================================================================
 async function initDatabase() {
   if (!dataSource.isInitialized) {
     await dataSource.initialize();
-    console.log("âœ… Database connection established.");
+    console.log("[DB] Connection established.");
   }
 
   const dbType = (dataSource.options as any).type as string;
@@ -83,31 +151,31 @@ async function initDatabase() {
       tablesExist = Boolean(result && result[0] && result[0].table_exists);
     }
   } catch (checkErr: any) {
-    console.warn("âš ï¸ [DB Check] Could not verify existing tables:", checkErr.message);
+    console.warn("[DB] Could not verify existing tables:", checkErr.message);
     tablesExist = false;
   }
 
-  const envSync = String(process.env.DB_SYNC ?? "true").toLowerCase().trim() === "true";
+  const envSync    = String(process.env.DB_SYNC ?? "true").toLowerCase().trim() === "true";
   const shouldSync = envSync || !tablesExist;
 
   if (shouldSync) {
     try {
       if (!tablesExist && !envSync) {
-        console.log("âš ï¸ [Startup] Core database tables missing! Auto-synchronizing schema for initial deployment...");
+        console.log("[DB] Core tables missing — auto-synchronizing schema for initial deployment...");
       } else {
-        console.log("ðŸ”„ Synchronizing entity tables with database...");
+        console.log("[DB] Synchronizing entity tables...");
       }
-      await dataSource.synchronize(false); // false = don't drop existing data
-      console.log("âœ… All entity tables are synchronized.");
+      await dataSource.synchronize(false); // false = do not drop existing data
+      console.log("[DB] All entity tables synchronized.");
     } catch (syncErr: any) {
-      console.error("âŒ Database synchronization failed:", syncErr.message);
+      console.error("[DB] Schema synchronization failed:", syncErr.message);
       throw syncErr;
     }
   } else {
-    console.log("â„¹ï¸ [Startup] Database tables detected & DB_SYNC=false. Skipping auto-sync to protect production data.");
+    console.log("[DB] Tables detected & DB_SYNC=false. Skipping auto-sync to protect production data.");
   }
 
-  // Pre-synchronization cleanup to prevent duplicate index failures
+  // Cleanup duplicate/empty roles before seeding (prevents unique index errors)
   try {
     if (dbType === "mysql" || dbType === "mariadb") {
       await dataSource.query("DELETE FROM `roles` WHERE `name` = '' OR `name` IS NULL");
@@ -126,31 +194,32 @@ async function initDatabase() {
       `);
     }
   } catch (cleanErr: any) {
-    console.warn("âš ï¸ [DB Cleanup] Roles dedup skipped:", cleanErr.message);
+    console.warn("[DB] Roles dedup skipped:", cleanErr.message);
   }
 
   await seedRoles();
   await seedMenus();
-  console.log("âœ… Database ready.");
+  console.log("[DB] Database ready.");
 }
 
-// â”€â”€â”€ Server Bootstrap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// =============================================================================
+// SERVER BOOTSTRAP
+// =============================================================================
 async function startServer() {
   try {
     await initDatabase();
 
-    // Connect Redis â€” optional, never crashes the server
+    // Connect Redis — optional, never crashes the server
     try {
       await redisClient.connect();
-      console.log("âœ… Redis Connected");
+      console.log("[Redis] Connected.");
     } catch (redisErr: any) {
-      console.warn("âš ï¸ Redis failed to connect. Caching will be disabled:", redisErr.message);
+      console.warn("[Redis] Failed to connect. Caching disabled:", redisErr.message);
     }
 
-    // Verify SMTP â€” runs async and does not block server startup
-    // Also resolves DNS to IPv4 here so it's pre-warmed before first email
+    // Verify email — async, does not block startup
     EmailService.verifyConnection().catch((err) => {
-      console.warn("âš ï¸ [Email] Startup SMTP verification failed:", err?.message || err);
+      console.warn("[Email] SMTP verification failed:", err?.message || err);
     });
 
     const port = Number(process.env.PORT || 3000);
@@ -162,7 +231,7 @@ async function startServer() {
     initializeSocket(server);
 
     server.listen(port, host, () => {
-      console.log("ðŸš€ Server Started");
+      console.log("[Server] Started successfully");
       console.log(`   URL:     http://localhost:${port}`);
       console.log(`   Swagger: http://localhost:${port}/pjsv`);
       console.log(`   Health:  http://localhost:${port}/health`);
@@ -172,49 +241,47 @@ async function startServer() {
       startAttendanceCron();
     });
 
-    // â”€â”€â”€ Graceful Shutdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // Called by Render when deploying a new version or restarting the dyno.
-    // Without this, active HTTP requests and DB connections are force-killed.
+    // Graceful shutdown — called by Render when deploying new version or restarting
     const gracefulShutdown = async (signal: string) => {
-      console.log(`\nâš ï¸ [Shutdown] Received ${signal}. Starting graceful shutdown...`);
+      console.log(`\n[Shutdown] Received ${signal}. Starting graceful shutdown...`);
 
       server.close(async () => {
-        console.log("âœ… [Shutdown] HTTP server closed. No new connections accepted.");
+        console.log("[Shutdown] HTTP server closed. No new connections accepted.");
 
         try {
           if (dataSource.isInitialized) {
             await dataSource.destroy();
-            console.log("âœ… [Shutdown] Database connection pool closed.");
+            console.log("[Shutdown] Database connection pool closed.");
           }
         } catch (err: any) {
-          console.error("âš ï¸ [Shutdown] Error closing DB:", err.message);
+          console.error("[Shutdown] Error closing DB:", err.message);
         }
 
         try {
           if (redisClient.isReady) {
             await redisClient.quit();
-            console.log("âœ… [Shutdown] Redis connection closed.");
+            console.log("[Shutdown] Redis connection closed.");
           }
         } catch (err: any) {
-          console.error("âš ï¸ [Shutdown] Error closing Redis:", err.message);
+          console.error("[Shutdown] Error closing Redis:", err.message);
         }
 
-        console.log("âœ… [Shutdown] Graceful shutdown complete.");
+        console.log("[Shutdown] Graceful shutdown complete.");
         process.exit(0);
       });
 
       // Force-exit if shutdown takes too long (Render gives 10s before SIGKILL)
       setTimeout(() => {
-        console.error("âŒ [Shutdown] Timed out. Force exiting.");
+        console.error("[Shutdown] Timed out. Force exiting.");
         process.exit(1);
       }, 9000);
     };
 
     process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+    process.on("SIGINT",  () => gracefulShutdown("SIGINT"));
 
   } catch (err: any) {
-    console.error("âŒ [Startup] Server failed to start:", err.message || err);
+    console.error("[Startup] Server failed to start:", err.message || err);
     process.exit(1);
   }
 }

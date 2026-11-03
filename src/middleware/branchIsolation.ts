@@ -1,40 +1,33 @@
-// middleware/branchIsolation.ts
+﻿// middleware/branchIsolation.ts
+// SECURITY: branchId is read from req.user which is set exclusively by
+// authenticate.middleware.ts after verifying the JWT signature. It cannot
+// be overridden by query params or request body.
+import { Response, NextFunction } from "express";
 
-export const branchIsolation=
-(
-req:any,
-res:any,
-next:any
-)=>{
+export const branchIsolation = (
+  req: any,
+  res: Response,
+  next: NextFunction
+): void => {
 
-const user=
-req.user;
+  if (!req.user) {
+    res.status(401).json({ success: false, message: "Unauthorized" });
+    return;
+  }
 
-if(
-user.isSuperAdmin
-){
+  // Super-admin bypasses branch scope.
+  if (req.user.isSuperAdmin === true) {
+    return next();
+  }
 
-return next();
-}
+  const branchId = req.user.branchId || req.user.branch_id;
 
-if(
-!user.branchId
-){
+  // Validate branchId is a positive integer.
+  if (!branchId || !Number.isInteger(Number(branchId)) || Number(branchId) < 1) {
+    res.status(403).json({ success: false, message: "Branch access denied" });
+    return;
+  }
 
-return res.status(403)
-.json({
-
-success:false,
-message:
-"Branch access denied"
-
-});
-
-}
-
-req.branchId=
-user.branchId;
-
-next();
-
+  req.branchId = Number(branchId);
+  next();
 };

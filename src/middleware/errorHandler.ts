@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+﻿import { Request, Response, NextFunction } from "express";
 
 interface CustomError extends Error {
   status?: number;
@@ -18,27 +18,25 @@ const errorHandler = (
 
   const isProd = process.env.NODE_ENV === "production";
 
-  console.error("❌ ERROR:", {
+  // SECURITY: Log full error server-side only — never expose stack/code to clients.
+  console.error("ERROR:", {
     name: error.name,
     message: error.message,
-    path: req.originalUrl,
+    // Do NOT log req.body — may contain passwords/tokens.
+    path: req.path,
     method: req.method,
   });
 
   let statusCode = 500;
   let message = "Internal Server Error";
 
-  /* =========================
-     BASE ERROR
-  ========================= */
+  /* ── BASE ERROR ─────────────────────────────────────────────────────── */
   if (error.status || error.statusCode) {
     statusCode = error.status || error.statusCode || statusCode;
     message = error.message;
   }
 
-  /* =========================
-     JWT ERRORS
-  ========================= */
+  /* ── JWT ERRORS ─────────────────────────────────────────────────────── */
   if (error.name === "JsonWebTokenError") {
     statusCode = 401;
     message = "Invalid Token";
@@ -49,17 +47,13 @@ const errorHandler = (
     message = "Token Expired";
   }
 
-  /* =========================
-     VALIDATION ERROR
-  ========================= */
+  /* ── VALIDATION ERROR ───────────────────────────────────────────────── */
   if (error.name === "ValidationError") {
     statusCode = 400;
     message = error.message;
   }
 
-  /* =========================
-     DATABASE & UNIQUE ERRORS
-  ========================= */
+  /* ── DATABASE & UNIQUE ERRORS ───────────────────────────────────────── */
   if (error.code === "ER_DUP_ENTRY" || error.code === "23505") {
     statusCode = 409;
     message = "Duplicate record found";
@@ -84,43 +78,34 @@ const errorHandler = (
     message = "Required column value cannot be null";
   }
 
-  /* =========================
-     TYPEORM ERRORS
-  ========================= */
+  /* ── TYPEORM ERRORS ─────────────────────────────────────────────────── */
   if (error.name === "EntityNotFoundError") {
     statusCode = 404;
     message = "Record not found";
   }
 
-  /* =========================
-     DATABASE ERROR
-  ========================= */
+  /* ── DATABASE ERROR ─────────────────────────────────────────────────── */
   if (error.sqlMessage) {
     statusCode = statusCode === 500 ? 400 : statusCode;
-    message = isProd
-      ? "Database Query Error"
-      : error.sqlMessage;
+    // SECURITY: Never expose raw SQL error messages (table/column names) to clients.
+    message = isProd ? "Database Query Error" : error.sqlMessage;
   }
 
-  /* =========================
-     FINAL RESPONSE FORMAT
-  ========================= */
+  /* ── FINAL RESPONSE ─────────────────────────────────────────────────── */
   const response: any = {
     success: false,
     statusCode,
     message,
     timestamp: new Date().toISOString(),
-    path: req.originalUrl,
-    method: req.method,
+    // SECURITY: path exposed in non-prod only — prevents internal API path enumeration.
+    ...(isProd ? {} : { path: req.originalUrl, method: req.method }),
   };
 
   if (error.errors) {
     response.errors = error.errors;
   }
 
-  /* =========================
-     DEV ONLY DEBUG INFO
-  ========================= */
+  /* ── DEV ONLY DEBUG INFO ────────────────────────────────────────────── */
   if (!isProd) {
     response.error = {
       name: error.name,

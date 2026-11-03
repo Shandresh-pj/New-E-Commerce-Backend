@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+﻿import { Request, Response } from "express";
 import { In } from "typeorm";
 import bcrypt from "bcryptjs";
 import dataSource from "../config/database";
@@ -111,7 +111,7 @@ export class CustomerManagementController {
       }
 
       const rawPassword = password || `Cust@${Date.now().toString().slice(-4)}`;
-      const hashedPassword = await bcrypt.hash(rawPassword, 10);
+      const hashedPassword = await bcrypt.hash(rawPassword, 12);
 
       const customer = userRepo.create({
         name,

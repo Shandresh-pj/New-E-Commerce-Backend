@@ -26,7 +26,6 @@ dotenv.config();
 
 // ---------------------------------------------------------------------------
 // SECURITY UTIL: Mask password in a DB URL before logging
-// Never log credentials - replace password portion with ****
 // ---------------------------------------------------------------------------
 function maskDbUrl(url: string): string {
   try {
@@ -34,8 +33,37 @@ function maskDbUrl(url: string): string {
     if (parsed.password) parsed.password = "****";
     return parsed.toString();
   } catch {
-    // If URL parsing fails, redact the entire string to be safe
     return "[REDACTED - invalid URL format]";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SSL FIX: Strip SSL query params from URL before passing to TypeORM/pg.
+//
+// ROOT CAUSE OF "self-signed certificate in certificate chain" ERROR:
+//   pg v8+ and pg-connection-string v2.7+ map `sslmode=require` and
+//   `sslmode=prefer` to `verify-full` semantics — which validates the
+//   server certificate against trusted CAs. Aiven uses a self-signed CA,
+//   so this ALWAYS fails with "self-signed certificate in certificate chain".
+//
+// FIX: Remove sslmode / uselibpqcompat from the URL string entirely.
+//   TypeORM's own `ssl: { rejectUnauthorized: false }` config takes over,
+//   which keeps TLS encryption ON but skips CA certificate verification.
+//   All data is still encrypted end-to-end — only CA validation is skipped.
+// ---------------------------------------------------------------------------
+function stripSslParams(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.delete("sslmode");
+    parsed.searchParams.delete("uselibpqcompat");
+    // Remove trailing ? if no params remain
+    return parsed.toString();
+  } catch {
+    // Fallback: regex strip if URL() can't parse it
+    return url
+      .replace(/[?&]sslmode=[^&]*/g, "")
+      .replace(/[?&]uselibpqcompat=[^&]*/g, "")
+      .replace(/\?$/, "");
   }
 }
 
@@ -52,7 +80,7 @@ function validateDbUrl(url: string, varName: string): void {
       throw new Error(`Unsupported scheme: ${parsed.protocol}`);
     }
   } catch (err: any) {
-    console.error(`[DB] SECURITY: Invalid ${varName} format — ${err.message}`);
+    console.error(`[DB] SECURITY: Invalid ${varName} format - ${err.message}`);
     process.exit(1);
   }
 }
@@ -70,7 +98,7 @@ function safePort(raw: string | undefined, defaultPort: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// SECURITY UTIL: Validate database name - only alphanumeric + underscore
+// SECURITY UTIL: Validate database name — only alphanumeric + underscore
 // ---------------------------------------------------------------------------
 function safeDbName(name: string | undefined, fallback: string): string {
   const db = (name ?? fallback).trim();
@@ -82,7 +110,7 @@ function safeDbName(name: string | undefined, fallback: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// SECURITY UTIL: Validate hostname - prevent SSRF / injection
+// SECURITY UTIL: Validate hostname — prevent SSRF / injection
 // ---------------------------------------------------------------------------
 function safeHostname(host: string | undefined, fallback: string): string {
   const h = (host ?? fallback).trim();
@@ -118,9 +146,9 @@ let dbConfig: DataSourceOptions;
 // PATH 1: LIVE / PRODUCTION  ->  Aiven PostgreSQL (PRODUCTION_DB_URL)
 // =============================================================================
 if (useLiveDb) {
-  const liveUrl = process.env.PRODUCTION_DB_URL;
+  const rawLiveUrl = process.env.PRODUCTION_DB_URL;
 
-  if (!liveUrl) {
+  if (!rawLiveUrl) {
     console.error(
       "\n[DB] ERROR: PRODUCTION_DB_URL is not set!\n" +
       "  -> Render Dashboard: add PRODUCTION_DB_URL = <Aiven connection string>\n" +
@@ -130,7 +158,11 @@ if (useLiveDb) {
   }
 
   // Validate URL structure before using it
-  validateDbUrl(liveUrl, "PRODUCTION_DB_URL");
+  validateDbUrl(rawLiveUrl, "PRODUCTION_DB_URL");
+
+  // CRITICAL SSL FIX: Strip sslmode from URL so pg driver does NOT override
+  // TypeORM's ssl:{ rejectUnauthorized:false } config with verify-full semantics.
+  const liveUrl = stripSslParams(rawLiveUrl);
 
   // Log host ONLY — never log the full URL (contains password)
   try {
@@ -141,28 +173,25 @@ if (useLiveDb) {
   dbConfig = {
     type: "postgres",
     url: liveUrl,
-    synchronize: shouldSync,                    // false in production (enforced above)
-    logging: false,                             // never log queries in production (data leak risk)
+    synchronize: shouldSync,
+    logging: false,                             // never log queries in production
     entities: [...ALL_ENTITIES] as any[],
 
-    // --- SSL: Aiven requires TLS. rejectUnauthorized:false accepts their
-    //     self-signed CA without needing the certificate file on disk.
-    //     All traffic is still encrypted end-to-end.
+    // SSL: Aiven uses TLS with a self-signed CA.
+    // rejectUnauthorized:false = accept self-signed CA (encryption still ON).
+    // This config is now respected because sslmode was stripped from the URL above.
     ssl: { rejectUnauthorized: false },
 
-    // --- Connection pool tuning (Aiven free plan limit = 20 connections)
+    // Connection pool (Aiven free plan limit = 20 connections)
     poolSize: 10,
     extra: {
-      max:                        10,
-      min:                         2,           // keep 2 warm connections alive
-      connectionTimeoutMillis:  30_000,         // fail fast if Aiven is unreachable
-      idleTimeoutMillis:        60_000,         // release idle connections after 60 s
-      // PostgreSQL server-side query timeout (kills runaway queries)
-      statement_timeout:        60_000,         // 60 s max per query
-      // Lock acquisition timeout (prevents indefinite lock waits)
-      lock_timeout:             10_000,         // 10 s max to acquire a lock
-      // Tag connections so Aiven logs show "svk-api" as the client app
-      application_name:         "svk-api-prod",
+      max:                       10,
+      min:                        2,            // keep 2 warm connections alive
+      connectionTimeoutMillis: 30_000,          // fail fast if Aiven unreachable
+      idleTimeoutMillis:       60_000,          // release idle connections after 60s
+      statement_timeout:       60_000,          // kill runaway queries after 60s
+      lock_timeout:            10_000,          // kill lock waits after 10s
+      application_name:        "svk-api-prod", // visible in Aiven monitoring
     },
   };
 
@@ -177,15 +206,14 @@ if (useLiveDb) {
     validateDbUrl(localUrl, "DATABASE_URL");
     const isLocalPostgres = localUrl.startsWith("postgres");
 
-    // Safe to log masked local URL in dev (no production exposure)
     console.log(`[DB] Local database: ${maskDbUrl(localUrl)}`);
 
     if (isLocalPostgres) {
       dbConfig = {
         type:        "postgres",
-        url:          localUrl,
+        url:          stripSslParams(localUrl),
         synchronize:  shouldSync,
-        logging:     ["error", "warn", "schema"],    // dev: log schema changes + errors
+        logging:     ["error", "warn", "schema"],
         entities:    [...ALL_ENTITIES] as any[],
         poolSize:     5,
         extra: {
@@ -197,7 +225,7 @@ if (useLiveDb) {
         },
       };
     } else {
-      // TypeORM MySQL driver does not accept a URL directly — parse manually
+      // TypeORM MySQL driver does not support URL directly — parse manually
       const parsed = new URL(localUrl);
       dbConfig = {
         type:        "mysql",
@@ -210,11 +238,10 @@ if (useLiveDb) {
         logging:     ["error", "warn", "schema"],
         entities:    [...ALL_ENTITIES] as any[],
         extra: {
-          connectionLimit:  10,
-          charset:          "utf8mb4_unicode_ci",
-          // Prevent multi-statement injections (each query is one statement)
-          multipleStatements: false,
-          connectTimeout:   10_000,
+          connectionLimit:    10,
+          charset:            "utf8mb4_unicode_ci",
+          multipleStatements: false,            // block multi-statement SQL injection
+          connectTimeout:     10_000,
         },
       };
     }
@@ -222,7 +249,7 @@ if (useLiveDb) {
   } else if (dbType === "postgres") {
     const host = safeHostname(process.env.DB_HOST, "127.0.0.1");
     const db   = safeDbName(process.env.DB_DATABASE, "svk_business");
-    console.log(`[DB] Local database: ${host}:${process.env.DB_PORT || 5432}/${db} (postgres, individual vars)`);
+    console.log(`[DB] Local database: ${host}:${process.env.DB_PORT || 5432}/${db} (postgres vars)`);
 
     dbConfig = {
       type:        "postgres",
@@ -247,7 +274,7 @@ if (useLiveDb) {
   } else {
     const host = safeHostname(process.env.DB_HOST, "127.0.0.1");
     const db   = safeDbName(process.env.DB_DATABASE, "svk_business");
-    console.log(`[DB] Local database: ${host}:${process.env.DB_PORT || 3306}/${db} (mysql, individual vars)`);
+    console.log(`[DB] Local database: ${host}:${process.env.DB_PORT || 3306}/${db} (mysql vars)`);
 
     dbConfig = {
       type:        "mysql",
@@ -262,7 +289,7 @@ if (useLiveDb) {
       extra: {
         connectionLimit:    10,
         charset:            "utf8mb4_unicode_ci",
-        multipleStatements: false,           // block multi-statement SQL injection
+        multipleStatements: false,
         connectTimeout:     10_000,
       },
     };

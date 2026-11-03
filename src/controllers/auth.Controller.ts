@@ -1,4 +1,4 @@
-import {
+﻿import {
   Request,
   Response,
   NextFunction,
@@ -487,7 +487,7 @@ message:
 
 
 // =====================================
-// JWT — LEAN PAYLOAD (no permissions/menus)
+// JWT â€” LEAN PAYLOAD (no permissions/menus)
 // =====================================
 // Permissions and menus are intentionally omitted from the JWT to keep
 // the Authorization header small. Users with many role-permission rows
@@ -518,7 +518,7 @@ const token = generateToken(payload, "1d");
 const refreshToken = generateRefreshToken({ userId: user.id }, "7d");
 
 // Hash refresh token for security and save
-const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+const hashedRefreshToken = await bcrypt.hash(refreshToken, 12);
 user.refreshToken = hashedRefreshToken;
 await userRepo.save(user);
 
@@ -1077,7 +1077,7 @@ public async selectContext(
         )
     );
 
-    // Create token — permissions and menus are NOT included in the JWT payload.
+    // Create token â€” permissions and menus are NOT included in the JWT payload.
     // Embedding them causes tokens >8KB which Render's Nginx proxy rejects (431 error).
     // The frontend receives them in the response body and stores in sessionStorage.
     // On each API call the frontend sends only the compact token in Authorization header.
@@ -1091,7 +1091,7 @@ public async selectContext(
         userType: user.userType,
         isSuperAdmin: user.isSuperAdmin,
 
-        // DO NOT include permissions or menus here — too large for HTTP headers
+        // DO NOT include permissions or menus here â€” too large for HTTP headers
       },
       process.env.JWT_SECRET!,
       {
@@ -1632,16 +1632,16 @@ public async deleteUser( req:any, res:any ){
         })),
       };
 
-      // Issue a new access token (1d — same lifetime as login)
+      // Issue a new access token (1d â€” same lifetime as login)
       const newAccessToken  = generateToken(payload, "1d");
 
       // Rotate the refresh token on every use (refresh token rotation)
       const newRefreshToken = generateRefreshToken({ userId: user.id }, "7d");
-      const hashedNew       = await bcrypt.hash(newRefreshToken, 10);
+      const hashedNew       = await bcrypt.hash(newRefreshToken, 12);
       user.refreshToken     = hashedNew;
       await userRepo.save(user);
 
-      // Return `accessToken` — this is what the Angular RefreshService expects
+      // Return `accessToken` â€” this is what the Angular RefreshService expects
       return res.status(200).json({
         success:      true,
         message:      "Token refreshed successfully",
@@ -1695,7 +1695,7 @@ public async deleteUser( req:any, res:any ){
   }
 
   // =====================================================
-  // LOGOUT — Revoke Refresh Token
+  // LOGOUT â€” Revoke Refresh Token
   // =====================================================
   // The frontend calls this on every logout to invalidate the refresh token.
   // Without this endpoint, every logout generates a 404 error on the client.
@@ -1708,7 +1708,7 @@ public async deleteUser( req:any, res:any ){
       const { refreshToken } = req.body;
 
       if (refreshToken) {
-        // Verify the token to extract the userId — do not crash if invalid
+        // Verify the token to extract the userId â€” do not crash if invalid
         try {
           const refreshSecret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || "";
           const decoded: any = jwt.verify(refreshToken, refreshSecret);
@@ -1721,7 +1721,7 @@ public async deleteUser( req:any, res:any ){
             }
           }
         } catch {
-          // Expired or invalid token — still return 200 so client-side logout completes
+          // Expired or invalid token â€” still return 200 so client-side logout completes
         }
       }
 

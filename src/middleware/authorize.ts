@@ -1,5 +1,11 @@
-import { Response, NextFunction } from "express";
+﻿import { Response, NextFunction } from "express";
 import { UserType, ROLE_PERMISSIONS } from "../utils/Role-Access";
+
+// Security: Only fields set by authenticate.middleware.ts (from verified JWT) are trusted.
+// req.user.isSuperAdmin and req.user.userType come from the server-signed token — not from
+// client-provided headers or body. The req.user.role === "super_admin" string check has been
+// removed: it was dead code (authenticate middleware never sets .role) and would be a
+// privilege-escalation risk if req.user were ever extended from a client-controlled source.
 
 interface AuthorizeOptions {
   roles?: UserType[];
@@ -20,12 +26,17 @@ export function authorize(opts: AuthorizeOptions = {}) {
       });
     }
 
-    // ── 1. Super Admin Rule: Highest-privilege role, full unconstrained access ──
+    // ── 1. Super Admin Rule ──────────────────────────────────────────────────
+    // SECURITY: isSuperAdmin and userType are extracted from the server-signed JWT
+    // by authenticate.middleware.ts. They cannot be spoofed by the client.
+    // The `req.user.role === "super_admin"` check has been deliberately removed —
+    // authenticate.middleware.ts never sets req.user.role, so that check was
+    // always false AND would become a privilege-escalation vector if .role were
+    // ever accidentally populated from a client-controlled source.
     const isSuperAdmin = !!(
-      req.user.isSuperAdmin ||
+      req.user.isSuperAdmin === true ||
       req.user.userType === UserType.SUPER_ADMIN ||
-      req.user.user_type === UserType.SUPER_ADMIN ||
-      req.user.role === "super_admin"
+      req.user.user_type === UserType.SUPER_ADMIN
     );
 
     if (isSuperAdmin) {
@@ -36,7 +47,7 @@ export function authorize(opts: AuthorizeOptions = {}) {
 
     const userType = req.user.userType || req.user.user_type;
 
-    // ── 2. Explicit Deny Check (e.g. denyDelete) ───────────────────────────
+    // ── 2. Explicit Deny Check (e.g. denyDelete) ─────────────────────────────
     if (opts.denyDelete && opts.denyDelete.length > 0) {
       if (req.method === "DELETE" && opts.denyDelete.includes(userType)) {
         return res.status(403).json({
@@ -47,7 +58,7 @@ export function authorize(opts: AuthorizeOptions = {}) {
       }
     }
 
-    // ── 3. Approval Requirement Check ──────────────────────────────────────
+    // ── 3. Approval Requirement Check ─────────────────────────────────────────
     if (opts.requireApproval) {
       const rolePerms = ROLE_PERMISSIONS[userType as UserType];
       let hasApprovalPermission = rolePerms?.canApprove === true;
@@ -75,12 +86,10 @@ export function authorize(opts: AuthorizeOptions = {}) {
       }
     }
 
-    // ── 4. Role & Dynamic RBAC Permission Evaluation ────────────────────────
+    // ── 4. Role & Dynamic RBAC Permission Evaluation ──────────────────────────
     const hasRoleList = Array.isArray(opts.roles) && opts.roles.length > 0;
     const isRoleMatched = hasRoleList ? opts.roles!.includes(userType) : false;
 
-    // If a roles list is specified and the user's role is in the list, access is granted.
-    // If the role is NOT in the list, check if dynamic DB/JWT permission can grant an override.
     if (hasRoleList && !isRoleMatched) {
       let hasOverride = false;
       const targetMenu = opts.menu;
@@ -115,7 +124,6 @@ export function authorize(opts: AuthorizeOptions = {}) {
         });
       }
     } else if (!hasRoleList && (opts.menu || opts.action)) {
-      // No roles list specified, but explicit menu/action permission is required
       const targetMenu = opts.menu || (req.baseUrl || req.originalUrl || req.path || "").replace(/^\/api/, "").split("?")[0];
       const targetAction = opts.action || (req.method === "POST" ? "CREATE" : req.method === "PUT" || req.method === "PATCH" ? "UPDATE" : req.method === "DELETE" ? "DELETE" : "READ");
 
@@ -148,7 +156,7 @@ export function authorize(opts: AuthorizeOptions = {}) {
       }
     }
 
-    // ── 5. Tenant Scoping for Authorized Non-Super-Admin Users ──────────────
+    // ── 5. Tenant Scoping for Authorized Non-Super-Admin Users ───────────────
     const effectiveCompanyId = req.user.companyId || req.user.company_id;
     const effectiveBranchId  = req.user.branchId  || req.user.branch_id;
 

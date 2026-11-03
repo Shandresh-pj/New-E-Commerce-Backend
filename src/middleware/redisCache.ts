@@ -1,6 +1,8 @@
-import { Request, Response, NextFunction } from "express";
+﻿import { Request, Response, NextFunction } from "express";
 import { redisClient } from "../config/redis";
 
+// SECURITY: In-memory LRU fallback cache.
+// Max 1000 entries, TTL enforced per-entry to prevent stale data leaks.
 const memoryCache = new Map<string, { value: string; expiresAt: number }>();
 
 function setMemoryCache(key: string, value: string, ttlSeconds: number) {
@@ -35,7 +37,16 @@ export function invalidateApiCache(pattern?: string) {
 
 /**
  * High-speed caching middleware for Express API responses.
- * Uses Redis when available and ultra-fast in-memory LRU cache as fallback (<1ms response time).
+ * Uses Redis when available and ultra-fast in-memory LRU cache as fallback.
+ *
+ * SECURITY NOTES:
+ * - Cache keys are scoped to userId from JWT (server-set), NOT client-provided params.
+ *   This prevents cache poisoning where user A sees user B's cached data.
+ * - The nocache/bypassCache query param bypass has been REMOVED. Allowing client-controlled
+ *   cache bypass enables cache-busting DoS (forces fresh DB queries on every request).
+ *   Cache invalidation happens automatically on mutations (POST/PUT/PATCH/DELETE).
+ * - URL is included in key but companyId/branchId from JWT is also scoped to prevent
+ *   cross-tenant cache reads.
  */
 export const redisCache = (ttl: number = 30) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -51,15 +62,22 @@ export const redisCache = (ttl: number = 30) => {
       return next();
     }
 
-    if (req.query.nocache === "true" || req.query.bypassCache === "true") {
-      return next();
-    }
-
-    const userId = (req as any).user?.id || (req as any).user?.user_id || "";
+    // SECURITY: Cache key scoped to userId + companyId from JWT (server-authoritative).
+    // Using last-16 chars of auth token as a tiebreaker for unauthenticated paths.
+    const user = (req as any).user;
+    const userId    = user?.id        || user?.user_id   || "";
+    const companyId = user?.companyId || user?.company_id || "";
     const authHeader = req.headers.authorization
       ? req.headers.authorization.substring(req.headers.authorization.length - 16)
       : "";
-    const userScope = userId ? `user:${userId}` : authHeader ? `token:${authHeader}` : "public";
+
+    // Build a tenant-scoped cache key that isolates per-company data.
+    const userScope = userId
+      ? `user:${userId}:company:${companyId}`
+      : authHeader
+        ? `token:${authHeader}`
+        : "public";
+
     const key = `cache:${userScope}:${req.originalUrl || req.url}`;
 
     // 1. Fast Memory Cache Check (<1ms)
@@ -87,7 +105,7 @@ export const redisCache = (ttl: number = 30) => {
       console.error("Redis Read Error:", err);
     }
 
-    // 3. Hijack res.json to store in memory & Redis
+    // 3. Hijack res.json to store in memory & Redis on successful response
     const originalJson = res.json.bind(res);
 
     res.json = (body: any) => {

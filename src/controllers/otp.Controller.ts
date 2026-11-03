@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+﻿import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 import {
@@ -221,7 +221,7 @@ export class OtpController {
   }
  
   // ===================================================================
-  // SEND OTP — email or mobile number
+  // SEND OTP â€” email or mobile number
   // ===================================================================
 @Post("/send")
 @Middleware([
@@ -637,10 +637,7 @@ public async verifyOtp(
       );
 
     const hashedRefreshToken =
-      await bcrypt.hash(
-        refreshToken,
-        10
-      );
+      await bcrypt.hash(refreshToken, 12);
 
     user.refreshToken =
       hashedRefreshToken;
@@ -653,10 +650,10 @@ public async verifyOtp(
     // BANNER TOKEN
     // ==========================================================
 
-    const bannerSecret =
-      process.env.BANNER_TOKEN_SECRET ||
-      process.env.JWT_SECRET ||
-      "super-secret-banner-key-svk-dth";
+    // SECURITY: No hardcoded fallback — missing env var throws immediately.
+    const bannerSecret = process.env.BANNER_TOKEN_SECRET || process.env.JWT_SECRET;
+    if (!bannerSecret) { throw new Error("[Security] BANNER_TOKEN_SECRET or JWT_SECRET must be set."); }
+
 
     const bannerToken =
       jwt.sign(
